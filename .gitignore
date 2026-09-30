@@ -1,0 +1,35 @@
+# 依赖
+node_modules/
+__pycache__/
+*.py[cod]
+
+# 构建产物
+build/
+release/
+dist/
+*.spec
+
+# 运行时数据与日志
+data/
+logs/
+*.log
+
+# 环境与敏感信息
+.env
+.env.*
+
+# 编辑器 / IDE
+.vscode/
+.idea/
+*.swp
+
+# SonarQube
+.scannerwork/
+sonarqube-*.properties.bak
+
+# 系统文件
+Thumbs.db
+Desktop.ini
+.DS_Store
+
+.workbuddy

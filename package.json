@@ -1,0 +1,50 @@
+{
+  "name": "workload-estimate",
+  "version": "0.1.20260929-001",
+  "private": true,
+  "description": "工作量评估工具桌面应用根（Electron 桌面壳 + PyInstaller 后端 sidecar）",
+  "scripts": {
+    "start": "cd dev-shell && npm start",
+    "dist": "electron-builder",
+    "dist:dir": "electron-builder --dir",
+    "test": "node tests/run.mjs",
+    "build:frontend": "python scripts/build_frontend.py"
+  },
+  "devDependencies": {
+    "electron-builder": "^24.13.3"
+  },
+  "build": {
+    "electronVersion": "31.7.7",
+    "electronDist": "dev-shell/node_modules/electron/dist",
+    "appId": "com.workloadeval.app",
+    "productName": "工作量评估工具",
+    "copyright": "Copyright © 2026 WorkloadEval",
+    "directories": {
+      "app": "dev-shell",
+      "output": "release"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "release/exe/工作量评估工具.exe",
+        "to": "we-eval/工作量评估工具.exe"
+      }
+    ],
+    "compression": "maximum",
+    "win": {
+      "target": "nsis",
+      "icon": "assets/we_icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "artifactName": "WorkloadEstimate-${version}-setup.${ext}",
+      "include": "build/installer.nsh"
+    }
+  }
+}

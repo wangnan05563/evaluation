@@ -1,0 +1,719 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>工作量评估助手</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<!--BUILD:VENDOR_LUCIDE-->
+<!--BUILD:CSS-->
+</head>
+<body data-page="work" data-step="upload" data-pertstep="in">
+<div class="wrap">
+  <header class="top">
+    <div class="brand"><i aria-hidden="true" data-lucide="chart-spline" class="lic"></i><div><h1>工作量评估助手</h1></div></div>
+    <nav class="menu">
+      <button class="m-item on" id="mi-work" data-page="work" onclick="goPage('work')"><i aria-hidden="true" data-lucide="calculator" class="lic"></i><span class="lbl">IFPUG 估算</span><span class="tip">上传需求 → 审核功能点 → 生成成品造价表</span></button>
+      <button class="m-item" id="mi-pert" data-page="pert" onclick="goPage('pert')"><i aria-hidden="true" data-lucide="activity" class="lic"></i><span class="lbl">PERT 估算</span><span class="tip">三点估算，输入乐观/最可能/悲观自动算预期</span></button>
+      <button class="m-item" id="mi-fast" data-page="fast" onclick="goPage('fast')"><i aria-hidden="true" data-lucide="zap" class="lic"></i><span class="lbl">快速估算</span><span class="tip">NESMA 预估/估算法，数 ILF/EIF 即出规模与费用（FR-2.1）</span></button>
+      <button class="m-item" id="mi-config" data-page="config" onclick="goPage('config')"><i aria-hidden="true" data-lucide="settings" class="lic"></i><span class="lbl">配置中心</span><span class="tip">大模型识别增强、连接测试与模型管理</span></button>
+      <button class="m-item" id="mi-help" data-page="help" onclick="goPage('help')"><i aria-hidden="true" data-lucide="book-open" class="lic"></i><span class="lbl">帮助文档</span><span class="tip">评估方法论与计算算法说明</span></button>
+    </nav>
+  </header>
+
+  <!-- ============ 页面一：工作量估算 ============ -->
+  <main class="page" id="pg-work">
+  <!-- 副标题参照 PERT 页布局：置于步骤导航栏正上方（T00390） -->
+  <div class="card-title" style="margin-bottom:14px"><i aria-hidden="true" data-lucide="calculator"></i>IFPUG 估算 <span style="font-size:12px;color:var(--muted);font-weight:400">需求文档 → IFPUG 功能点 → 成品造价表（引擎直连）</span><span style="flex:1"></span><button class="btn btn-ghost" onclick="histOpen()" title="查看历史估算：重开 / 另存为 / 删除"><i aria-hidden="true" data-lucide="history" style="width:15px;height:15px"></i>历史估算</button></div>
+  <div class="mark" id="restoreBar" style="display:none;margin:-6px 0 10px"></div>
+  <div class="steps" style="margin-bottom:18px">
+      <div class="step on" id="st1" onclick="goStepNav('upload')" title="返回上传需求"><span class="n">1</span><span>上传需求</span></div><div class="sep"></div>
+      <div class="step" id="st2" onclick="goStepNav('review')" title="前往审核功能点"><span class="n">2</span><span>审核功能点</span></div><div class="sep"></div>
+      <div class="step" id="st3" onclick="goStepNav('result')" title="前往结果与下载"><span class="n">3</span><span>结果与下载</span></div>
+    </div>
+
+  <section class="view" id="v-history">
+    <div class="glass pad">
+      <div class="card-title"><i aria-hidden="true" data-lucide="history"></i>历史估算
+        <span style="flex:1"></span>
+        <button class="btn btn-ghost" onclick="histClose()" title="返回估算流程"><i aria-hidden="true" data-lucide="x" style="width:15px;height:15px"></i>返回</button></div>
+      <div class="toolbar" style="margin-bottom:12px">
+        <div class="search"><i aria-hidden="true" data-lucide="search"></i><input id="histQuery" placeholder="按需求标题 / 文件名搜索…" onkeydown="if(event.key==='Enter')histSearch()"></div>
+        <button class="btn btn-ghost" onclick="histSearch()" title="搜索"><i aria-hidden="true" data-lucide="search" style="width:15px;height:15px"></i>搜索</button>
+      </div>
+      <table>
+        <thead><tr><th>时间</th><th>需求标题</th><th>功能点</th><th>US 合计</th><th>操作</th></tr></thead>
+        <tbody id="histRows"><tr><td colspan="5" style="color:var(--muted)">加载中…</td></tr></tbody>
+      </table>
+      <div class="cfg-note" style="margin-top:12px">
+        <i aria-hidden="true" data-lucide="info" style="width:14px;height:14px;vertical-align:-2px;color:var(--brand)"></i>
+        重开 = 载入该版本到「审核功能点」，修改后重新生成会自动记为下一版本；另存为 = 载入后换标题生成新记录。删除历史不影响已下载的成品表。
+      </div>
+    </div>
+  </section>
+
+  <section class="view" id="v-upload">
+    <div class="up-grid">
+      <div class="glass pad">
+        <div class="card-title"><i aria-hidden="true" data-lucide="folder-open"></i>上传需求说明书</div>
+        <div class="drop" id="drop">
+          <i aria-hidden="true" data-lucide="cloud-upload" class="big"></i>
+          <b>拖拽需求文档到这里，或点击选择</b>
+          <p>支持 .docx 需求说明书；上传后由本地引擎解析并生成 IFPUG 候选功能点</p>
+          <input type="file" id="file" accept=".docx" hidden>
+          <div class="filebar" id="filebar">
+            <div class="f-ic"><i aria-hidden="true" data-lucide="file-text"></i></div>
+            <div><b id="fname"></b><span>已就绪，可开始识别</span></div>
+            <button type="button" onclick="rstFile()" title="移除文件" aria-label="移除文件"><i aria-hidden="true" data-lucide="x" class="elim"></i></button>
+          </div>
+        </div>
+      </div>
+      <div class="glass pad">
+        <div class="card-title"><i aria-hidden="true" data-lucide="settings-2"></i>项目参数</div>
+        <div class="fields">
+          <div class="fill"><div class="f-w">规模计数时机</div><select><option>估算早期</option><option selected>估算中期</option><option>估算晚期</option><option>交付后及运维</option></select></div>
+          <div class="fill"><div class="f-w">规模估算方法</div><select id="methodSel"><option selected>估算功能点</option><option>预估功能点</option></select></div>
+          <div class="fill"><div class="f-w">应用类型</div><select><option selected>业务处理</option><option>应用集成</option><option>科技</option><option>智能信息</option></select></div>
+          <div class="fill"><div class="f-w">开发语言</div><select><option selected>JAVA、C++、C# 等</option><option>C 等</option><option>PowerBuilder、ASP 等</option></select></div>
+          <div class="fill"><div class="f-w">开发团队背景</div><select><option selected>本行业类似软件</option><option>相关行业软件</option><option>无相关背景</option></select></div>
+          <div class="fill"><div class="f-w">人月基准单价（万元）</div><input type="text" value="2.57"></div>
+          <div class="fill"><div class="f-w">系统类别生产率（人时/FP）</div><input type="text" value="10.67"></div>
+        </div>
+        <button class="cta" id="startBtn" disabled title="上传文档开始识别"><i aria-hidden="true" data-lucide="sparkles" style="width:15px;height:15px"></i>上传文档开始识别</button>
+        <div class="mark" id="progressMark"></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="view" id="v-review">
+    <div class="mark" id="reopenBanner" style="display:none;margin-bottom:12px"></div>
+    <div class="av">
+      <aside class="glass pad" style="padding:16px">
+        <div class="cap">功能模块</div>
+        <div class="tree" id="tree"></div>
+        <div class="total"><span>未调整功能点 UFP</span><b id="treeUfp">0</b><span>待确认 <b class="num" id="leftCnt">0</b> 项</span></div>
+      </aside>
+      <div class="glass pad">
+        <div class="toolbar">
+          <div class="search"><i aria-hidden="true" data-lucide="search"></i><input id="q" placeholder="搜索功能项描述 / 计数项名称…"></div>
+          <select id="fSys" onchange="render()" title="按模块筛选"><option value="">全部模块</option></select>
+          <select id="fType" onchange="render()" title="按类型筛选"><option value="">全部类型</option><option>EI</option><option>EO</option><option>EQ</option><option>ILF</option><option>EIF</option></select>
+          <select id="fReuse" onchange="render()" title="按重用度筛选"><option value="">全部重用度</option><option>高</option><option>中</option><option>低</option></select>
+          <label style="display:flex;align-items:center;gap:4px;font-size:12px;color:var(--muted);white-space:nowrap"><input type="checkbox" id="fTodo" onchange="render()">仅看未确认</label>
+          <button class="btn btn-ghost" onclick="clearFilters()" title="清除全部筛选与排序" aria-label="清除全部筛选与排序"><i aria-hidden="true" data-lucide="x" style="width:15px;height:15px"></i></button>
+          <span class="tcount" id="listCnt">0 条候选</span>
+          <button class="btn btn-ghost" onclick="pasteOpen()" title="粘贴 Excel 复制的明细批量导入"><i aria-hidden="true" data-lucide="clipboard-paste" style="width:15px;height:15px"></i>粘贴导入</button>
+          <button class="btn btn-ghost" onclick="showAllBasis()" title="展开全部判定依据" aria-label="展开全部判定依据"><i aria-hidden="true" data-lucide="eye" style="width:15px;height:15px"></i></button>
+        </div>
+        <div class="mark" id="batchBar" style="display:none;align-items:center;gap:8px;margin-bottom:10px">
+          <b>对筛选出的 <span id="batchCnt">0</span> 行批量：</b>
+          <select id="bReuse"><option value="">重用度…</option><option>高</option><option>中</option><option>低</option></select>
+          <select id="bModify"><option value="">修改类型…</option><option>新增</option><option>修改</option><option>删除</option></select>
+          <select id="bCx"><option value="">复杂度…</option><option>低</option><option>中</option><option>高</option></select>
+          <button class="btn btn-ghost" onclick="batchApply()" title="应用到筛选出的全部行">应用</button>
+          <button class="btn btn-ghost" onclick="batchConfirm()" title="全部标记为已确认">标记确认</button>
+          <button class="btn btn-ghost" onclick="batchDelete()" title="删除筛选出的全部行（需确认）"><i aria-hidden="true" data-lucide="trash-2" style="width:14px;height:14px"></i>删除</button>
+        </div>
+        <div style="overflow:auto">
+        <table>
+          <thead><tr><th style="width:34px"><input type="checkbox" id="ckAll" title="全选/全不选（确认所有功能项）" onchange="toggleAllCk(this.checked)"></th><th onclick="sortBy('desc')" class="sortable" title="按描述排序">功能项描述 <span id="s-desc"></span></th><th onclick="sortBy('type')" class="sortable" title="按类型排序">计数项 · 类别 <span id="s-type"></span></th><th style="width:168px">复杂度</th><th style="width:60px">UFP</th><th style="width:86px">重用</th><th style="width:86px">修改</th><th onclick="sortBy('us')" class="sortable" title="按 US 排序" style="width:60px">US <span id="s-us"></span></th><th>状态</th></tr></thead>
+          <tbody id="tbody"></tbody>
+        </table>
+        </div>
+        <div class="dockbar">
+          <div class="gprog" id="genProg" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" aria-live="polite">
+            <div class="gprog-top"><span id="genProgTxt">正在生成…</span><span id="genProgPct">0%</span></div>
+            <div class="gprog-track"><div class="gprog-fill" id="genProgFill"></div></div>
+          </div>
+          <div style="font-size:12px;color:var(--muted);line-height:1.6">已按 IFPUG 初识，请人工复核类别与复杂度。</div>
+          <div class="lt">
+            <div class="item"><span>已确认</span><b id="okCnt">0</b></div>
+            <div class="item"><span>UFP 合计</span><b id="dockUfp">0</b></div>
+            <div class="item"><span>US 合计</span><b id="dockUs">0</b></div>
+            <button class="btn btn-primary" id="goRes" disabled title="确认无误 · 生成结果"><i aria-hidden="true" data-lucide="check"></i>确认无误 · 生成结果</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="view" id="v-result">
+    <div class="r-tabs" role="navigation" aria-label="结果页导航" style="position:sticky;top:0;z-index:5;display:flex;gap:8px;align-items:center;margin-bottom:12px;padding:6px 0;background:var(--bg)">
+      <button class="btn btn-ghost" id="tabSum" onclick="gbTab('sum')" style="font-weight:700">评估汇总</button>
+      <button class="btn btn-ghost" id="tabGb" onclick="gbTab('gb');gbRender()">国标造价</button>
+      <span style="flex:1"></span>
+      <button class="btn btn-ghost r-anchor" data-anchor="kpisSec" onclick="rAnchor('kpisSec')">结论摘要</button>
+      <button class="btn btn-ghost r-anchor" data-anchor="rGridSec" onclick="rAnchor('rGridSec')">明细</button>
+      <button class="btn btn-ghost r-anchor" data-anchor="dlSec" onclick="rAnchor('dlSec')">导出</button>
+    </div>
+    <div id="gbCard" style="display:none">
+      <div class="glass pad">
+        <div class="card-title"><i aria-hidden="true" data-lucide="landmark"></i>GB/T 36964 国标造价测算（FR-2.2/2.7）
+          <span style="flex:1"></span><span class="tcount" id="gbRatesVer">—</span></div>
+        <div id="gbFactors" style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:12px 0"></div>
+        <div id="gbOut" style="font-size:13px;line-height:2" aria-live="polite"></div>
+        <p class="cfg-note" style="margin-top:10px">出处：GB/T 36964-2018《软件研发成本度量规范》· <span id="gbSource">CSBMK 基准</span>。勾选"自定义"覆盖基准值后标注<span class="mark" style="padding:1px 6px">人工调整</span>。</p>
+      </div>
+    </div>
+    <div class="kpis" id="kpisSec" aria-live="polite">
+      <div class="kpi"><div class="k-top"><i aria-hidden="true" data-lucide="layers"></i>未调整功能点</div><b id="rFp">0</b><small>FP</small></div>
+      <div class="kpi"><div class="k-top"><i aria-hidden="true" data-lucide="scale"></i>调整后规模</div><b id="rScale">0</b><small>FP</small></div>
+      <div class="kpi"><div class="k-top"><i aria-hidden="true" data-lucide="clock"></i>工作量</div><b id="rWork">0</b><small>人天 · 中值</small>
+        <div class="band"><div class="b"><b id="rWorkL">·</b><span>下限</span></div><div class="b"><b id="rWorkM">·</b><span>中值</span></div><div class="b"><b id="rWorkH">·</b><span>上限</span></div></div></div>
+      <div class="kpi"><div class="k-top"><i aria-hidden="true" data-lucide="currency-yuan"></i>费用</div><b id="rCost">0</b><small>万元 · 中值</small>
+        <div class="band"><div class="b"><b id="rCostL">·</b><span>下限</span></div><div class="b"><b id="rCostM">·</b><span>中值</span></div><div class="b"><b id="rCostH">·</b><span>上限</span></div></div></div>
+    </div>
+    <div class="chart-grid" id="chartGrid">
+      <div class="glass pad"><div class="card-title"><i aria-hidden="true" data-lucide="pie-chart"></i>功能点类型分布</div><div class="chart" id="c1"></div></div>
+      <div class="glass pad"><div class="card-title"><i aria-hidden="true" data-lucide="bar-chart-3"></i>重用度分布</div><div class="chart" id="c2"></div></div>
+      <div class="glass pad"><div class="card-title"><i aria-hidden="true" data-lucide="bar-chart-big"></i>一级模块工作量占比（US）</div><div class="chart" id="c3"></div></div>
+      <div class="glass pad"><div class="card-title"><i aria-hidden="true" data-lucide="trending-up"></i>工作量三值区间（人天）</div><div class="chart" id="c4"></div></div>
+    </div>
+    <button class="btn btn-ghost fold-btn" id="foldDetail" aria-expanded="true" aria-controls="rGridSec" onclick="foldToggle('detail')" title="折叠/展开明细区"><i aria-hidden="true" data-lucide="chevron-down" style="width:15px;height:15px"></i>明细</button>
+    <div class="r-grid" id="rGridSec">
+      <div class="glass pad">
+        <div class="card-title"><i aria-hidden="true" data-lucide="building-2"></i>分系统规模明细（US）</div>
+        <div id="sysList"></div>
+      </div>
+      <div class="glass pad">
+        <div class="card-title"><i aria-hidden="true" data-lucide="list-checks"></i>校验报告</div>
+        <div class="card-title" style="margin-top:14px"><i aria-hidden="true" data-lucide="download"></i>导出
+          <span style="flex:1"></span>
+          <span class="exp-wrap">
+            <button class="btn btn-ghost" onclick="storyGen()" title="按 INVEST 生成用户故事（FR-2.6）"><i data-lucide="book-user" style="width:15px;height:15px"></i>用户故事</button>
+            <button class="btn btn-ghost" onclick="expToggle(event)" title="导出报告与明细"><i aria-hidden="true" data-lucide="file-down" style="width:15px;height:15px"></i>导出 ▾</button>
+            <span id="expMenu" style="display:none;position:absolute;right:0;top:38px;z-index:40" class="glass pad">
+              <button class="btn btn-ghost" style="display:block;width:100%;text-align:left" onclick="expCsv()" title="全字段功能点明细（Excel 可直开）">功能点明细（CSV）</button>
+              <button class="btn btn-ghost" style="display:block;width:100%;text-align:left" onclick="expMd()" title="KPI+分布表格+Top10 明细">Markdown 摘要</button>
+              <button class="btn btn-ghost" style="display:block;width:100%;text-align:left" onclick="expPdf()" title="打印管线，目标选择另存为 PDF">评估报告（PDF/打印）</button>
+            </span>
+          </span>
+        </div>
+        <div class="alerts" id="alerts">
+          <div class="alert g"><i aria-hidden="true" data-lucide="circle-check"></i><div><b>识别完成</b>候选来自本地引擎，请在审核页完成复核后生成。</div></div>
+        </div>
+        <button class="btn btn-ghost fold-btn" id="foldExport" aria-expanded="true" aria-controls="dlSec" onclick="foldToggle('export')" title="折叠/展开导出区"><i aria-hidden="true" data-lucide="chevron-down" style="width:15px;height:15px"></i>导出</button>
+        <div class="dl-zone" id="dlSec">
+          <i aria-hidden="true" data-lucide="download" class="big"></i>
+          <b>成品工作量评估表已由引擎生成</b>
+          <p><span id="dlName">—</span> · 母版公式与样式完整保留</p>
+          <div class="mark" id="recalcState" style="display:none;margin-top:4px"></div>
+          <div style="margin-bottom:8px;font-size:12px;color:var(--muted)">母版：<select id="tplSel" onchange="tplPick(this.value)" style="max-width:200px" aria-label="选择母版"></select>（配置中心可上传新母版）</div>
+          <button class="btn btn-primary" onclick="download()" title="一键下载成品表"><i aria-hidden="true" data-lucide="file-down"></i>一键下载成品表</button>
+          <button class="btn btn-ghost" style="margin-left:8px" onclick="window.open('data/candidates_aml.json')" title="导出审核清单" aria-label="导出审核清单"><i aria-hidden="true" data-lucide="file-down" style="width:15px;height:15px"></i></button>
+        </div>
+      </div>
+    </div>
+    <div class="glass pad" id="storyBox" style="display:none;margin-top:16px">
+      <div class="card-title"><i data-lucide="book-user"></i>用户故事（FR-2.6 · 可编辑后导出/推送）</div>
+      <textarea style="width:100%;height:220px;font-family:var(--ff);font-size:12px;line-height:1.6" aria-label="用户故事编辑区"></textarea>
+      <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;align-items:center">
+        <button class="btn btn-ghost" onclick="storyDl('md')"><i data-lucide="file-text" style="width:15px;height:15px"></i>导出 Markdown</button>
+        <button class="btn btn-ghost" onclick="storyDl('csv')"><i data-lucide="table" style="width:15px;height:15px"></i>导出 CSV</button>
+        <span style="flex:1"></span>
+        <input id="ghRepo" placeholder="owner/repo" style="width:150px;font-size:12px">
+        <input id="ghToken" type="password" placeholder="GitHub Token" style="width:150px;font-size:12px">
+        <button class="btn btn-primary" id="storyPushBtn" onclick="storyPush()"><i data-lucide="send" style="width:15px;height:15px"></i>推送 GitHub Issues</button>
+      </div>
+    </div>
+    <div style="margin-top:16px;display:flex;gap:8px;justify-content:flex-end">
+      <button class="btn btn-ghost" onclick="goStep('upload')" title="重新上传" aria-label="重新上传"><i aria-hidden="true" data-lucide="rotate-ccw" style="width:15px;height:15px"></i></button>
+      <button class="btn btn-primary" onclick="goStep('review')" title="返回审核" aria-label="返回审核"><i aria-hidden="true" data-lucide="edit-3" style="width:15px;height:15px"></i></button>
+    </div>
+  </section>
+  </main>
+
+  <!-- ============ 页面二：配置中心 ============ -->
+  <main class="page" id="pg-config">
+    <div class="cfg-grid">
+      <div class="glass pad">
+        <div class="card-title"><i aria-hidden="true" data-lucide="sparkles"></i>大模型识别增强</div>
+        <div class="cfg-row">
+          <span class="sw-label"><i aria-hidden="true" data-lucide="toggle-right" style="width:16px;height:16px;color:var(--muted)"></i>启用大模型辅助识别
+          </span>
+          <span class="switch on" id="llmSwitch" data-on="1"></span>
+        </div>
+        <div class="fields" style="margin-top:12px">
+          <div class="fill"><div class="f-w">模型开发商（预设）</div><select id="providerSel" onchange="onProviderChange()"></select></div>
+          <div class="fill"><div class="f-w">API 地址(Base)【必填】</div><input id="llmApi" type="text" placeholder="https://api.openai.com/v1"></div>
+        </div>
+        <div class="fields" style="margin-top:12px">
+          <div class="fill"><div class="f-w">模型名</div><input id="llmModel" type="text" placeholder="gpt-4o-mini"></div>
+          <div class="fill"><div class="f-w">API Key【必填】<label style="float:right;font-size:11px;font-weight:400;color:var(--muted);cursor:pointer;display:inline-flex;align-items:center;gap:3px"><input type="checkbox" id="rememberKey" style="margin:0">记住（存本机草稿）</label></div><input id="llmKey" type="password" placeholder="sk-..."></div>
+        </div>
+        <div class="cfg-actions">
+          <button class="btn btn-primary" onclick="saveCfg()" title="保存配置"><i aria-hidden="true" data-lucide="save"></i>保存配置</button>
+          <button class="btn btn-ghost" onclick="testCfg()" title="连接测试" aria-label="连接测试"><i aria-hidden="true" data-lucide="plug-zap" style="width:15px;height:15px"></i></button>
+          <button class="btn btn-ghost" onclick="fetchModels()" title="获取模型列表" aria-label="获取模型列表"><i aria-hidden="true" data-lucide="list" style="width:15px;height:15px"></i></button>
+          <button class="btn btn-ghost" onclick="openConsole()" title="跳转控制台" aria-label="跳转控制台"><i aria-hidden="true" data-lucide="external-link" style="width:15px;height:15px"></i></button>
+          <button class="btn btn-ghost" onclick="resetCfg()" title="恢复默认" aria-label="恢复默认"><i aria-hidden="true" data-lucide="rotate-ccw" style="width:15px;height:15px"></i></button>
+        </div>
+        <div class="cfg-test" id="cfgTestBox"></div>
+        <div class="cfg-note" id="cfgNote">
+          <i aria-hidden="true" data-lucide="info" style="width:14px;height:14px;vertical-align:-2px;color:var(--brand)"></i>
+          大模型仅在启用时参与识别，用于核对 / 补全功能点类别；连接异常或超时会自动回退至本地规则，不影响主流程。
+        </div>
+      </div>
+      <div class="glass pad">
+        <div class="card-title"><i aria-hidden="true" data-lucide="boxes"></i>可用模型</div>
+        <div class="model-list" id="modelList">
+          <span style="font-size:12px;color:var(--muted)">尚未加载，点击「获取模型列表」拉取当前 API 可用模型。</span>
+        </div>
+        <div class="cfg-note" style="margin-top:18px">
+          <i aria-hidden="true" data-lucide="shield-check" style="width:14px;height:14px;vertical-align:-2px;color:var(--ok)"></i>
+          API Key 仅保存在本机 <code>data/config.json</code>，不会被上传到任何第三方服务器。
+        </div>
+      </div>
+    </div>
+    <div class="glass pad" style="margin-top:20px">
+      <div class="card-title"><i aria-hidden="true" data-lucide="folder-tree"></i>项目上下文目录</div>
+      <p style="font-size:12px;color:var(--muted);margin-bottom:12px;line-height:1.7">
+        配置一个项目代码目录，AI 估算工作量时会自动扫描该目录（技术栈 / 目录结构 / 依赖 / 规模），把「项目级上下文」注入提示词，使评估更贴合实际代码。
+      </p>
+      <div class="cfg-row">
+        <input id="ctxDir" type="text" placeholder="例如：D:\code\otherProjects\foo 或 /root/proj" style="flex:1;padding:10px 12px;border:1px solid var(--line);border-radius:var(--r-md);font-family:var(--ff);font-size:13px;outline:none">
+        <button class="btn btn-ghost" onclick="openDirPicker()" title="浏览选择目录" aria-label="浏览选择目录"><i aria-hidden="true" data-lucide="folder-search" style="width:15px;height:15px"></i></button>
+        <button class="btn btn-primary" onclick="saveCtxDir()" title="保存" aria-label="保存"><i aria-hidden="true" data-lucide="save" style="width:15px;height:15px"></i></button>
+        <button class="btn btn-ghost" onclick="analyzeCtx()" title="扫描分析" aria-label="扫描分析"><i aria-hidden="true" data-lucide="scan-search" style="width:15px;height:15px"></i></button>
+      </div>
+      <div class="cfg-note">
+        <i aria-hidden="true" data-lucide="info" style="width:14px;height:14px;vertical-align:-2px;color:var(--brand)"></i>
+        仅扫描技术栈/结构/依赖等元信息，不读取业务源码内容；目录不存在或未配置时 AI 自动跳过该上下文。
+      </div>
+      <div id="ctxOut" class="cfg-test" style="white-space:pre-wrap;font-family:ui-monospace,Consolas,monospace;font-size:12px"></div>
+      <input id="dirPicker" type="file" webkitdirectory directory multiple style="display:none">
+    </div>
+    <div class="glass pad" style="margin-top:20px">
+      <div class="card-title"><i aria-hidden="true" data-lucide="refresh-cw"></i>应用更新</div>
+      <p style="font-size:12px;color:var(--muted);margin-bottom:12px;line-height:1.7">
+        配置更新源 JSON 地址（返回 <code>{version, url, notes}</code>）。应用启动与打开帮助页时自动检测；发现新版本后在帮助页提供一键下载安装。
+      </p>
+      <div class="cfg-row">
+        <input id="updUrl" type="text" placeholder="例如：http://内网服务器/workload-eval/latest.json" style="flex:1;padding:10px 12px;border:1px solid var(--line);border-radius:var(--r-md);font-family:var(--ff);font-size:13px;outline:none">
+        <button class="btn btn-primary" onclick="saveUpdateUrl()" title="保存" aria-label="保存"><i aria-hidden="true" data-lucide="save" style="width:15px;height:15px"></i></button>
+      </div>
+      <div class="cfg-note">
+        <i aria-hidden="true" data-lucide="info" style="width:14px;height:14px;vertical-align:-2px;color:var(--brand)"></i>
+        留空表示不启用版本检测；更新包安装过程自动保留本机配置（配置中心/AI 配置/历史项目）。
+      </div>
+    </div>
+    <div class="glass pad" style="margin-top:20px">
+      <div class="card-title"><i aria-hidden="true" data-lucide="table-2"></i>成品表公式缓存</div>
+      <p style="font-size:12px;color:var(--muted);margin-bottom:12px;line-height:1.7">
+        生成成品表后，可选调用本机 Excel 把母版公式的计算结果写回文件（这样 WPS / 预览器等不重算的工具也能直接看到数值）。该步骤较慢（实测 5~20 秒），默认改为<b>后台补算</b>：生成后立即可下载，缓存写完后自动替换文件。
+      </p>
+      <div class="fields" style="grid-template-columns:1.2fr .8fr">
+        <div class="fill"><div class="f-w">重算方式</div>
+          <select id="recalcMode">
+            <option value="async">后台补算（推荐 · 生成后立即可下载）</option>
+            <option value="sync">生成时同步重算（等完成才返回）</option>
+            <option value="off">不重算（交给 Excel 打开时自算）</option>
+          </select>
+        </div>
+        <div class="fill"><div class="f-w">重算超时（秒 · 超时跳过）</div><input id="recalcTimeout" type="number" min="5" max="1800" step="1" placeholder="120"></div>
+      </div>
+      <div class="cfg-actions">
+        <button class="btn btn-primary" onclick="saveRecalcCfg()" title="保存公式缓存策略"><i aria-hidden="true" data-lucide="save" style="width:15px;height:15px"></i>保存</button>
+      </div>
+      <div class="cfg-note">
+        <i aria-hidden="true" data-lucide="shield-check" style="width:14px;height:14px;vertical-align:-2px;color:var(--ok)"></i>
+        优先级：本页设置 &gt; 环境变量（WE_RECALC_MODE / WE_RECALC_TIMEOUT）&gt; 默认值。重算卡死时引擎会按时跳过，并在宽限后只回收它自己启动的那个 Excel 实例，不影响你手动打开的工作簿。
+      </div>
+    </div>
+
+    <div class="glass pad" style="margin-top:16px">
+      <div class="card-title"><i aria-hidden="true" data-lucide="palette"></i>外观（M5/FR-4.1-4.3）</div>
+      <div class="cfg-row"><span>主题模式</span>
+        <span id="themeSeg">
+          <button class="btn btn-ghost tm" data-m="light" onclick="setThemeMode('light')">亮色</button>
+          <button class="btn btn-ghost tm" data-m="dark" onclick="setThemeMode('dark')">暗色</button>
+          <button class="btn btn-ghost tm" data-m="contrast" onclick="setThemeMode('contrast')">高对比</button>
+          <button class="btn btn-ghost tm" data-m="system" onclick="setThemeMode('system')">跟随系统</button>
+        </span></div>
+      <div class="cfg-row"><span>主色（改一处全局生效，导出表头同步）</span>
+        <span style="display:flex;gap:6px;align-items:center">
+          <span id="brandPresets"></span>
+          <input id="brandCustom" placeholder="#RRGGBB" style="width:90px;font-family:monospace" onchange="setBrand(this.value)">
+          <input type="color" id="brandPick" style="width:30px;height:30px;padding:0;border:0;background:none" onchange="setBrand(this.value)">
+        </span></div>
+      <p class="cfg-note" style="margin-top:10px">切换即时生效并记忆（localStorage）；跟随系统模式实时响应系统深浅色变化。</p>
+    </div>
+
+    <div class="glass pad" style="margin-top:16px">
+      <div class="card-title"><i data-lucide="wrench"></i>运维（M8/FR-5.4、5.6）</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
+        <button class="btn btn-ghost" onclick="diagExport()" title="日志+脱敏配置+版本信息打包下载"><i data-lucide="package" style="width:15px;height:15px"></i>导出诊断包</button>
+        <button class="btn btn-ghost" onclick="dataExport()" title="pert.db+规则+费率+版本号打包"><i data-lucide="download" style="width:15px;height:15px"></i>导出全部数据</button>
+        <button class="btn btn-ghost" onclick="document.querySelector('#dataImportFile').click()" title="导入此前导出的数据包（导入前自动备份）"><i data-lucide="upload" style="width:15px;height:15px"></i>导入数据</button>
+        <input type="file" id="dataImportFile" accept=".zip" style="display:none" onchange="dataImport(this)">
+      </div>
+      <p class="cfg-note" style="margin-top:10px">诊断包含结构化日志、脱敏配置与版本信息（不含上传文档与生成产物）；数据导入前会自动备份当前数据。</p>
+    </div>
+
+    <div class="glass pad" style="margin-top:16px">
+      <div class="card-title"><i data-lucide="layout-template"></i>母版管理（M9/FR-2.8）</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;align-items:center">
+        <button class="btn btn-ghost" onclick="document.querySelector('#tplFile').click()" title="上传新母版并登记口径说明"><i data-lucide="plus" style="width:15px;height:15px"></i>上传母版</button>
+        <input type="file" id="tplFile" accept=".xlsx" style="display:none" onchange="tplUpload(this)">
+        <span style="font-size:12px;color:var(--muted)">上传后请先用新母版生成一次首件，人工核对列对位（FR-2.8 AC）。</span>
+      </div>
+    </div>
+
+    <div class="glass pad" style="margin-top:16px" id="ratesCard">
+      <div class="card-title"><i aria-hidden="true" data-lucide="coins"></i>费率与基准（M6/FR-2.3）
+        <span style="flex:1"></span><span class="tcount" id="ratesVer">—</span>
+        <select id="ratesSel" onchange="ratesPick()" style="max-width:150px;font-size:12px"></select>
+        <button class="btn btn-ghost" onclick="ratesAdd()" title="新增年度版本">+版本</button>
+        <button class="btn btn-ghost" onclick="ratesDel()" title="删除当前版本">删除</button>
+        <button class="btn btn-primary" onclick="ratesSave()" title="保存当前版本（不发版更新）">保存</button>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:12px 0">
+        <label style="font-size:12px;color:var(--muted)">生产率 PDR（人时/FP）<input id="ratesPdr" type="number" step="0.01" style="width:100%;margin-top:4px"></label>
+        <label style="font-size:12px;color:var(--muted)">人月费率（元/人月）<input id="ratesRate" type="number" step="1" style="width:100%;margin-top:4px"></label>
+        <label style="font-size:12px;color:var(--muted)">功能点单价（元/FP）<input id="ratesPrice" type="number" step="1" style="width:100%;margin-top:4px"></label>
+        <label style="font-size:12px;color:var(--muted)">直接非人力成本 DNHC（元）<input id="ratesDnhc" type="number" step="1" style="width:100%;margin-top:4px"></label>
+      </div>
+      <label style="font-size:12px;color:var(--muted)">数据出处<input id="ratesSource" style="width:100%;margin-top:4px"></label>
+      <p class="cfg-note" style="margin-top:10px">多版本按年度保存（如 CSBMK-2023/2024），估算时在结果页选用并记录。负数/超界数值将被拒绝。</p>
+    </div>
+
+    <div class="glass pad" style="margin-top:16px" id="rulesCard">
+      <div class="card-title"><i aria-hidden="true" data-lucide="git-merge"></i>识别规则（M3/FR-2.9）
+        <span style="flex:1"></span>
+        <span class="tcount" id="rulesMeta">—</span>
+        <button class="btn btn-primary" onclick="rulesSave()" title="保存全部规则修改（下次识别生效）">保存全部</button>
+      </div>
+      <p style="font-size:12px;color:var(--muted);margin:-8px 0 12px">规则按优先级从高到低匹配，命中即判定类型；正则语法，多个用 | 分隔。修改后保存，下次识别生效并记录规则版本。</p>
+      <div style="overflow:auto"><table>
+        <thead><tr><th style="width:110px">ID</th><th>名称</th><th style="width:80px">范围</th><th style="width:70px">类型</th><th style="width:64px">优先级</th><th style="width:56px">启用</th><th>正则 patterns（每行一条；同一正则内的多分支用 | 分隔）</th><th style="width:120px">排除 exclude</th></tr></thead>
+        <tbody id="rulesRows"><tr><td colspan="8" style="color:var(--muted)">加载中…</td></tr></tbody>
+      </table></div>
+      <div style="margin-top:10px;text-align:right"><button class="btn btn-ghost" onclick="rulesAdd()" title="追加一条空白规则"><i aria-hidden="true" data-lucide="plus" style="width:15px;height:15px"></i>追加规则</button></div>
+    </div>
+  </main>
+
+  <!-- ============ 页面三：帮助文档 ============ -->
+  <main class="page" id="pg-help">
+    <div class="glass pad" style="margin-bottom:16px">
+      <div class="card-title"><i aria-hidden="true" data-lucide="keyboard"></i>快捷键</div>
+      <table>
+        <thead><tr><th style="width:180px">按键</th><th>作用</th><th>生效位置</th></tr></thead>
+        <tbody>
+          <tr><td>↑ / ↓</td><td>移动焦点行</td><td>复核功能点列表</td></tr>
+          <tr><td>Enter</td><td>切换焦点行确认状态</td><td>复核功能点列表</td></tr>
+          <tr><td>Space</td><td>展开/收起焦点行判定依据</td><td>复核功能点列表</td></tr>
+          <tr><td>Ctrl+F</td><td>聚焦搜索框</td><td>复核功能点列表</td></tr>
+          <tr><td>Esc</td><td>关闭弹层 / 退出输入框</td><td>全局</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="glass pad" style="margin-bottom:20px">
+      <div class="card-title"><i aria-hidden="true" data-lucide="refresh-cw"></i>版本与更新</div>
+      <div class="cfg-row" style="align-items:center;flex-wrap:wrap;gap:12px">
+        <span style="font-size:13px;color:var(--ink)">当前版本：<b id="verNow">…</b></span>
+        <span id="verState" style="font-size:12px;color:var(--muted)">尚未检测</span>
+        <span style="flex:1"></span>
+        <button class="btn btn-ghost" id="verChkBtn" onclick="checkUpdate(true)" title="检查更新"><i aria-hidden="true" data-lucide="search-check" style="width:15px;height:15px"></i>检查更新</button>
+        <button class="btn btn-primary" id="verUpdBtn" style="display:none" onclick="doUpdate()" title="一键下载更新包并安装"><i aria-hidden="true" data-lucide="download-cloud" style="width:15px;height:15px"></i>立即更新</button>
+      </div>
+      <div id="verNotes" class="cfg-test" style="display:none;white-space:pre-wrap"></div>
+      <div id="verProgWrap" style="display:none;margin-top:10px">
+        <div style="height:8px;background:var(--line);border-radius:999px;overflow:hidden">
+          <div id="verProgBar" style="height:100%;width:0%;background:var(--brand);border-radius:999px;transition:width .3s"></div>
+        </div>
+        <div style="display:flex;justify-content:space-between;margin-top:6px;font-size:12px;color:var(--muted)">
+          <span id="verProgTxt">准备下载…</span>
+          <span id="verProgPct">0%</span>
+        </div>
+        <div style="margin-top:8px;display:flex;gap:8px;justify-content:flex-end">
+          <button class="btn btn-ghost" id="verRetryBtn" style="display:none" onclick="doUpdate()" title="重新下载"><i aria-hidden="true" data-lucide="rotate-ccw" style="width:15px;height:15px"></i>重试</button>
+          <button class="btn btn-primary" id="verInstallBtn" style="display:none" onclick="installUpdate()"><i aria-hidden="true" data-lucide="package-check" style="width:15px;height:15px"></i>安装更新</button>
+        </div>
+      </div>
+      <div class="cfg-note">
+        <i aria-hidden="true" data-lucide="info" style="width:14px;height:14px;vertical-align:-2px;color:var(--brand)"></i>
+        更新源在 <b>配置中心 → 应用更新</b> 中配置；检测到新版本后可一键下载安装，安装过程自动保留本机配置。
+      </div>
+    </div>
+    <div class="glass pad" style="margin-bottom:20px">
+      <div class="card-title"><i aria-hidden="true" data-lucide="compass"></i>操作引导</div>
+      <div class="cfg-note" style="margin-bottom:10px">
+        <i aria-hidden="true" data-lucide="info" style="width:14px;height:14px;vertical-align:-2px;color:var(--brand)"></i>
+        为避免干扰日常操作，引导浮动按钮仅在本页右下角显示；可点击下方按钮重温任意页面的操作引导。
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn btn-ghost" onclick="WLGuide.startAndGo('work')" title="重温 IFPUG 估算三步流程引导"><i aria-hidden="true" data-lucide="calculator" style="width:15px;height:15px"></i>IFPUG 估算引导</button>
+        <button class="btn btn-ghost" onclick="WLGuide.startAndGo('pert')" title="重温 PERT 三点估算流程引导"><i aria-hidden="true" data-lucide="activity" style="width:15px;height:15px"></i>PERT 估算引导</button>
+        <button class="btn btn-ghost" onclick="WLGuide.startAndGo('config')" title="重温配置中心引导"><i aria-hidden="true" data-lucide="settings" style="width:15px;height:15px"></i>配置中心引导</button>
+        <button class="btn btn-ghost" onclick="WLGuide.startAndGo('help')" title="功能总览：介绍 4 大功能入口"><i aria-hidden="true" data-lucide="book-open" style="width:15px;height:15px"></i>功能总览引导</button>
+      </div>
+    </div>
+    <div class="glass pad">
+      <div class="card-title"><i aria-hidden="true" data-lucide="book-open"></i>帮助文档</div>
+      <div class="doc-grid">
+        <div class="doc-block">
+          <h3 style="font-size:15px;font-weight:700;color:var(--brand-ink);margin-bottom:10px"><span style="display:inline-block;background:var(--brand);color:var(--on-brand);font-size:11px;padding:2px 8px;border-radius:999px;margin-right:8px;vertical-align:2px">IFPUG</span>评估方法论</h3>
+          <div class="doc-sec">
+            <h4>1. 方法依据</h4>
+            <p>采用 <b>IFPUG 国际标准功能点估算方法</b>（Counting Practices Manual）对需求规模进行量化，再以基准数据换算工作量与费用。</p>
+          </div>
+          <div class="doc-sec">
+            <h4>2. 五类功能点</h4>
+            <ul>
+              <li><b>ILF</b> - 内部逻辑文件：由系统维护的数据文件</li>
+              <li><b>EIF</b> - 外部接口文件：被引用但非本系统维护的数据</li>
+              <li><b>EI</b> - 外部输入：数据进入系统的处理过程</li>
+              <li><b>EO</b> - 外部输出：向外部输出数据的处理过程</li>
+              <li><b>EQ</b> - 外部查询：仅检索无业务处理的查询</li>
+            </ul>
+          </div>
+          <div class="doc-sec">
+            <h4>3. 复杂度与权重</h4>
+            <p>每个功能点按「低 / 中 / 高」三级复杂度计权：ILF(7/10/15)、EIF(5/7/10)、EI(3/4/6)、EO(4/5/7)、EQ(3/4/6)。</p>
+          </div>
+          <div class="doc-sec">
+            <h4>4. 调整因子</h4>
+            <ul>
+              <li><b>重用程度</b>：高 1/3、中 2/3、低 1（复用的功能不计全额）</li>
+              <li><b>修改类型</b>：新增 1.0、修改 0.8、删除 0.2</li>
+              <li><b>规模变更因子</b>：按估算时机取 0.8~1.4 区间折减/放大</li>
+            </ul>
+          </div>
+        </div>
+        <div class="doc-block">
+          <h3 style="font-size:15px;font-weight:700;color:var(--brand-ink);margin-bottom:10px"><span style="display:inline-block;background:var(--brand);color:var(--on-brand);font-size:11px;padding:2px 8px;border-radius:999px;margin-right:8px;vertical-align:2px">IFPUG</span>算法说明</h3>
+          <div class="doc-sec">
+            <h4>1. UFP（未调整功能点）</h4>
+            <p>单一功能点 UFP = 类别权重 × 复杂度权重</p>
+          </div>
+          <div class="doc-sec">
+            <h4>2. US（调整后规模）</h4>
+            <p><span class="formula">US = UFP × 重用系数 × 修改系数</span></p>
+          </div>
+          <div class="doc-sec">
+            <h4>3. 调整后功能点</h4>
+            <p><span class="formula">调整后FP = ΣUS × 规模变更因子</span>（估算中期取 1.10）</p>
+          </div>
+          <div class="doc-sec">
+            <h4>4. 工作量（人天）</h4>
+            <p><span class="formula">工作量(人天) = 调整后FP × 生产率(人时/FP) ÷ 8</span></p>
+          </div>
+          <div class="doc-sec">
+            <h4>5. 费用（万元）</h4>
+            <p><span class="formula">费用 = 工作量(人天) ÷ 22 × 人月单价(万元)</span></p>
+          </div>
+          <div class="doc-sec">
+            <h4>6. 上下限</h4>
+            <p>中值 ±20% 作为下限/上限，供谈判区间参考。</p>
+          </div>
+        </div>
+        <div class="doc-block">
+          <h3 style="font-size:15px;font-weight:700;color:var(--brand-ink);margin-bottom:10px"><span style="display:inline-block;background:var(--brand);color:var(--on-brand);font-size:11px;padding:2px 8px;border-radius:999px;margin-right:8px;vertical-align:2px">PERT</span>三点估算</h3>
+          <div class="doc-sec">
+            <h4>1. 方法依据</h4>
+            <p>PERT（Program Evaluation and Review Technique，计划评审技术）适用于需求不确定、功能点难以精确计数的变更/迭代型场景，依托专家经验直接对工作量做三点估计。</p>
+          </div>
+          <div class="doc-sec">
+            <h4>2. 三值定义（单位：人天）</h4>
+            <ul>
+              <li><b>乐观值 O</b>：一切顺利的最短耗时（模板 F 列「最小」）</li>
+              <li><b>最可能值 M</b>：正常情况的最可能耗时（模板 E 列「最可能」）</li>
+              <li><b>悲观值 P</b>：含风险的最长耗时（模板 G 列「最大」）</li>
+            </ul>
+          </div>
+          <div class="doc-sec">
+            <h4>3. 预期工期与标准差</h4>
+            <p><span class="formula">预期 = (O + 4M + P) ÷ 6</span></p>
+            <p><span class="formula">标准差 σ = (P − O) ÷ 6</span></p>
+          </div>
+          <div class="doc-sec">
+            <h4>4. 汇总与调节</h4>
+            <ul>
+              <li>分阶段（需求/设计/开发/实施/公共及远程/现场维护）汇总预期人天</li>
+              <li><span class="formula">最理想人月 = 总预期人天 ÷ 20.83</span></li>
+              <li>叠加调节系数（客户 0.06 / 质量 0.06 / 变更 0.05 / 进度 0.06）得<b>实际预估人月</b></li>
+            </ul>
+          </div>
+          <div class="doc-sec">
+            <h4>5. 输出映射</h4>
+            <p>开发阶段明细写入成品表 R8 起（B/C 列合并，仅写 D 描述与 E/F/G 三值），其余阶段写入对应阶段行；H 列预期由模板公式自动重算。</p>
+          </div>
+        </div>
+        <div class="doc-block">
+          <h3 style="font-size:15px;font-weight:700;color:var(--brand-ink);margin-bottom:10px"><span style="display:inline-block;background:var(--brand);color:var(--on-brand);font-size:11px;padding:2px 8px;border-radius:999px;margin-right:8px;vertical-align:2px">PERT</span>项目上下文与 AI 辅助</h3>
+          <div class="doc-sec">
+            <h4>1. AI 拆分功能点</h4>
+            <p>在「需求输入」上传需求说明书（Word/PDF）或粘贴文本后，点右侧「上传文档开始识别」按钮发起识别（未上传文件时按钮灰显）。系统按<b>配置中心「启用大模型辅助识别」</b>开关自动分流：开启则由 AI 拆分功能/工作项并对每项给出乐观/最可能/悲观工作量评估，关闭则走本地离线分析；勾选确认后进入估算录入。</p>
+          </div>
+          <div class="doc-sec">
+            <h4>2. 项目上下文目录</h4>
+            <p>在<b>配置中心 → 项目上下文目录</b>配置一个代码目录，AI 估算时会扫描其技术栈、目录结构、依赖与规模，把「项目级上下文」注入提示词，使工作量评估更贴合实际代码。</p>
+          </div>
+          <div class="doc-sec">
+            <h4>3. 使用前提</h4>
+            <ul>
+              <li>AI 拆分/评估需在<b>配置中心</b>启用大模型并填好 API 地址与 Key</li>
+              <li>未能启用大模型时，docx 需求可回退本地识别（仅描述、三值手工补填）</li>
+              <li>项目上下文目录可选；未配置时 AI 自动跳过该上下文，不影响主流程</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- ============ 页面四：PERT 三点估算 ============ -->
+  <!-- 参照 IFPUG 页面结构：无底层背景框，各步骤内容为独立卡片 -->
+  <main class="page" id="pg-fast">
+    <div class="cfg-grid">
+      <div class="glass pad">
+        <div class="card-title"><i aria-hidden="true" data-lucide="zap"></i>NESMA 快速估算（FR-2.1）</div>
+        <div class="cfg-row"><span>算法</span>
+          <span id="fastMode">
+            <button class="btn btn-ghost" data-m="est" onclick="fastMode('est')">估算法</button>
+            <button class="btn btn-ghost" data-m="pre" onclick="fastMode('pre')">预估法</button>
+          </span></div>
+        <div id="fastCounts" style="display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin:12px 0"></div>
+        <p class="cfg-note" id="fastFormula" style="margin-top:4px"></p>
+        <div style="margin-top:10px"><button class="btn btn-primary" onclick="fastToGb()" title="把 UFP 带入国标造价页签"><i aria-hidden="true" data-lucide="arrow-right-circle" style="width:15px;height:15px"></i>按此结果进国标造价</button></div>
+      </div>
+      <div class="glass pad">
+        <div class="card-title"><i aria-hidden="true" data-lucide="landmark"></i>估算结果（国标造价口径）</div>
+        <div id="fastResult" style="font-size:13px;line-height:2">输入计数后即时计算。</div>
+      </div>
+    </div>
+  </main>
+
+  <main class="page" id="pg-pert">
+      <div class="card-title"><i aria-hidden="true" data-lucide="activity"></i>PERT 三点估算 <span style="font-size:12px;color:var(--muted);font-weight:400">预期 = (O + 4M + P) ÷ 6　·　σ = (P − O) ÷ 6</span></div>
+      <div class="steps" style="margin-bottom:18px">
+        <div class="step on" id="pst1" onclick="pertStep('in')"><span class="n">1</span><span>需求输入</span></div><div class="sep"></div>
+        <div class="step" id="pst2" onclick="pertStep('edit')"><span class="n">2</span><span>估算录入</span></div><div class="sep"></div>
+        <div class="step" id="pst3" onclick="pertStep('gen')"><span class="n">3</span><span>结果与生成</span></div>
+      </div>
+      <!-- 步骤1：需求输入（项目 + 上传/文本） -->
+      <section class="view" id="pv-in">
+      <div class="cfg-grid" style="grid-template-columns:1fr 320px">
+        <!-- 左侧：上传需求说明书（Word/PDF），参照 IFPUG 卡片样式（card-title + 图标 + 投影） -->
+        <div class="glass pad">
+          <div class="card-title"><i aria-hidden="true" data-lucide="folder-open"></i>上传需求说明书</div>
+          <div id="pertDrop" style="border:1.5px dashed var(--line);border-radius:var(--r-md);background:var(--surface-2);padding:22px 14px;text-align:center;cursor:pointer;margin-top:10px;transition:.2s">
+            <i aria-hidden="true" data-lucide="cloud-upload" style="width:30px;height:30px;color:var(--brand)"></i>
+            <div style="font-size:12px;margin-top:6px;color:var(--ink-2)">点击选择或拖拽需求说明书（Word / PDF）</div>
+            <div id="pertUpName" style="font-size:11px;color:var(--muted);margin-top:6px"></div>
+            <input id="pertUpFile" type="file" accept=".docx,.doc,.pdf" style="display:none">
+          </div>
+          <div class="cfg-note" style="margin-top:12px">支持 Word（.docx / .doc）、PDF；AI 自动拆分功能点并评估工作量。</div>
+          <div class="f-w" style="margin-top:16px">或粘贴需求文本</div>
+          <textarea id="pertTextArea" placeholder="描述一个或多个功能需求（AI 将自动拆分功能点并用 PERT 评估工作量），例如：新增票据到期自动扣款功能，支持批量选择票据、调用人行接口逐张扣款，扣款成功后生成传票并支持逐张打印。&#10;&#10;结构化字段也可直接写：需求标题 / 描述 / 优先级" rows="5" style="width:100%;margin-top:8px;padding:10px 12px;border:1px solid var(--line);border-radius:var(--r-md);font-family:var(--ff);font-size:12px;outline:none;resize:vertical;box-sizing:border-box;line-height:1.6"></textarea>
+          <div class="cfg-note" style="margin-top:14px">识别出的功能点将进入下一步「估算录入」供勾选确认。</div>
+        </div>
+        <!-- 右侧：项目参数配置，与上传栏同为独立卡片，视觉区隔清晰 -->
+        <div class="glass pad">
+          <div class="card-title"><i aria-hidden="true" data-lucide="settings-2"></i>项目参数配置</div>
+          <div class="f-w">项目名称</div>
+          <input id="pertName" type="text" placeholder="例如：票据系统功能优化" style="width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:var(--r-md);font-family:var(--ff);font-size:13px;outline:none">
+          <div class="f-w" style="margin-top:12px">估算人</div>
+          <input id="pertEst" type="text" placeholder="姓名" style="width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:var(--r-md);font-family:var(--ff);font-size:13px;outline:none">
+          <div style="margin-top:14px">
+            <button class="btn btn-primary" style="width:100%;justify-content:center" onclick="pertNew()" title="新建项目"><i aria-hidden="true" data-lucide="folder-plus"></i>新建项目</button>
+          </div>
+          <div style="height:1px;background:var(--line);margin:16px 0"></div>
+          <div class="f-w">选择已有项目</div>
+          <select id="pertProjSel" onchange="pertPickProj()" style="width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:var(--r-md);font-family:var(--ff);font-size:13px;outline:none;background:var(--card)">
+            <option value="">— 请选择 —</option>
+          </select>
+          <div style="margin-top:14px">
+            <button class="btn btn-primary" id="pertStartBtn" style="width:100%;justify-content:center" disabled title="上传文档开始识别 · 按配置走 AI 或离线分析" onclick="pertStart()"><i aria-hidden="true" data-lucide="sparkles" style="width:15px;height:15px"></i>上传文档开始识别</button>
+            <div class="mark" id="pertStartMsg"></div>
+          </div>
+          <div class="cfg-note" style="margin-top:14px">项目库：本地 SQLite（<code>data/pert.db</code>）。新建后自动切换；下拉可载入历史项目继续编辑。</div>
+        </div>
+      </div>
+      </section>
+      <!-- 步骤2：估算录入（人工录入 + 明细表格 + 候选确认），独立卡片 -->
+      <section class="view" id="pv-edit">
+        <div class="glass pad">
+        <div class="cfg-row">
+          <span style="font-size:13px;font-weight:600;color:var(--ink)"><i aria-hidden="true" data-lucide="folder" style="width:15px;height:15px;vertical-align:-2px;color:var(--brand)"></i> 当前项目：<b id="pertCur">—</b></span>
+          <span style="display:flex;gap:8px;align-items:center"><span class="tcount" id="pertCount">0 项</span><button class="btn btn-ghost" style="padding:4px 10px;font-size:12px" onclick="pertStep('in')" title="更换项目" aria-label="更换项目"><i aria-hidden="true" data-lucide="folder-open" style="width:15px;height:15px"></i></button></span>
+        </div>
+        <div class="toolbar" style="margin-bottom:10px;flex-wrap:wrap">
+          <select id="pertPhase" style="width:110px;padding:10px 12px;border:1px solid var(--line);border-radius:var(--r-md);font-family:var(--ff);font-size:13px;outline:none;background:var(--card)"><option>开发</option></select>
+          <input id="pertD" type="text" placeholder="功能描述" style="flex:1;min-width:150px;padding:10px 12px;border:1px solid var(--line);border-radius:var(--r-md);font-family:var(--ff);font-size:13px;outline:none">
+          <input id="pertO" type="number" min="0" step="0.1" placeholder="乐观" title="乐观值（人天）" style="width:70px;padding:10px 6px;border:1px solid var(--line);border-radius:var(--r-md);font-family:var(--ff);font-size:13px;outline:none;text-align:center">
+          <input id="pertM" type="number" min="0" step="0.1" placeholder="最可能" title="最可能值（人天，必填）" style="width:70px;padding:10px 6px;border:1px solid var(--line);border-radius:var(--r-md);font-family:var(--ff);font-size:13px;outline:none;text-align:center">
+          <input id="pertP" type="number" min="0" step="0.1" placeholder="悲观" title="悲观值（人天）" style="width:70px;padding:10px 6px;border:1px solid var(--line);border-radius:var(--r-md);font-family:var(--ff);font-size:13px;outline:none;text-align:center">
+          <button class="btn btn-ghost" onclick="pertAdd()" title="添加" aria-label="添加"><i aria-hidden="true" data-lucide="plus" style="width:15px;height:15px"></i></button>
+        </div>
+          <div style="overflow:auto">
+          <table>
+            <thead><tr><th>阶段</th><th>描述</th><th style="width:70px">乐观</th><th style="width:70px">最可能</th><th style="width:70px">悲观</th><th style="width:60px">预期</th><th style="width:60px">σ</th><th style="width:44px"></th></tr></thead>
+            <tbody id="pertTbody"></tbody>
+          </table>
+          </div>
+          <div id="pertCandBox" style="display:none;margin-top:16px;border:1px solid var(--line);border-radius:var(--r-md);overflow:hidden">
+            <div class="cfg-row" style="border:0;border-bottom:1px solid var(--line);border-radius:0;margin-bottom:0">
+              <span style="font-size:13px;font-weight:600;color:var(--ink)"><i aria-hidden="true" data-lucide="wand-2" style="width:15px;height:15px;vertical-align:-2px;color:var(--brand)"></i> AI 拆分候选（<span id="pertCandSrc">本地</span>，勾选后导入）</span>
+              <span style="display:flex;gap:8px">
+                <button class="btn btn-ghost" style="padding:6px 12px;font-size:12px" onclick="pertCandAll(true)" title="全选" aria-label="全选"><i aria-hidden="true" data-lucide="check-check" style="width:15px;height:15px"></i></button>
+                <button class="btn btn-ghost" style="padding:6px 12px;font-size:12px" onclick="pertCandAll(false)" title="全不选" aria-label="全不选"><i aria-hidden="true" data-lucide="x" style="width:15px;height:15px"></i></button>
+                <button class="btn btn-primary" style="padding:6px 12px;font-size:12px" onclick="pertCandConfirm()" title="导入选中"><i aria-hidden="true" data-lucide="check"></i>导入选中</button>
+                <button class="btn btn-ghost" style="padding:6px 12px;font-size:12px" onclick="pertCandClear()" title="取消" aria-label="取消"><i aria-hidden="true" data-lucide="x" style="width:15px;height:15px"></i></button>
+              </span>
+            </div>
+            <div style="max-height:280px;overflow:auto">
+              <table>
+                <thead><tr><th style="width:40px"><input type="checkbox" id="pertCandAll" onchange="pertCandAll(this.checked)"></th><th>阶段</th><th>功能描述</th><th style="width:70px">乐观</th><th style="width:70px">最可能</th><th style="width:70px">悲观</th></tr></thead>
+                <tbody id="pertCandTbody"></tbody>
+              </table>
+            </div>
+          </div>
+          <div style="margin-top:16px;text-align:right">
+            <button class="btn btn-primary" onclick="pertStep('gen')" title="下一步：结果生成" aria-label="下一步：结果生成"><i aria-hidden="true" data-lucide="arrow-right" style="width:15px;height:15px"></i></button>
+          </div>
+        </div>
+        </section>
+        <!-- 步骤3：结果生成（汇总 + 生成成品表），独立卡片 -->
+        <section class="view" id="pv-gen">
+          <div class="glass pad">
+          <div class="kpis" style="grid-template-columns:repeat(4,1fr);margin-top:4px">
+            <div class="kpi"><div class="k-top"><i aria-hidden="true" data-lucide="sigma"></i>预期总人天</div><b id="pTotal">0</b></div>
+            <div class="kpi"><div class="k-top"><i aria-hidden="true" data-lucide="users"></i>最理想人月</div><b id="pIdeal">0</b></div>
+            <div class="kpi"><div class="k-top"><i aria-hidden="true" data-lucide="settings-2"></i>调节系数</div><b id="pAdj">0</b></div>
+            <div class="kpi"><div class="k-top"><i aria-hidden="true" data-lucide="target"></i>实际预估人月</div><b id="pActual">0</b></div>
+          </div>
+          <div style="margin-top:16px;display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+            <button class="btn btn-primary" onclick="pertGen()" title="生成成品表"><i aria-hidden="true" data-lucide="file-down"></i>生成成品表</button>
+            <span class="cfg-note" style="margin-top:0">开发阶段写入成品表 R8 起，其余阶段写入对应阶段行；未填三值的项会提示补全。</span>
+          </div>
+          <div style="margin-top:14px">
+            <button class="btn btn-ghost" style="padding:8px 14px;font-size:12px" onclick="pertStep('edit')" title="返回估算录入" aria-label="返回估算录入"><i aria-hidden="true" data-lucide="arrow-left" style="width:15px;height:15px"></i></button>
+          </div>
+          <div id="pertBox" class="cfg-test" style="margin-top:14px"></div>
+          </div>
+        </section>
+  </main>
+</div>
+<div id="toast" style="position:fixed;left:50%;bottom:30px;transform:translateX(-50%);background:var(--ink);color:var(--on-brand);padding:10px 18px;border-radius:var(--r-full);font-size:13px;box-shadow:var(--shadow-lg);opacity:0;transition:.3s;z-index:99;pointer-events:none"></div>
+
+<!--BUILD:JS-->
+<div id="pasteModal" style="display:none;position:fixed;inset:0;background:rgba(15,20,30,.45);z-index:60;align-items:center;justify-content:center">
+  <div class="glass pad" style="width:680px;max-width:92vw">
+    <div class="card-title"><i aria-hidden="true" data-lucide="clipboard-paste"></i>粘贴导入功能点
+      <span style="flex:1"></span><button class="btn btn-ghost" onclick="pasteClose()" title="关闭">✕</button></div>
+    <p style="font-size:12px;color:var(--muted);margin-top:-6px">在 Excel 中复制后直接粘贴到下面。列顺序：<b>系统 / 模块 / 描述 / 计数项 / 类型 / 重用度 / 修改类型</b>（Tab 或逗号分隔，首行可为表头；类型/重用度/修改类型不符合枚举时自动回退默认值）。</p>
+    <textarea id="pasteText" style="width:100%;height:180px;font-family:monospace;font-size:12px" placeholder="在此粘贴（Ctrl+V）…"></textarea>
+    <div id="pastePreview" style="font-size:12px;color:var(--muted);margin:8px 0"></div>
+    <div style="display:flex;gap:8px;justify-content:flex-end">
+      <button class="btn btn-ghost" onclick="pasteParse()" title="解析并预览行数">解析预览</button>
+      <button class="btn btn-primary" id="pasteApplyBtn" onclick="pasteApply()" disabled title="确认追加到复核清单">确认追加</button>
+    </div>
+  </div>
+</div>
+<script src="/static/echarts.min.js"></script><!-- M2/FR-1.2：Apache ECharts 5.5.1 本地化（Apache-2.0），离线打包 -->
+<script src="/static/guide.js"></script>
+<script src="/static/iconbtn.js"></script>
+</body>
+</html>

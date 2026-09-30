@@ -1,0 +1,72 @@
+:root{
+  --bg:#F4F6FA; --card:#FFFFFF; --ink:#1F2937; --ink-2:#374151; --muted:#6B7280; --line:#E5E7EB; --line-2:#EEF1F6;
+  --brand:#2563EB; --brand-ink:#1D4ED8; --brand-soft:#EFF4FF; --cyan:#0EA5E9;
+  --ok:#16A34A; --ok-soft:#ECFDF3; --warn:#D97706; --warn-soft:#FFF7ED; --danger:#DC2626;
+  /* M5/FR-3.1：语义令牌补全（徽章/告警/表面/类别色板/图表） */
+  --ok-ink:#166534; --ok-border:#D1FADF; --warn-ink:#92400E; --warn-border:#FDE8C8; --danger-soft:#FEF2F2;
+  --surface-2:#FAFBFC; --drop-line:#CBD5E1; --switch-track:#D9DEE9; --on-brand:#FFFFFF; --danger-ink:#B91C1C;
+  --cat-ilf-bg:#DEEBFF; --cat-ilf-ink:#1D4ED8; --cat-eif-bg:#E7ECF7; --cat-eif-ink:#4B5878;
+  --cat-ei-bg:#F3E8FF; --cat-ei-ink:#7E22CE; --cat-eo-bg:#FFF3E0; --cat-eo-ink:#D97706;
+  --cat-eq-bg:#E0F2FE; --cat-eq-ink:#0284C7;
+  --chart-grid:#E5E7EB; --chart-tip-bg:#FFFFFF; --chart-tip-ink:#1F2937;
+  --fs-xs:11px; --fs-sm:12px; --fs-md:14px; --fs-lg:15px; --fs-xl:18px;
+  --r-lg:16px; --r-md:10px; --r-full:999px;
+  --shadow:0 1px 3px rgba(16,24,40,.08),0 1px 2px rgba(16,24,40,.04);
+  --shadow-lg:0 12px 28px -12px rgba(16,24,40,.18);
+  --ff:"Inter","PingFang SC","Microsoft YaHei",system-ui,sans-serif;
+}
+[data-theme="dark"]{
+  --bg:#0F172A; --card:#1E293B; --ink:#E2E8F0; --ink-2:var(--drop-line); --muted:#94A3B8; --line:#334155; --line-2:#273449;
+  --brand-soft:#1E3A5F; --cyan:#38BDF8;
+  --ok:#4ADE80; --ok-soft:#14321F; --ok-ink:#86EFAC; --ok-border:#1F5133;
+  --warn:#FBBF24; --warn-soft:#33230A; --warn-ink:#FCD34D; --warn-border:#4A3510; --danger:#F87171; --danger-soft:#3B1212;
+  --surface-2:#172033; --drop-line:#475569; --switch-track:#475569; --danger-ink:#FCA5A5;
+  --cat-ilf-bg:#1E3A5F; --cat-ilf-ink:#93C5FD; --cat-eif-bg:#273449; --cat-eif-ink:var(--drop-line);
+  --cat-ei-bg:#3B2154; --cat-ei-ink:#D8B4FE; --cat-eo-bg:#3B2A0F; --cat-eo-ink:#FCD34D;
+  --cat-eq-bg:#0C3A54; --cat-eq-ink:#7DD3FC;
+  --chart-grid:#334155; --chart-tip-bg:#1E293B; --chart-tip-ink:#E2E8F0;
+  --shadow:0 1px 3px rgba(0,0,0,.4),0 1px 2px rgba(0,0,0,.3);
+  --shadow-lg:0 12px 28px -12px rgba(0,0,0,.6);
+}
+[data-theme="contrast"]{
+  --bg:#000000; --card:#000000; --ink:#FFFFFF; --ink-2:#FFFFFF; --muted:#E0E0E0; --line:#FFFFFF; --line-2:#FFFFFF;
+  --brand:#FFFF00; --brand-ink:#FFFF00; --brand-soft:#1A1A00; --cyan:#00FFFF;
+  --ok:#00FF00; --ok-soft:#001A00; --ok-ink:#00FF00; --ok-border:#00FF00;
+  --warn:#FFFF00; --warn-soft:#1A1A00; --warn-ink:#FFFF00; --warn-border:#FFFF00; --danger:#FF6666; --danger-soft:#1A0000;
+  --surface-2:#000000; --drop-line:#FFFFFF; --switch-track:#FFFFFF; --on-brand:#000000;
+  --chart-grid:#FFFFFF; --chart-tip-bg:#000000; --chart-tip-ink:#FFFFFF;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+:focus-visible{outline:2px solid var(--brand);outline-offset:2px}
+body{font-family:var(--ff);color:var(--ink);background:var(--bg);-webkit-font-smoothing:antialiased}
+.wrap{max-width:1180px;margin:0 auto;padding:24px 28px 64px}
+.top{display:flex;align-items:center;justify-content:space-between;gap:20px;background:var(--card);border:1px solid var(--line);border-radius:var(--r-lg);padding:14px 20px;box-shadow:var(--shadow);margin-bottom:22px}
+.brand{display:flex;align-items:center;gap:12px}
+.brand .lic{width:38px;height:38px;color:var(--brand)}
+.brand h1{font-size:18px;font-weight:700}
+.brand p{font-size:12px;color:var(--muted);margin-top:2px}
+.steps{display:flex;align-items:center;gap:14px}
+.step{display:flex;align-items:center;gap:8px;color:var(--muted);font-size:13px;font-weight:600;cursor:pointer}
+.step .n{width:24px;height:24px;border-radius:var(--r-full);display:grid;place-items:center;background:var(--line-2);font-weight:700;font-size:12px}
+.step.on{color:var(--brand-ink)}
+.step.on .n{background:var(--brand);color:var(--on-brand)}
+.step.sep{width:28px;height:1px;background:var(--line)}
+.glass{background:var(--card);border:1px solid var(--line);border-radius:var(--r-lg);box-shadow:var(--shadow)}
+.pad{padding:24px}
+.card-title{display:flex;align-items:center;gap:8px;font-size:15px;font-weight:700;margin-bottom:18px}
+.card-title .lic{width:18px;height:18px;color:var(--brand)}
+.view{display:none}
+body[data-step="upload"] #v-upload,body[data-step="review"] #v-review,body[data-step="result"] #v-result,body[data-step="history"] #v-history{display:block}
+/* M3/FR-1.4：排序表头 + 键盘焦点行 */
+.sortable{cursor:pointer;user-select:none}
+#tbody tr.cur{outline:2px solid var(--brand);outline-offset:-2px}
+#fSys,#fType,#fReuse{max-width:110px;font-size:12px}
+/* M2/FR-1.2：结果页图表网格 */
+.chart-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:16px}
+.chart{height:220px}
+.exp-wrap{position:relative}
+.exp-wrap #expMenu .btn{margin:2px 0}
+@media (prefers-reduced-motion: reduce){*{animation:none!important;transition:none!important}}
+.step-anim{animation:stepFade .15s ease}
+@keyframes stepFade{from{opacity:0}to{opacity:1}}
+.up-zone.drag{border-color:var(--brand)!important;background:var(--brand-soft)!important}
