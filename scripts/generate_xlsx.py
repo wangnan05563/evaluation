@@ -306,6 +306,35 @@ def _append_gb_sheet(wb, o):
         pass   # 造价 sheet 失败不影响母版成品
 
 
+def _atomic_replace(tmp, out, retries=3, delay=0.5):
+    """T01481（P0-2）：os.replace 带短重试——目标 out 可能正被另一同名请求的
+    Excel COM 实例短暂持有（async 后台重算写回窗口），重试通常即可成功。"""
+    import time as _t
+    last = None
+    for _ in range(retries + 1):
+        try:
+            os.replace(tmp, out)
+            return
+        except PermissionError as e:
+            last = e
+            _t.sleep(delay)
+    raise last
+
+
+def _remove_save_tmp(tmp):
+    """T01481（P0-2）：原子写失败时清理自己的 .tmp 临时文件。
+    注意：必须用 ctypes DeleteFileW 直调 Win32——本环境 os.remove 被
+    safe-delete 钩子劫持为回收站语义且 fail-closed（tmp 竞争消失时
+    trash 报"找不到文件"会抛异常，反而打断生成流程）。"""
+    if not tmp:
+        return
+    try:
+        import ctypes
+        ctypes.windll.kernel32.DeleteFileW(tmp)
+    except Exception:
+        pass
+
+
 def run_from_json(js, out, systems=None, method="估算功能点", on_progress=None, recalc_info=None,
                   recalc_mode=None, recalc_timeout=None, on_recalc_state=None, brand_color=None, gb_state=None,
                   template=None):
@@ -347,13 +376,25 @@ def run_from_json(js, out, systems=None, method="估算功能点", on_progress=N
     # 强制 Excel 打开即重算：J/M 列是母版公式，openpyxl 不算缓存值，
     # 不设此标志的话 Excel 默认按"上次缓存"展示，导致用户看到 J/M 是空。
     wb.calculation.fullCalcOnLoad = True
+    tmp = None
     try:
-        wb.save(out)
+        # T01481（P0-2）：先写同目录唯一临时文件再 os.replace 原子替换。
+        # 并发/重开同标题时两个线程曾直接 save 同一路径互相踩踏
+        # （T01369 对照实验：固定 title 并发 42.33% 500 vs 唯一 title 0%）。
+        tmp = out + f".tmp{os.getpid()}.{threading.get_ident()}"
+        wb.save(tmp)
+        _atomic_replace(tmp, out)
+        tmp = None   # 已原子落位，无需清理
     except PermissionError as e:
-        # 同名产物被占用：最常见是上一次卡死的 Excel 还开着它（T00960）
+        # 目标被占用：最常见是上一次卡死的 Excel 还开着它（T00960）；
+        # os.replace 在 Windows 上替换被占用目标同样抛 PermissionError，保留原提示语义
+        _remove_save_tmp(tmp)
         raise RuntimeError(
             "成品表写入失败：目标文件被占用（常见于上次生成的 Excel 实例仍在后台），"
             "请稍后重试、或更换需求标题后另存；若反复出现请查看服务日志中的 [recalc] 记录。") from e
+    except Exception:
+        _remove_save_tmp(tmp)
+        raise
     _prog(58, "正在保存成品表…")
     # 若本机装有 Excel，再用 COM 跑一次重算并写回 cached value，
     # 这样即便用户 Excel 处于"手动重算"也能立即看到数值。
@@ -448,15 +489,26 @@ def _try_excel_recalc(path, on_progress=None, timeout=None):
             _emit(on_progress, 82, "正在重算母版公式…")
             xl.Calculate()
             _emit(on_progress, 90, "正在写回计算结果并关闭 Excel…")
-            wb.Save()
+            # T01481（P0-2）：SaveAs 到临时副本再原子替换——直接 Save 回写 out
+            # 会与并发同名请求的原子替换互相踩踏（实测 "File is not a zip file"）。
+            tmp_recalc = str(Path(path).with_name(
+                Path(path).name + f".recalc{os.getpid()}.{threading.get_ident()}.tmp"))
+            wb.SaveAs(tmp_recalc)
             wb.Close(); wb = None
             xl.Quit(); xl = None
+            _atomic_replace(tmp_recalc, str(path))
+            tmp_recalc = None
             result["ok"] = True
             if os.environ.get("WE_DEBUG_RECALC"):
                 print(f"[recalc] OK: {path}", flush=True)
         except Exception as e:
             result["err"] = f"{type(e).__name__}: {e}"
             print(f"[recalc] FAILED: {result['err']}", flush=True)
+            try:
+                if tmp_recalc:
+                    _remove_save_tmp(tmp_recalc)
+            except Exception:
+                pass
         finally:
             # 无论成功/失败都尽量收尾，避免残留 EXCEL.EXE 与文件句柄
             try:

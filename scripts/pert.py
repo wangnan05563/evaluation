@@ -23,8 +23,15 @@ class PertDB:
         self.db = db_path
         self._init()
 
+    def _connect(self):
+        # T01481（P1-1）：busy timeout + WAL，与服务端并发写一致
+        con = sqlite3.connect(self.db, timeout=15)
+        con.execute("PRAGMA journal_mode=WAL")
+        con.execute("PRAGMA synchronous=NORMAL")
+        return con
+
     def _init(self):
-        con = sqlite3.connect(self.db)
+        con = self._connect()
         con.executescript("""
         CREATE TABLE IF NOT EXISTS projects(
           id INTEGER PRIMARY KEY AUTOINCREMENT,

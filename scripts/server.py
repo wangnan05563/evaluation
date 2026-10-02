@@ -192,6 +192,31 @@ SCHEMA_VER = _dk.SCHEMA_VER
 _PERT_DB = pert.db_for(APP_DATA)
 pert.PertDB(_PERT_DB)
 
+
+def _pert_connect():
+    """T01481（P1-1）：统一 PERT 库连接——busy timeout + WAL，消除并发写
+    "database is locked"（T01369 稳定性实测 recognize 并发下 120 个 500）。"""
+    con = sqlite3.connect(_PERT_DB, timeout=15)
+    con.execute("PRAGMA journal_mode=WAL")
+    con.execute("PRAGMA synchronous=NORMAL")
+    return con
+
+
+# T01481（P0-2）：同名产物串行锁——title → Lock。
+# 同一标题的「写成品表 + Excel COM 重算写回」整段必须串行，否则并发请求的
+# 原子替换会与 COM 持有的文件句柄互踩（实测 500：目标被占用 / not a zip）；
+# 不同标题互不影响，仍然并行。
+_GEN_TITLE_LOCKS = {}
+_GEN_TITLE_LOCKS_GUARD = threading.Lock()
+
+
+def _title_lock(title):
+    with _GEN_TITLE_LOCKS_GUARD:
+        lk = _GEN_TITLE_LOCKS.get(title)
+        if lk is None:
+            lk = _GEN_TITLE_LOCKS[title] = threading.Lock()
+        return lk
+
 # 估算历史存储（M1/FR-1.1、1.8、2.5）：独立 estimation.db；初始化失败降级禁用历史功能
 HIST = None
 try:
@@ -1004,6 +1029,11 @@ def _llm_pert_split(api, model, key, excerpt):
 
 # ---------------- HTTP 服务 ----------------
 class Handler(BaseHTTPRequestHandler):
+    # T01481（P0-1）：HTTP/1.1 长连接复用，消除每请求 TCP 重建
+    # （T01369 实测：HTTP/1.0 下持续 20 并发 60s 连接拒绝率 99.49%；
+    #   所有响应路径均已带 Content-Length，满足 1.1 分帧要求）
+    protocol_version = "HTTP/1.1"
+
     def _cors(self):
         self.send_header("Access-Control-Allow-Origin", "*")
         self.send_header("Access-Control-Allow-Methods", "GET,POST,OPTIONS")
@@ -1472,12 +1502,13 @@ class Handler(BaseHTTPRequestHandler):
                     _gb_state = payload.get("gb_state") if isinstance(payload.get("gb_state"), dict) else None
                     _brand = (payload.get("brand_color") or "").strip()
                     _brand = _brand if re.fullmatch(r"#[0-9a-fA-F]{6}", _brand) else None   # FR-4.2：非法色值后端拒绝（回退母版默认）
-                    g.run_from_json(items, str(out), method=method,
-                                    brand_color=_brand, gb_state=_gb_state, template=_tpl,
-                                    on_progress=lambda p, s: _gen_progress_set(job, p, s),
-                                    recalc_info=recalc_info,
-                                    recalc_mode=recalc_mode, recalc_timeout=recalc_timeout,
-                                    on_recalc_state=lambda st: _gen_recalc_set(job, st))
+                    with _title_lock(str(out)):
+                        g.run_from_json(items, str(out), method=method,
+                                        brand_color=_brand, gb_state=_gb_state, template=_tpl,
+                                        on_progress=lambda p, s: _gen_progress_set(job, p, s),
+                                        recalc_info=recalc_info,
+                                        recalc_mode=recalc_mode, recalc_timeout=recalc_timeout,
+                                        on_recalc_state=lambda st: _gen_recalc_set(job, st))
                     _gen_progress_set(job, 96, "正在汇总评估结果…")
                     summary = engine.summary([{"type": i["type"], "reuse": i["reuse"], "modify": i["modify"]} for i in items], method=method)
                 except Exception as e:
@@ -1511,7 +1542,7 @@ class Handler(BaseHTTPRequestHandler):
                 name = (payload.get("name") or "").strip()
                 if not name:
                     return self._json(400, {"ok": False, "msg": "项目名称不能为空"})
-                con = sqlite3.connect(_PERT_DB)
+                con = _pert_connect()
                 # 重名拦截：同名人天估算项目不应重复创建，避免前端选择歧义
                 dup = con.execute("SELECT id FROM projects WHERE name=? LIMIT 1", (name,)).fetchone()
                 if dup:
@@ -1525,7 +1556,7 @@ class Handler(BaseHTTPRequestHandler):
 
             if u.path == "/api/pert/projects":
                 # 列出所有项目（按创建时间倒序），供前端下拉选择
-                con = sqlite3.connect(_PERT_DB)
+                con = _pert_connect()
                 rows = con.execute(
                     "SELECT id,name,estimator,created_at FROM projects ORDER BY id DESC").fetchall()
                 con.close()
@@ -1535,7 +1566,7 @@ class Handler(BaseHTTPRequestHandler):
             if u.path == "/api/pert/list":
                 payload = json.loads(raw.decode("utf-8"))
                 pid = payload.get("project_id")
-                con = sqlite3.connect(_PERT_DB)
+                con = _pert_connect()
                 p = con.execute("SELECT id,name,estimator FROM projects WHERE id=?", (pid,)).fetchone()
                 if not p:
                     con.close()
@@ -1577,7 +1608,7 @@ class Handler(BaseHTTPRequestHandler):
                     return self._json(400, {"ok": False, "msg": "功能描述不能为空"})
                 fields = (pid, phase, payload.get("system", ""),
                           payload.get("module", ""), desc, o, m, p)
-                con = sqlite3.connect(_PERT_DB)
+                con = _pert_connect()
                 if it_id:
                     con.execute("UPDATE pert_items SET phase=?,system=?,module=?,desc=?,"
                                 "optimistic=?,most_likely=?,pessimistic=? WHERE id=?",
@@ -1592,7 +1623,7 @@ class Handler(BaseHTTPRequestHandler):
 
             if u.path == "/api/pert/delete":
                 payload = json.loads(raw.decode("utf-8"))
-                con = sqlite3.connect(_PERT_DB)
+                con = _pert_connect()
                 con.execute("DELETE FROM pert_items WHERE id=? AND project_id=?",
                             (payload.get("id"), payload.get("project_id")))
                 con.commit(); con.close()
@@ -1656,7 +1687,7 @@ class Handler(BaseHTTPRequestHandler):
                 # 启用大模型（replace=true）时先清空该项目既有明细，避免 AI 拆分与人工录入并存造成重复。
                 payload = json.loads(raw.decode("utf-8"))
                 pid = payload.get("project_id")
-                con = sqlite3.connect(_PERT_DB)
+                con = _pert_connect()
                 if not con.execute("SELECT 1 FROM projects WHERE id=?", (pid,)).fetchone():
                     con.close()
                     return self._json(404, {"ok": False, "msg": "项目不存在"})
@@ -1690,7 +1721,7 @@ class Handler(BaseHTTPRequestHandler):
             if u.path == "/api/pert/generate":
                 payload = json.loads(raw.decode("utf-8"))
                 pid = payload.get("project_id")
-                con = sqlite3.connect(_PERT_DB)
+                con = _pert_connect()
                 name, estimator, rows = pert.rows_for_generate(con, pid)
                 if not rows:
                     con.close()
@@ -1714,7 +1745,7 @@ class Handler(BaseHTTPRequestHandler):
 
             if u.path == "/api/pert/savecfg":
                 payload = json.loads(raw.decode("utf-8"))
-                con = sqlite3.connect(_PERT_DB)
+                con = _pert_connect()
                 pert.save_cfg(con, payload.get("project_id"), payload.get("cfg", {}))
                 con.close()
                 return self._json(200, {"ok": True, "cfg": pert.load_cfg(sqlite3.connect(_PERT_DB), payload.get("project_id"))})
@@ -1735,4 +1766,10 @@ if __name__ == "__main__":
     # frozen(exe) 默认自动打开浏览器；传 --no-open 可关闭
     if "--open" in sys.argv or (getattr(sys, "frozen", False) and "--no-open" not in sys.argv):
         webbrowser.open(f"http://127.0.0.1:{port}")
-    ThreadingHTTPServer(("127.0.0.1", port), Handler).serve_forever()
+    # T01481（P0-1）：默认 request_queue_size=5，瞬时并发直接 backlog 溢出拒绝连接
+    # （T01369 实测：ramp 后第 1 秒 631 个 HttpHostConnectException）；daemon 线程保证退出不等请求
+    class QuietServer(ThreadingHTTPServer):
+        daemon_threads = True
+        request_queue_size = 128
+
+    QuietServer(("127.0.0.1", port), Handler).serve_forever()
