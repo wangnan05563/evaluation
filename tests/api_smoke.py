@@ -52,6 +52,43 @@ g2 = call('/api/generate', {'items': items, 'method': '估算功能点', 'title'
                             'job': 's3gen2', 'hist_items': hist_items, 'reopen_group': call(f"/api/history/{g['history_id']}/group")['versions'][0]['version_group']})
 vs = call(f"/api/history/{g2['history_id']}/group")['versions']
 check('重开同组版本递增', [v['version_no'] for v in vs] == [1, 2])
+
+# 4b) FR-FE05 版本 diff：v2 相比 v1 改 1 条复杂度、删 1 条、加 1 条
+# 注：后端 us_total 按 engine 口径（US 只由 type/reuse/modify 决定，cx 不参与），
+# 故此处只改 cx 时两侧 us_total 相同属预期；ΔUS 的非零验证放在 UI 套件（改 reuse）。
+h2_items = [dict(x) for x in hist_items]
+h2_items = h2_items[1:]                                     # removed（末条被删）
+h2_items[0]['cx'] = '低'                                    # changed（改留存条目的复杂度）
+h2_items.append({**hist_items[0], 'desc': 'S3新增功能点', 'system': 'S3新增系统'})   # added
+g3 = call('/api/generate', {'items': [i for i in items], 'method': '估算功能点', 'title': 'S3-API冒烟',
+                            'job': 's3gen3', 'hist_items': h2_items,
+                            'reopen_group': call(f"/api/history/{g['history_id']}/group")['versions'][0]['version_group']})
+df = call(f"/api/history/diff?a={g['history_id']}&b={g3['history_id']}")
+check('diff 返回 ok 且分类计数正确',
+      df.get('ok') and df['summary'] == {'added': 1, 'removed': 1, 'changed': 1},
+      json.dumps(df.get('summary'), ensure_ascii=False))
+chg = [c for c in df.get('changes', []) if c['kind'] == 'changed']
+check('diff 字段级变化含 cx', len(chg) == 1 and chg[0]['fields'][0]['field'] == 'cx'
+      and chg[0]['fields'][0]['a'] == '中' and chg[0]['fields'][0]['b'] == '低',
+      json.dumps(chg[0]['fields'] if chg else [], ensure_ascii=False))
+# 列表/详情的 count/us_total 必须有值（历史列表两列与 ΔUS 依赖它们）
+check('历史列表 count/us_total 已填充', isinstance(l['rows'][0].get('count'), int)
+      and isinstance(l['rows'][0].get('us_total'), (int, float))
+      and df['a']['count'] > 0 and df['a']['us_total'] > 0,
+      f"count={l['rows'][0].get('count')} us={l['rows'][0].get('us_total')}")
+try:
+    bad = call('/api/history/diff?a=ffffffffffffffffffffffffffffffff&b=' + g['history_id'])
+    check('不存在的 a 返回 404', False, f"got {bad}")
+except urllib.error.HTTPError as e:
+    check('不存在的 a 返回 404', e.code == 404, str(e.code))
+try:
+    call('/api/history/diff?a=' + g['history_id'])
+    check('缺 b 返回 400', False, '未返回 400')
+except urllib.error.HTTPError as e:
+    check('缺 b 返回 400', e.code == 400, str(e.code))
+check('同版本自比无差异', call(f"/api/history/diff?a={g['history_id']}&b={g['history_id']}")['summary']
+      == {'added': 0, 'removed': 0, 'changed': 0})
+
 dl = call('/api/history/' + g['history_id'], method='POST')
 check('删除生效', dl.get('ok') is True)
 

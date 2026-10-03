@@ -43,15 +43,17 @@
       <div class="toolbar" style="margin-bottom:12px">
         <div class="search"><i aria-hidden="true" data-lucide="search"></i><input id="histQuery" placeholder="按需求标题 / 文件名搜索…" onkeydown="if(event.key==='Enter')histSearch()"></div>
         <button class="btn btn-ghost" onclick="histSearch()" title="搜索"><i aria-hidden="true" data-lucide="search" style="width:15px;height:15px"></i>搜索</button>
+        <button class="btn btn-primary" id="hdifBtn" disabled onclick="histDiff()" style="margin-left:8px"><i aria-hidden="true" data-lucide="git-compare" style="width:15px;height:15px"></i>对比所选（0/2）</button>
       </div>
       <table>
-        <thead><tr><th>时间</th><th>需求标题</th><th>功能点</th><th>US 合计</th><th>操作</th></tr></thead>
-        <tbody id="histRows"><tr><td colspan="5" style="color:var(--muted)">加载中…</td></tr></tbody>
+        <thead><tr><th style="width:34px"><input type="checkbox" id="hdifAll" onchange="histDiffAll(this.checked)" title="清空选择"></th><th>时间</th><th>需求标题</th><th>功能点</th><th>US 合计</th><th>操作</th></tr></thead>
+        <tbody id="histRows"><tr><td colspan="6" style="color:var(--muted)">加载中…</td></tr></tbody>
       </table>
       <div class="cfg-note" style="margin-top:12px">
         <i aria-hidden="true" data-lucide="info" style="width:14px;height:14px;vertical-align:-2px;color:var(--brand)"></i>
-        重开 = 载入该版本到「审核功能点」，修改后重新生成会自动记为下一版本；另存为 = 载入后换标题生成新记录。删除历史不影响已下载的成品表。
+        重开 = 载入该版本到「审核功能点」，修改后重新生成会自动记为下一版本；另存为 = 载入后换标题生成新记录。删除历史不影响已下载的成品表。勾选两个版本可对比差异（新增/删除/变更高亮）。
       </div>
+      <div id="histDiff" class="glass pad" style="margin-top:14px;display:none"></div>
     </div>
   </section>
 

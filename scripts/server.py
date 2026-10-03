@@ -1178,6 +1178,24 @@ class Handler(BaseHTTPRequestHandler):
             if HIST is None:
                 return self._json(503, {"ok": False, "msg": "历史功能不可用（存储初始化失败）"})
             return self._json(200, HIST.group(m_grp.group(1)))
+        # ---------------- M1/FR-FE05：版本间 diff ----------------
+        if u.path == "/api/history/diff":
+            if HIST is None:
+                return self._json(503, {"ok": False, "msg": "历史功能不可用（存储初始化失败）"})
+            q = parse_qs(u.query)
+            aid = (q.get("a") or [None])[0]
+            bid = (q.get("b") or [None])[0]
+            if not aid or not bid:
+                return self._json(400, {"ok": False,
+                    "msg": "需提供 a 与 b 两个版本 id（/api/history/diff?a=<id>&b=<id>）"})
+            try:
+                d = HIST.diff(aid, bid)
+            except Exception as e:
+                return self._json(500, {"ok": False, "msg": "diff 计算失败：" + str(e)})
+            if not d.get("ok"):
+                code = 404 if d.get("which") else 400
+                return self._json(code, d)
+            return self._json(200, d)
         if u.path == "/api/config":
             # 配置中心：返回持久化配置 + 预设元数据（模型开发商/控制台链接）
             cfg = load_config()
@@ -1535,17 +1553,29 @@ class Handler(BaseHTTPRequestHandler):
                 _gen_progress_set(job, 100, "生成完成（公式缓存后台补算中）" if recalc_mode == "async" else "生成完成",
                                   done=True)
                 # M1/FR-1.1：估算历史落库（失败仅记日志，不影响生成响应）
+                # T01497：engine.summary 只产出 ufp/us，历史列表的「功能点 / US 合计」
+                # 两列与 FR-FE05 diff 的 ΔUS 都读 summary.count / summary.us_total，
+                # 缺失会让这两处恒显「—」。此处按落库明细补齐两个派生字段（不改引擎口径）。
                 history_id = None
                 if HIST is not None:
                     try:
+                        hist_items = (payload.get("hist_items") or items)
+                        hist_summary = dict(summary or {})
+                        hist_summary.setdefault("count", len(hist_items))
+                        if "us_total" not in hist_summary:
+                            # total_us 对非法 type/reuse/modify 会抛错，脏明细不应连带历史落库失败
+                            try:
+                                hist_summary["us_total"] = engine.total_us(hist_items, method)
+                            except Exception:
+                                hist_summary["us_total"] = summary.get("us") if isinstance(summary, dict) else None
                         hist = HIST.insert(
                             title=req_title or sid, source_name=payload.get("source_name") or None,
                             method=method,
                             params={"llm_enabled": payload.get("llm_enabled"),
                                     "fee_version": payload.get("fee_version"),
                                     "recalc_mode": recalc_mode},
-                            items=(payload.get("hist_items") or items),
-                            summary=summary, sid=sid, reopen_group=payload.get("reopen_group") or None)
+                            items=hist_items,
+                            summary=hist_summary, sid=sid, reopen_group=payload.get("reopen_group") or None)
                         history_id = hist["id"]
                     except Exception as e:
                         print(f"[history] 落库失败（不影响生成）: {type(e).__name__}: {e}", flush=True)

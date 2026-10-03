@@ -70,3 +70,18 @@ body[data-step="upload"] #v-upload,body[data-step="review"] #v-review,body[data-
 .step-anim{animation:stepFade .15s ease}
 @keyframes stepFade{from{opacity:0}to{opacity:1}}
 .up-zone.drag{border-color:var(--brand)!important;background:var(--brand-soft)!important}
+/* ===== M1/FR-FE05 版本对比高亮 ===== */
+.diff-sum{margin:10px 0 14px;font-size:13px;color:var(--ink-2);line-height:1.8}
+.diff-sum b{color:var(--ink)}
+.badge{display:inline-block;padding:1px 8px;border-radius:999px;font-size:12px;font-weight:600}
+.b-add{color:#0a7d33;background:rgba(10,125,51,.12)}
+.b-del{color:#c0392b;background:rgba(192,57,43,.12)}
+.b-chg{color:#b7791f;background:rgba(183,121,31,.14)}
+.d-added td{background:rgba(10,125,51,.06)}
+.d-removed td{background:rgba(192,57,43,.06)}
+.d-changed td{background:rgba(183,121,31,.06)}
+.old{color:#c0392b;text-decoration:line-through;font-weight:600}
+.new{color:#0a7d33;font-weight:600}
+#histDiff table{width:100%;border-collapse:collapse;margin-top:6px}
+#histDiff th,#histDiff td{border-bottom:1px solid var(--line);padding:8px 10px;text-align:left;vertical-align:top;font-size:13px}
+#histDiff th{color:var(--muted);font-weight:600;background:var(--line-2)}

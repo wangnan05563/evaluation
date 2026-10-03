@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /** M4/FR-5.2 编排器：npm test 一条命令跑核心链路自动化测试。
  *  用法：npm test [-- --only=S1,S3] [-- --with-flaky]
- *  套件：S1/S2 单测(python) · S3 API 冒烟(隔离实例) · S4/S5 UI 冒烟(CDP+无头 Chrome) · S6 flaky(默认 skip)。 */
+ *  套件：S1/S2 单测(python) · S3 API 冒烟(隔离实例) · S4/S5/S7 UI 冒烟(CDP+无头 Chrome) · S6 flaky(默认 skip)。 */
 import { spawn, spawnSync } from 'node:child_process';
 import net from 'node:net';
 import fs from 'node:fs';
@@ -75,6 +75,7 @@ const suites = [
   { id: 'S4', title: 'UI 冒烟（四图+导出管线）', kind: 'ui', script: 'tests/ui_smoke.mjs' },
   { id: 'S5', title: 'UI M3（表格增强+规则沉淀）', kind: 'ui', script: 'tests/ui_m3.mjs' },
   { id: 'S6', title: 'UI 进度/失败/超时（flaky，T01079）', kind: 'ui', script: 'tests/ui_progress.mjs', flaky: true },
+  { id: 'S7', title: 'UI 版本 diff 对比（FR-FE05）', kind: 'ui', script: 'tests/ui_diff.mjs' },
 ];
 
 let server = null, chrome = null;

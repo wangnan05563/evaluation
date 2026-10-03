@@ -174,3 +174,71 @@ class HistStore:
                 return {"ok": True, "versions": [dict(r) for r in rows]}
             finally:
                 c.close()
+
+    def diff(self, a_id, b_id):
+        """FR-FE05：任选两历史版本生成 diff。按功能点描述(desc, 去空格)匹配；
+        返回 added/removed/changed 及字段级变化(type/cx/reuse/modify/system/count_item)，
+        并附两侧 summary(count/us_total) 供前端算增量。"""
+        a = self.get(a_id)
+        if not a:
+            return {"ok": False, "msg": "基准版本不存在或已被清理", "which": "a"}
+        b = self.get(b_id)
+        if not b:
+            return {"ok": False, "msg": "对比版本不存在或已被清理", "which": "b"}
+
+        def key(it):
+            return (str(it.get("desc") or "").strip(),
+                    str(it.get("system") or "").strip())
+
+        def norm(items):
+            m = {}
+            for idx, it in enumerate(items or []):
+                k = key(it)
+                if not k[0] and not k[1]:
+                    k = ("#seq%d" % it.get("seq", idx), "")
+                m.setdefault(k, it)          # 同名仅保留首个，避免重复项炸出多余 removed/added
+            return m
+
+        a_map, b_map = norm(a.get("items")), norm(b.get("items"))
+        CMP = ["system", "type", "cx", "reuse", "modify", "count_item"]
+        changes = []
+        for k, it in b_map.items():
+            if k not in a_map:
+                changes.append({"kind": "added", "name": it.get("desc"),
+                                "system": it.get("system"), "item": it})
+        for k, it in a_map.items():
+            if k not in b_map:
+                changes.append({"kind": "removed", "name": it.get("desc"),
+                                "system": it.get("system"), "item": it})
+        for k in a_map:
+            if k in b_map:
+                ai, bi = a_map[k], b_map[k]
+                fields = []
+                for f in CMP:
+                    av, bv = ai.get(f), bi.get(f)
+                    av = "" if av is None else av      # 缺失字段与空串等价，避免误判为变更
+                    bv = "" if bv is None else bv
+                    if str(av) != str(bv):
+                        fields.append({"field": f, "a": av, "b": bv})
+                if fields:
+                    changes.append({"kind": "changed", "name": bi.get("desc"),
+                                    "system": bi.get("system"), "fields": fields,
+                                    "a": ai, "b": bi})
+
+        def summ(row):
+            s = row.get("summary") or {}
+            return {"count": s.get("count"), "us_total": s.get("us_total") or s.get("total_us")}
+
+        return {
+            "ok": True,
+            "a": {"id": a["id"], "title": a["title"], "version_no": a["version_no"],
+                  "created_at": a["created_at"], **summ(a)},
+            "b": {"id": b["id"], "title": b["title"], "version_no": b["version_no"],
+                  "created_at": b["created_at"], **summ(b)},
+            "changes": changes,
+            "summary": {
+                "added": sum(1 for c in changes if c["kind"] == "added"),
+                "removed": sum(1 for c in changes if c["kind"] == "removed"),
+                "changed": sum(1 for c in changes if c["kind"] == "changed"),
+            },
+        }
