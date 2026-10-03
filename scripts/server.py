@@ -6,7 +6,7 @@
   POST /api/generate      候选清单(JSON) + 参数 → 生成成品 xlsx，返回汇总+下载句柄
   GET  /api/download?s=xx 下载生成的成品 xlsx
 """
-import base64, io, json, os, re, shutil, sqlite3, subprocess, sys, threading, time, webbrowser
+import base64, gc, io, json, os, re, shutil, sqlite3, subprocess, sys, threading, time, uuid, webbrowser
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import urlparse, parse_qs, quote
@@ -307,6 +307,15 @@ def save_config(payload):
             pass
     CONF_FILE.write_text(json.dumps(cfg, ensure_ascii=False, indent=2), encoding="utf-8")
     return cfg
+
+
+# T01481：上传落盘统一走唯一名。原实现用「秒级时间戳 + 原文件名」，
+# 同秒并发必然撞同一路径——一个请求正写到一半，另一个就去读它，
+# 直接抛 "File is not a zip file" / "Truncated central directory" /
+# "Package not found"（实测 recognize 5 并发 60s：610/1122 = 54% 500）。
+def _upload_path(name):
+    safe = os.path.basename(str(name or "req.docx"))
+    return UPLOAD / f"{int(time.time() * 1000)}_{uuid.uuid4().hex[:8]}_{safe}"
 
 
 def _recalc_settings():
@@ -720,6 +729,10 @@ def recognize_doc(path, llm=None):
 
     for i, it in enumerate(items, 1):
         it["seq"] = i
+    # T01481 P0-3 防御性释放：识别结果已是纯 dict，doc 的 lxml/libxml2 解析树
+    # 不再被引用；显式 del + 强制 GC，避免大文档并发下工作集漂移（原生内存 tracemalloc 不可见）
+    del doc
+    gc.collect()
     return items, llm_meta
 
 
@@ -741,6 +754,7 @@ def _doc_text_excerpt(path, max_chars=6000):
                     chunks.append(line)
                 if sum(len(c) for c in chunks) > max_chars:
                     return "\n".join(chunks)
+        del doc
         return "\n".join(chunks)[:max_chars]
     except Exception:
         return ""
@@ -1103,6 +1117,8 @@ class Handler(BaseHTTPRequestHandler):
                 return self._json(200, {"ok": True, "templates": out})
         if u.path == "/api/diag":
             # M8/FR-5.4：一键诊断包（日志近7天 + 脱敏配置 + 版本信息；不含 uploads/generated）
+            # 注：T01481 评估过加 TTL 缓存（P1-3），但诊断包按需即时生成是产品语义
+            # （用户点一次就应拿到当下快照），不为此做语义妥协。
             import zipfile
             os.makedirs(APP_DATA / "diag", exist_ok=True)
             zp = APP_DATA / "diag" / f"diag_{time.strftime('%Y%m%d-%H%M%S')}.zip"
@@ -1248,7 +1264,7 @@ class Handler(BaseHTTPRequestHandler):
                     return self._json(400, {"ok": False, "msg": e.msg, "field": e.field})
                 name = payload.get("name", "req.docx")
                 b64 = payload.get("b64", "")
-                src = UPLOAD / (str(int(time.time())) + "_" + os.path.basename(name))
+                src = _upload_path(name)
                 src.write_bytes(base64.b64decode(b64))
                 params = payload.get("params", {}) or {}
                 # 大模型配置优先级：请求内传入 > 配置中心已保存值 > 默认(关闭)
@@ -1650,7 +1666,7 @@ class Handler(BaseHTTPRequestHandler):
                 if text:
                     excerpt = text  # 自由文本直取
                 elif b64:
-                    src_path = UPLOAD / (str(int(time.time())) + "_" + os.path.basename(fname))
+                    src_path = _upload_path(fname)
                     src_path.write_bytes(base64.b64decode(b64))
                 else:
                     return self._json(400, {"ok": False, "msg": "请提供需求文本或上传 Word/PDF"})

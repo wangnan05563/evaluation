@@ -41,7 +41,11 @@ await sleep(150); } console.log('  !! timeout ' + label); return false; };
 // 关闭首访引导遮罩（避免遮挡截图/交互取景）
 await send('Page.addScriptToEvaluateOnNewDocument', { source: `try{localStorage.setItem('wl_guide_done_pages_v1',JSON.stringify({work:true,pert:true,config:true,help:true}))}catch(e){}` }, S);
 await send('Page.navigate', { url: APP }, S);
-await sleep(2500);
+// T01481：等页面就绪（取代固定 2.5s，避免环境抖动误报为功能失败）
+for (let i = 0; i < 60; i++) {
+  if ((await ev(`typeof goPage === 'function' && document.readyState !== 'loading'`)) === true) break;
+  await sleep(250);
+}
 
 // ---------- 准备：真实路径走到「审核功能点」并全选 ----------
 await ev(`goPage('work'); goStep('upload');`);

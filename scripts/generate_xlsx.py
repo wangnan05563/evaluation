@@ -179,6 +179,31 @@ def _emit(on_progress, pct, stage):
 # 避免下载与重算抢同一个文件句柄；同一时刻只允许一个重算在跑。
 _RECALC_SLOT = threading.Lock()
 
+# T01481（P1-2）：Excel COM 熔断。实测并发下 16 次 com_error（Workbooks.Open 无效）
+# + 222 次「已有重算任务在进行」。连续失败达到阈值后短期停用 COM 重算，
+# 降级为 fullCalcOnLoad（成品表已强制该标志，Excel 打开时自算），
+# 避免每个请求都去 Dispatch 一次 Excel、拖慢生成并堆积隐藏进程。
+_RECALC_FAILS = 0
+_RECALC_DISABLE_UNTIL = 0.0
+_RECALC_CIRCUIT_THRESHOLD = 3      # 连续失败次数阈值
+_RECALC_CIRCUIT_COOLDOWN = 300.0   # 熔断冷却秒数（默认 5 分钟）
+
+
+def _recalc_note_fail():
+    """记录一次重算失败，达到阈值即打开熔断。"""
+    global _RECALC_FAILS, _RECALC_DISABLE_UNTIL
+    _RECALC_FAILS += 1
+    if _RECALC_FAILS >= _RECALC_CIRCUIT_THRESHOLD:
+        _RECALC_DISABLE_UNTIL = time.time() + _RECALC_CIRCUIT_COOLDOWN
+        print(f"[recalc] 连续 {_RECALC_FAILS} 次重算失败，熔断 {_RECALC_CIRCUIT_COOLDOWN:.0f}s，"
+              "期间降级为 fullCalcOnLoad（成品表仍完整）", flush=True)
+
+
+def _recalc_note_ok():
+    global _RECALC_FAILS, _RECALC_DISABLE_UNTIL
+    _RECALC_FAILS = 0
+    _RECALC_DISABLE_UNTIL = 0.0
+
 
 def recalc_mode():
     """WE_RECALC_MODE = async(默认) | sync | off —— 按部署场景切换重算策略。"""
@@ -209,8 +234,18 @@ def schedule_excel_recalc(out, on_progress=None, mode=None, timeout=None, on_sta
         ok = _try_excel_recalc(out, on_progress=on_progress, timeout=timeout)
         state("written" if ok else "skipped")
         return ok, "sync"
-    if not _RECALC_SLOT.acquire(blocking=False):
-        print("[recalc] 已有重算任务在进行，本次跳过（不影响生成结果）", flush=True)
+    # T01481（P1-2）：熔断期内直接降级，不再 Dispatch Excel（避免拖慢每个生成请求）
+    if time.time() < _RECALC_DISABLE_UNTIL:
+        state("skipped")
+        return False, "circuit-open"
+    # T01481（P1-2）：有界等待槽位（默认 0 = 拿不到立刻跳过，保持原「不阻塞生成」语义；
+    # 需要提高重算命中率时可设 WE_RECALC_WAIT>0，代价是最多等这么久）。
+    try:
+        wait = float(os.environ.get("WE_RECALC_WAIT") or 0)
+    except ValueError:
+        wait = 0.0
+    if not _RECALC_SLOT.acquire(timeout=wait):
+        print("[recalc] 未等到重算槽位，本次跳过（不影响生成结果）", flush=True)
         state("skipped")
         return False, "busy"
     out = Path(out)
@@ -222,6 +257,7 @@ def schedule_excel_recalc(out, on_progress=None, mode=None, timeout=None, on_sta
             shutil.copy2(out, tmp)                     # 只动副本，主产物始终可下载
             if not _try_excel_recalc(tmp, on_progress=on_progress, timeout=timeout):
                 tmp.unlink(missing_ok=True)
+                _recalc_note_fail()          # T01481（P1-2）：计入熔断计数
                 state("skipped")
                 return
             for i in range(6):                          # 目标可能正被下载读取，退避重试
@@ -232,6 +268,7 @@ def schedule_excel_recalc(out, on_progress=None, mode=None, timeout=None, on_sta
                         state("skipped")
                         return
                     os.replace(tmp, out)
+                    _recalc_note_ok()        # T01481（P1-2）：成功即清零连续失败计数
                     print(f"[recalc] 后台重算完成并已写回: {out.name}", flush=True)
                     state("written")
                     return

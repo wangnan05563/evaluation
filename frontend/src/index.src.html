@@ -4,8 +4,10 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>工作量评估助手</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<!-- T01481：移除 fonts.googleapis.com 外链。
+     本地桌面/内网部署时该请求不可达，会阻塞首屏渲染至超时（实测 ~5.5s，
+     document.readyState 一直卡在 loading，UI 自动化测试因此超时失败）。
+     --ff 已含 PingFang SC / Microsoft YaHei / system-ui 本地回退，中文排版不受影响。 -->
 <!--BUILD:VENDOR_LUCIDE-->
 <!--BUILD:CSS-->
 </head>

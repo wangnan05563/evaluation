@@ -22,7 +22,12 @@ await sleep(200); } return false; };
 const TAB = String.fromCodePoint(9);
 
 await send('Page.addScriptToEvaluateOnNewDocument', { source: `try{localStorage.setItem('wl_guide_done_pages_v1',JSON.stringify({work:true,pert:true,config:true,help:true}))}catch(e){}try{localStorage.removeItem('we_form_state_v1');localStorage.removeItem('wl_last_history')}catch(e){}` }, S);
-await send('Page.navigate', { url: APP }, S); await sleep(2500);
+await send('Page.navigate', { url: APP }, S);
+// T01481：等页面就绪（取代固定 2.5s，避免环境抖动误报为功能失败）
+for (let i = 0; i < 60; i++) {
+  if ((await ev(`typeof goPage === 'function' && document.readyState !== 'loading'`)) === true) break;
+  await sleep(250);
+}
 await ev(`goPage('work'); goStep('upload');`);
 await setFiles('#file', [path.resolve(DOCX)]);
 await ev(`document.querySelector('#startBtn').click();`);

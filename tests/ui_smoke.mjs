@@ -26,7 +26,13 @@ const stat = await fetch(APP + '/static/echarts.min.js');
 check('/static/echarts.min.js 可访问', stat.ok && +(stat.headers.get('content-length') || 0) > 500000, `status=${stat.status}`);
 
 await send('Page.addScriptToEvaluateOnNewDocument', { source: `try{localStorage.setItem('wl_guide_done_pages_v1',JSON.stringify({work:true,pert:true,config:true,help:true}))}catch(e){}try{localStorage.removeItem('we_form_state_v1');localStorage.removeItem('wl_last_history')}catch(e){}` }, S);
-await send('Page.navigate', { url: APP }, S); await sleep(2500);
+await send('Page.navigate', { url: APP }, S);
+// T01481：改「等就绪」取代固定 2.5s——页面首屏耗时受资源加载影响（曾因外网字体
+// 不可达卡到 5.5s），固定等待会把环境抖动误报成功能失败。
+for (let i = 0; i < 60; i++) {
+  if ((await ev(`typeof goPage === 'function' && document.readyState !== 'loading'`)) === true) break;
+  await sleep(250);
+}
 await ev(`goPage('work'); goStep('upload');`);
 await setFiles('#file', [path.resolve(DOCX)]);
 await ev(`document.querySelector('#startBtn').click();`);
