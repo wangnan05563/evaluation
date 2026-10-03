@@ -63,11 +63,27 @@ const cur=sel.value;
 function sortBy(key){if(!sortState||sortState.key!==key)sortState={key,dir:1};
   else if(sortState.dir===1)sortState={key,dir:-1};else sortState=null;
 render();}
-function updateSortInd(){["desc","type","us"].forEach(k=>{const el=document.getElementById("s-"+k);
-  if(el){const on=!!(sortState&&sortState.key===k);el.textContent=on?(sortState.dir===1?"▲":"▼"):"";}
-  // FR-UI05：aria-sort 同步实际排序状态，读屏才能播报当前列与升降序（WCAG 1.3.1）
-  const th=document.querySelector(`th[onclick*="sortBy('${k}')"]`);
-  if(th)th.setAttribute("aria-sort",!sortState?"none":(sortState.key!==k?"none":(sortState.dir===1?"ascending":"descending")));});}
+/* T01501（S3776）：原为 forEach 内双层嵌套判空 + 三元套三元（排序列判定 + aria-sort 判定），
+   复杂度超阈值。拆为「取排序态」与「取 aria-sort 值」两个纯函数，循环体只做赋值。*/
+function sortDirOf(key){
+  if(!sortState)return 0;            // 0=未排序
+  if(sortState.key!==key)return 0;
+  return sortState.dir;               // 1=升序 -1=降序
+}
+function ariaSortOf(key){
+  const d=sortDirOf(key);
+  return d===0?"none":(d===1?"ascending":"descending");
+}
+function updateSortInd(){
+  ["desc","type","us"].forEach(k=>{
+    const d=sortDirOf(k);
+    const el=document.getElementById("s-"+k);
+    if(el)el.textContent=d===0?"":(d===1?"▲":"▼");
+    // FR-UI05：aria-sort 同步实际排序状态，读屏才能播报当前列与升降序（WCAG 1.3.1）
+    const th=document.querySelector(`th[onclick*="sortBy('${k}')"]`);
+    if(th)th.setAttribute("aria-sort",ariaSortOf(k));
+  });
+}
 function clearFilters(){$("#q").value="";["fSys","fType","fReuse"].forEach(id=>$("#"+id).value="");
   $("#fTodo").checked=false;sortState=null;render();toast("已清除筛选与排序");}
 function emptyState(icon,title,desc,actionHtml){return `<div style="text-align:center;padding:28px 12px"><i aria-hidden="true" data-lucide="${icon}" style="width:34px;height:34px;color:var(--muted)"></i><div style="font-weight:700;margin-top:10px">${title}</div><div style="font-size:12px;color:var(--muted);margin-top:6px">${desc}</div><div style="margin-top:12px">${actionHtml||""}</div></div>`;}
@@ -536,15 +552,24 @@ function cfgRefreshDraft(){
     if(!dirty)localStorage.removeItem(CFG_DRAFT_KEY);
   }catch(e){}
 }
+// FR-UI05/T01501（S3776）：原为一条 8 分支的 if/else if 链，认知复杂度超阈值。
+// 改为「字段 → 处理器」分派表：新增字段只加一条映射，不再加一层嵌套判断。
+const CFG_FIELD_HANDLERS={
+  enabled(v){const sw=$("#llmSwitch");sw.classList.toggle("on",!!v);sw.setAttribute("aria-checked",v?"true":"false");},
+  provider(v){const sel=$("#providerSel");if(sel.querySelector(`option[value="${v}"]`))sel.value=v;},
+  rememberKey(v){$("#rememberKey").checked=!!v;},
+  ctxDir(v){$("#ctxDir").value=v||"";},
+  updUrl(v){$("#updUrl").value=v||"";},
+  recalcMode(v){const el=$("#recalcMode");if(!el)return;
+    const m=String(v||"async");if([...el.options].some(o=>o.value===m))el.value=m;},
+  recalcTimeout(v){const el=$("#recalcTimeout");if(el)el.value=(v==null||v==="")?"":v;},
+  key(v){$("#llmKey").value=v||"";},
+  api(v){$("#llmApi").value=v||"";},
+  model(v){$("#llmModel").value=v||"";},
+};
 function cfgApplyField(k,v){
-  if(k==="enabled"){$("#llmSwitch").classList.toggle("on",!!v);$("#llmSwitch").setAttribute("aria-checked",v?"true":"false");}   // FR-UI05
-  else if(k==="provider"&&$("#providerSel").querySelector(`option[value="${v}"]`))$("#providerSel").value=v;
-  else if(k==="rememberKey")$("#rememberKey").checked=!!v;
-  else if(k==="ctxDir")$("#ctxDir").value=v||"";
-  else if(k==="updUrl")$("#updUrl").value=v||"";
-  else if(k==="recalcMode"&&$("#recalcMode")){const m=String(v||"async");if([...$("#recalcMode").options].some(o=>o.value===m))$("#recalcMode").value=m;}
-  else if(k==="recalcTimeout"&&$("#recalcTimeout"))$("#recalcTimeout").value=(v==null||v==="")?"":v;
-  else if(k==="key"||k==="api"||k==="model")$("#"+(k==="key"?"llmKey":k==="api"?"llmApi":"llmModel")).value=v||"";
+  const h=CFG_FIELD_HANDLERS[k];
+  if(h)h(v);
 }
 function cfgRestoreDraft(){
   try{
@@ -648,31 +673,37 @@ async function loadAppInfo(){
   window.lucide&&lucide.createIcons();
   checkUpdate(false);   // 进帮助页自动静默检测一次
 }
+// T01501（S3776）：原 checkUpdate 把「失败 / 有更新 / 无更新」三种终态的 DOM 操作
+// 全塞在 try 里，与请求、异常处理交织。拆为三个渲染函数后主流程只做「取数 → 分派」，
+// 各分支的文案与显隐规则集中可查，改文案不必读控制流。
+function renderUpdateFailed(st,msg,manual){
+  st.textContent=manual?("检测失败："+msg):(msg==="未配置更新源"?"未配置更新源（配置中心 → 应用更新）":"自动检测失败");
+  $("#verUpdBtn").style.display="none";
+  if(manual)toast(msg);
+}
+function renderUpdateFound(st,res,manual){
+  verLatest=res;
+  st.textContent=`发现新版本 ${res.latest}`;st.style.color="var(--ok)";
+  $("#verUpdBtn").style.display="";
+  const nt=$("#verNotes");
+  if(res.notes){nt.style.display="";nt.className="cfg-test ok";nt.textContent="更新日志：\n"+res.notes;}
+  if(manual)toast(`发现新版本 ${res.latest}，可一键更新`);
+}
+function renderUpToDate(st,manual){
+  st.textContent="已是最新版本";st.style.color="var(--ok)";
+  $("#verUpdBtn").style.display="none";
+  $("#verNotes").style.display="none";
+  if(manual)toast("已是最新版本");
+}
 async function checkUpdate(manual){
   const st=$("#verState");if(!st)return;
   st.textContent="检测中…";st.style.color="var(--muted)";
   try{
     const r=await fetch(API+"/api/update/check");
     const res=await r.json();
-    if(!res.ok){
-      st.textContent=manual?("检测失败："+res.msg):(res.msg==="未配置更新源"?"未配置更新源（配置中心 → 应用更新）":"自动检测失败");
-      $("#verUpdBtn").style.display="none";
-      if(manual)toast(res.msg);
-      return;
-    }
-    if(res.hasUpdate){
-      verLatest=res;
-      st.textContent=`发现新版本 ${res.latest}`;st.style.color="var(--ok)";
-      $("#verUpdBtn").style.display="";
-      const nt=$("#verNotes");
-      if(res.notes){nt.style.display="";nt.className="cfg-test ok";nt.textContent="更新日志：\n"+res.notes;}
-      if(manual)toast(`发现新版本 ${res.latest}，可一键更新`);
-    }else{
-      st.textContent="已是最新版本";st.style.color="var(--ok)";
-      $("#verUpdBtn").style.display="none";
-      $("#verNotes").style.display="none";
-      if(manual)toast("已是最新版本");
-    }
+    if(!res.ok){renderUpdateFailed(st,res.msg,manual);return;}
+    if(res.hasUpdate)renderUpdateFound(st,res,manual);
+    else renderUpToDate(st,manual);
   }catch(e){
     st.textContent="检测失败："+e.message;
     if(manual)toast("检测失败："+e.message);

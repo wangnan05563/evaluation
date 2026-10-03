@@ -75,27 +75,49 @@ def copy_and_load(out: str, template: str = None):
 
 
 def read_template_rows():
-    """读取母版规模估算明细（用于校验模式回写与读取源数据）。"""
+    """读取母版规模估算明细（用于校验模式回写与读取源数据）。
+
+    T01501（S3776）：原循环内嵌 `def v(col)` 闭包 + 多次 `or ""` 兜底 + 跨行 system
+    继承，认知复杂度超阈值。拆为 _read_template_row（单行抽取）与
+    _carry_system（system 跨行继承）两个纯函数，循环体只负责「跳过空行 + 追加」。
+    """
     ws = openpyxl.load_workbook(TPL, data_only=False)["规模估算"]
     rows = []
     last = ""
     for r in range(ROW_START, ROW_END + 1):
-        def v(col):
-            return ws.cell(r, col).value
-        type_ = v(COLS["type"])
-        if not type_:
+        row = _read_template_row(ws, r)
+        if row is None:
             continue  # 只按类别判定数据行；描述可能共享为空，不能据此跳过
-        sys_raw = v(COLS["system"]) or ""
-        if sys_raw:
-            last = sys_raw
-        rows.append({"row": r,
-                     "system": sys_raw or last, "m1": v(COLS["m1"]) or "",
-                     "m2": v(COLS["m2"]) or "", "m3": v(COLS["m3"]) or "", "m4": v(COLS["m4"]) or "",
-                     "desc": v(COLS["desc"]) or "", "count_item": v(COLS["count_item"]) or "",
-                     "type": str(type_).strip(),
-                     "reuse": (v(COLS["reuse"]) or "").strip(), "modify": (v(COLS["modify"]) or "").strip(),
-                     "remark": v(COLS["remark"]) or ""})
+        last = _carry_system(row, last)
+        row["system"] = row.pop("_sys_raw") or last
+        rows.append(row)
     return rows
+
+
+def _read_template_row(ws, r):
+    """抽取母版第 r 行为 dict；该行无类别值时返回 None（视为非数据行）。
+
+    _sys_raw 存原始 system（可能为空，需由上一行继承），其余字段已做 None→"" 兜底。
+    """
+    def v(col):
+        return ws.cell(r, col).value
+
+    type_ = v(COLS["type"])
+    if not type_:
+        return None
+    return {"row": r,
+            "_sys_raw": v(COLS["system"]) or "",
+            "m1": v(COLS["m1"]) or "",
+            "m2": v(COLS["m2"]) or "", "m3": v(COLS["m3"]) or "", "m4": v(COLS["m4"]) or "",
+            "desc": v(COLS["desc"]) or "", "count_item": v(COLS["count_item"]) or "",
+            "type": str(type_).strip(),
+            "reuse": (v(COLS["reuse"]) or "").strip(), "modify": (v(COLS["modify"]) or "").strip(),
+            "remark": v(COLS["remark"]) or ""}
+
+
+def _carry_system(row, last):
+    """母版 system 合并单元格语义：本行有值则成为新的继承值，否则沿用上一行。"""
+    return row["_sys_raw"] or last
 
 
 def fill_rows(ws, rows, end_row=None):
@@ -288,6 +310,20 @@ def schedule_excel_recalc(out, on_progress=None, mode=None, timeout=None, on_sta
     return True, "async"
 
 
+def _is_header_fill(fg):
+    """判断一个单元格填充色是否属于「需要被主题色替换」的母版表头底色。
+
+    T01501（S3776）：原为 _recolor_header 内嵌的三层条件（实底 → 取 fgColor →
+    判 theme/rgb），与遍历循环交织使函数认知复杂度超阈值。抽成独立谓词后
+    遍历体只剩一句调用，语义与判定口径完全不变。
+    """
+    if getattr(fg, "type", None) == "theme":
+        return True                     # 母版表头用主题色填充：统一替换
+    rgb = getattr(fg, "rgb", None)
+    return (isinstance(rgb, str) and len(rgb) == 8
+            and rgb.upper() not in ("FFFFFFFF", "00000000"))   # 显式 RGB 且非白/全透明
+
+
 def _recolor_header(ws, brand_color):
     """M5/FR-4.2：把母版表头行（前 5 行内、实底填充的非白单元格）的填充色替换为主题色。
     仅动 fill，不改字体/边框/列宽——母版其余样式完整保留。异常吞掉（主题联动失败不影响生成）。"""
@@ -297,13 +333,7 @@ def _recolor_header(ws, brand_color):
         for row in ws.iter_rows(min_row=1, max_row=5):
             for cell in row:
                 f = cell.fill
-                if not f or f.patternType != "solid":
-                    continue
-                fg = f.fgColor
-                rgb = getattr(fg, "rgb", None)
-                is_theme = getattr(fg, "type", None) == "theme"
-                is_rgb = isinstance(rgb, str) and len(rgb) == 8 and rgb.upper() not in ("FFFFFFFF", "00000000")
-                if is_theme or is_rgb:          # 母版表头为主题色填充：统一替换为主题色实底
+                if f and f.patternType == "solid" and _is_header_fill(f.fgColor):
                     cell.fill = PatternFill("solid", fgColor=target)
     except Exception:
         pass

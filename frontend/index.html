@@ -1097,11 +1097,27 @@ const cur=sel.value;
 function sortBy(key){if(!sortState||sortState.key!==key)sortState={key,dir:1};
   else if(sortState.dir===1)sortState={key,dir:-1};else sortState=null;
 render();}
-function updateSortInd(){["desc","type","us"].forEach(k=>{const el=document.getElementById("s-"+k);
-  if(el){const on=!!(sortState&&sortState.key===k);el.textContent=on?(sortState.dir===1?"▲":"▼"):"";}
-  // FR-UI05：aria-sort 同步实际排序状态，读屏才能播报当前列与升降序（WCAG 1.3.1）
-  const th=document.querySelector(`th[onclick*="sortBy('${k}')"]`);
-  if(th)th.setAttribute("aria-sort",!sortState?"none":(sortState.key!==k?"none":(sortState.dir===1?"ascending":"descending")));});}
+/* T01501（S3776）：原为 forEach 内双层嵌套判空 + 三元套三元（排序列判定 + aria-sort 判定），
+   复杂度超阈值。拆为「取排序态」与「取 aria-sort 值」两个纯函数，循环体只做赋值。*/
+function sortDirOf(key){
+  if(!sortState)return 0;            // 0=未排序
+  if(sortState.key!==key)return 0;
+  return sortState.dir;               // 1=升序 -1=降序
+}
+function ariaSortOf(key){
+  const d=sortDirOf(key);
+  return d===0?"none":(d===1?"ascending":"descending");
+}
+function updateSortInd(){
+  ["desc","type","us"].forEach(k=>{
+    const d=sortDirOf(k);
+    const el=document.getElementById("s-"+k);
+    if(el)el.textContent=d===0?"":(d===1?"▲":"▼");
+    // FR-UI05：aria-sort 同步实际排序状态，读屏才能播报当前列与升降序（WCAG 1.3.1）
+    const th=document.querySelector(`th[onclick*="sortBy('${k}')"]`);
+    if(th)th.setAttribute("aria-sort",ariaSortOf(k));
+  });
+}
 function clearFilters(){$("#q").value="";["fSys","fType","fReuse"].forEach(id=>$("#"+id).value="");
   $("#fTodo").checked=false;sortState=null;render();toast("已清除筛选与排序");}
 function emptyState(icon,title,desc,actionHtml){return `<div style="text-align:center;padding:28px 12px"><i aria-hidden="true" data-lucide="${icon}" style="width:34px;height:34px;color:var(--muted)"></i><div style="font-weight:700;margin-top:10px">${title}</div><div style="font-size:12px;color:var(--muted);margin-top:6px">${desc}</div><div style="margin-top:12px">${actionHtml||""}</div></div>`;}
@@ -1570,15 +1586,24 @@ function cfgRefreshDraft(){
     if(!dirty)localStorage.removeItem(CFG_DRAFT_KEY);
   }catch(e){}
 }
+// FR-UI05/T01501（S3776）：原为一条 8 分支的 if/else if 链，认知复杂度超阈值。
+// 改为「字段 → 处理器」分派表：新增字段只加一条映射，不再加一层嵌套判断。
+const CFG_FIELD_HANDLERS={
+  enabled(v){const sw=$("#llmSwitch");sw.classList.toggle("on",!!v);sw.setAttribute("aria-checked",v?"true":"false");},
+  provider(v){const sel=$("#providerSel");if(sel.querySelector(`option[value="${v}"]`))sel.value=v;},
+  rememberKey(v){$("#rememberKey").checked=!!v;},
+  ctxDir(v){$("#ctxDir").value=v||"";},
+  updUrl(v){$("#updUrl").value=v||"";},
+  recalcMode(v){const el=$("#recalcMode");if(!el)return;
+    const m=String(v||"async");if([...el.options].some(o=>o.value===m))el.value=m;},
+  recalcTimeout(v){const el=$("#recalcTimeout");if(el)el.value=(v==null||v==="")?"":v;},
+  key(v){$("#llmKey").value=v||"";},
+  api(v){$("#llmApi").value=v||"";},
+  model(v){$("#llmModel").value=v||"";},
+};
 function cfgApplyField(k,v){
-  if(k==="enabled"){$("#llmSwitch").classList.toggle("on",!!v);$("#llmSwitch").setAttribute("aria-checked",v?"true":"false");}   // FR-UI05
-  else if(k==="provider"&&$("#providerSel").querySelector(`option[value="${v}"]`))$("#providerSel").value=v;
-  else if(k==="rememberKey")$("#rememberKey").checked=!!v;
-  else if(k==="ctxDir")$("#ctxDir").value=v||"";
-  else if(k==="updUrl")$("#updUrl").value=v||"";
-  else if(k==="recalcMode"&&$("#recalcMode")){const m=String(v||"async");if([...$("#recalcMode").options].some(o=>o.value===m))$("#recalcMode").value=m;}
-  else if(k==="recalcTimeout"&&$("#recalcTimeout"))$("#recalcTimeout").value=(v==null||v==="")?"":v;
-  else if(k==="key"||k==="api"||k==="model")$("#"+(k==="key"?"llmKey":k==="api"?"llmApi":"llmModel")).value=v||"";
+  const h=CFG_FIELD_HANDLERS[k];
+  if(h)h(v);
 }
 function cfgRestoreDraft(){
   try{
@@ -1682,31 +1707,37 @@ async function loadAppInfo(){
   window.lucide&&lucide.createIcons();
   checkUpdate(false);   // 进帮助页自动静默检测一次
 }
+// T01501（S3776）：原 checkUpdate 把「失败 / 有更新 / 无更新」三种终态的 DOM 操作
+// 全塞在 try 里，与请求、异常处理交织。拆为三个渲染函数后主流程只做「取数 → 分派」，
+// 各分支的文案与显隐规则集中可查，改文案不必读控制流。
+function renderUpdateFailed(st,msg,manual){
+  st.textContent=manual?("检测失败："+msg):(msg==="未配置更新源"?"未配置更新源（配置中心 → 应用更新）":"自动检测失败");
+  $("#verUpdBtn").style.display="none";
+  if(manual)toast(msg);
+}
+function renderUpdateFound(st,res,manual){
+  verLatest=res;
+  st.textContent=`发现新版本 ${res.latest}`;st.style.color="var(--ok)";
+  $("#verUpdBtn").style.display="";
+  const nt=$("#verNotes");
+  if(res.notes){nt.style.display="";nt.className="cfg-test ok";nt.textContent="更新日志：\n"+res.notes;}
+  if(manual)toast(`发现新版本 ${res.latest}，可一键更新`);
+}
+function renderUpToDate(st,manual){
+  st.textContent="已是最新版本";st.style.color="var(--ok)";
+  $("#verUpdBtn").style.display="none";
+  $("#verNotes").style.display="none";
+  if(manual)toast("已是最新版本");
+}
 async function checkUpdate(manual){
   const st=$("#verState");if(!st)return;
   st.textContent="检测中…";st.style.color="var(--muted)";
   try{
     const r=await fetch(API+"/api/update/check");
     const res=await r.json();
-    if(!res.ok){
-      st.textContent=manual?("检测失败："+res.msg):(res.msg==="未配置更新源"?"未配置更新源（配置中心 → 应用更新）":"自动检测失败");
-      $("#verUpdBtn").style.display="none";
-      if(manual)toast(res.msg);
-      return;
-    }
-    if(res.hasUpdate){
-      verLatest=res;
-      st.textContent=`发现新版本 ${res.latest}`;st.style.color="var(--ok)";
-      $("#verUpdBtn").style.display="";
-      const nt=$("#verNotes");
-      if(res.notes){nt.style.display="";nt.className="cfg-test ok";nt.textContent="更新日志：\n"+res.notes;}
-      if(manual)toast(`发现新版本 ${res.latest}，可一键更新`);
-    }else{
-      st.textContent="已是最新版本";st.style.color="var(--ok)";
-      $("#verUpdBtn").style.display="none";
-      $("#verNotes").style.display="none";
-      if(manual)toast("已是最新版本");
-    }
+    if(!res.ok){renderUpdateFailed(st,res.msg,manual);return;}
+    if(res.hasUpdate)renderUpdateFound(st,res,manual);
+    else renderUpToDate(st,manual);
   }catch(e){
     st.textContent="检测失败："+e.message;
     if(manual)toast("检测失败："+e.message);
@@ -1914,49 +1945,70 @@ function genProgHide(){const box=$("#genProg");if(box)box.classList.remove("on",
 // 生成超时兜底（需求「异常兜底」项）：超过该时长仍未返回则中止等待并恢复按钮，
 // 避免后台卡住时按钮永久灰显。可临时改 window.WL_GEN_TIMEOUT_MS 调整（联调用）。
 function genTimeoutMs(){return +window.WL_GEN_TIMEOUT_MS||180000;}
+/* T01501（S3776）：生成进度轮询的状态机。抽出后 beginGenProgress 只负责编排，
+   「拿到一条进度要不要画、画什么文本」的判定集中在这里，便于单独推演。
+   规则（与重构前逐字一致）：
+   - 仅当本次进度 ok 且带 progress 才认为「服务端有记录」（got）；
+   - 百分比只允许前进（p < last 时忽略，防乱序回退）；
+   - 阶段或百分比变化才算「本阶段重新计时」；
+   - 同阶段停留 >2s 时在文案后追加真实已用时（不伪造百分比）；
+   - 文案未变则不重绘（避免无谓 DOM 操作）。 */
+function progressPoller(t0){
+  return {
+    last:0, got:false, painted:false, settled:false,
+    lastChange:t0, lastStage:"", shown:"",
+    consume(j,paint){
+      this.painted=false;
+      if(!(j&&j.ok&&j.progress))return;
+      this.got=true;
+      const p=+j.progress.pct||0, stage=j.progress.stage||"正在生成…";
+      if(p<this.last)return;                       // 乱序/回退进度：忽略本次
+      if(p!==this.last||stage!==this.lastStage){this.lastChange=Date.now();this.lastStage=stage;}
+      this.last=p;
+      const hold=Date.now()-this.lastChange;
+      const txt=(hold>2000)?(stage+"（本阶段已用时 "+(hold/1000).toFixed(1)+"s）"):stage;
+      if(txt!==this.shown){this.shown=txt;paint(p,txt);this.painted=true;}
+    },
+  };
+}
 function beginGenProgress(){
   // 每次生成一个 job id：服务端按真实阶段写进度，前端 300ms 轮询（ThreadingHTTPServer 不阻塞主请求）
   const job="g"+Date.now().toString(36)+Math.random().toString(36).slice(2,7);
   if(genPollTimer){clearInterval(genPollTimer);genPollTimer=null;}
-  const t0=Date.now();let last=0,got=false,lastChange=t0,lastStage="",shown="",settled=false;
+  const t0=Date.now();
+  // T01501（S3776）：轮询状态与「消费一次进度并决定是否绘制」原为 beginGenProgress 内的
+  // 闭包变量 + 内联判定，三层嵌套（已结束 → 有进度 → 百分比是否前进）使复杂度超阈值。
+  // 抽为 progressPoller 工厂：状态自封装，绘制决策集中一处，beginGenProgress 只做编排。
+  const P=progressPoller(t0);
   genProgPaint(2,"正在提交生成请求…");
   const tick=async ()=>{
-    if(settled)return;   // 已结束（finish/fail）后不再绘制，防止在途轮询覆盖结果态
+    if(P.settled)return;   // 已结束（finish/fail）后不再绘制，防止在途轮询覆盖结果态
+    let j=null;
     try{
       const r=await fetch(API+"/api/generate/progress?job="+encodeURIComponent(job),{cache:"no-store"});
-      const j=await r.json();
-      if(j&&j.ok&&j.progress){
-        got=true;
-        const p=+j.progress.pct||0,stage=j.progress.stage||"正在生成…";
-        if(p>=last){
-          if(p!==last||stage!==lastStage){lastChange=Date.now();lastStage=stage;}
-          last=p;
-          // 同一阶段停留 >2s 时补一句真实已用时，避免看起来"卡住"（不伪造百分比）
-          const hold=Date.now()-lastChange;
-          const txt=(hold>2000)?(stage+"（本阶段已用时 "+(hold/1000).toFixed(1)+"s）"):stage;
-          if(txt!==shown){shown=txt;genProgPaint(p,txt);}
-        }
-        return;
-      }
+      j=await r.json();
     }catch(e){/* 轮询异常不打断生成主流程 */}
-    if(settled)return;
-    if(!got){   // 服务端无进度记录（旧实例/接口不可用）：按耗时推进并停在 92%，不伪装真实阶段
+    if(P.settled)return;
+    P.consume(j,genProgPaint);
+    if(P.painted)return;
+    // 服务端无进度记录（旧实例/接口不可用）：按耗时推进并停在 92%，不伪装真实阶段
+    if(!P.got){
       const est=Math.min(92,Math.round((Date.now()-t0)/250));
-      if(est>last){last=est;genProgPaint(est,"正在生成成品表…已用时 "+((Date.now()-t0)/1000).toFixed(1)+"s");}
+      if(est>P.last){P.last=est;genProgPaint(est,"正在生成成品表…已用时 "+((Date.now()-t0)/1000).toFixed(1)+"s");}
     }
   };
   genPollTimer=setInterval(tick,300);tick();
   return {
     job,
     async finish(txt){
-      settled=true;
+      P.settled=true;
       if(genPollTimer){clearInterval(genPollTimer);genPollTimer=null;}
       genProgPaint(100,txt||"生成完成");
       await new Promise(r=>setTimeout(r,420));   // 让 100% 可见后再跳转
       genProgHide();
     },
     fail(msg){
-      settled=true;
+      P.settled=true;
       if(genPollTimer){clearInterval(genPollTimer);genPollTimer=null;}
       genProgPaint(100,"生成失败："+msg,true);
       setTimeout(genProgHide,2800);              // 失败文案保留片刻后收起，避免长期占位
@@ -1997,6 +2049,27 @@ function showRecalcState(mode,job){
     }catch(e){/* 状态轮询失败不打断 */}
   },1000);
 }
+/* T01501（S3776）：生成请求体与「异常 → 文案」的映射原内联在点击处理器里，
+   与 AbortController 兜底、超时提示交织。抽出后处理器只剩「校验 → 发请求 → 落地结果」。
+   字段口径与顺序完全不变（服务端按 key 取值，顺序无关但保持原样便于比对）。 */
+function buildGeneratePayload(job){
+  return {
+    items:items.map(({system,m1,desc,count_item,type,reuse,modify})=>({system,m1,desc,count_item,type,reuse,modify})),
+    method:$("#methodSel").value,
+    title:(reopenCtx&&reopenCtx.title)?reopenCtx.title:(curFile&&curFile.name)?curFile.name.replace(/\.(docx|doc|pdf)$/i,''):"",
+    reopen_group:reopenCtx?reopenCtx.group:undefined,
+    hist_items:items,
+    job,
+    brand_color:(localStorage.getItem('wl_brand')||'').trim(),
+    gb_state:(gbState&&gbState.out)?gbState.out:undefined,
+    template:tplSelected(),
+  };
+}
+function genErrorMessage(err){
+  if(err&&err.name==="AbortError")
+    return "生成超时（超过 "+Math.round(genTimeoutMs()/1000)+"s），请检查后台服务或 Excel 是否被弹窗阻塞";
+  return err.message;
+}
 $("#goRes").addEventListener("click",async ()=>{
   const pending=items.filter(x=>!x.ok).length;
   if(pending>0){toast(`尚有 ${pending} 项未确认，请逐项勾选后再生成`);return;}  // 未全确认给反馈，避免静默无反应
@@ -2006,9 +2079,7 @@ $("#goRes").addEventListener("click",async ()=>{
   const guard=setTimeout(()=>ctl.abort(),genTimeoutMs());   // 超时兜底：中止等待，恢复按钮
   try{
     const resp=await fetch(API+"/api/generate",{method:"POST",headers:{"Content-Type":"application/json"},signal:ctl.signal,
-      body:JSON.stringify({items:items.map(({system,m1,desc,count_item,type,reuse,modify})=>({system,m1,desc,count_item,type,reuse,modify})),method:$("#methodSel").value,
-        title:(reopenCtx&&reopenCtx.title)?reopenCtx.title:(curFile&&curFile.name)?curFile.name.replace(/\.(docx|doc|pdf)$/i,''):"",
-        reopen_group:reopenCtx?reopenCtx.group:undefined,hist_items:items,job:prog.job,brand_color:(localStorage.getItem('wl_brand')||'').trim(),gb_state:(gbState&&gbState.out)?gbState.out:undefined,template:tplSelected()})});
+      body:JSON.stringify(buildGeneratePayload(prog.job))});
     const res=await resp.json();
     if(!res.ok)throw new Error(res.msg||"生成失败");
     gSummary=res.summary;gSid=res.sid;$("#dlName").textContent=gSid;
@@ -2018,9 +2089,7 @@ $("#goRes").addEventListener("click",async ()=>{
     goStep("result");
     showRecalcState(res.recalc,prog.job);   // T00963：结果页展示补算状态
   }catch(err){
-    const msg=(err&&err.name==="AbortError")
-      ? "生成超时（超过 "+Math.round(genTimeoutMs()/1000)+"s），请检查后台服务或 Excel 是否被弹窗阻塞"
-      : err.message;
+    const msg=genErrorMessage(err);
     prog.fail(msg);toast(msg);
   }finally{
     clearTimeout(guard);btn.disabled=false;
@@ -2460,24 +2529,54 @@ function pasteApply(){
   const n=pasteRows.length;pasteClose();render();saveFormState();
   toast(`已追加 ${n} 行到复核清单`);}
 /* FR-1.7：全局快捷键（应用内 keydown；输入控件聚焦时让位） */
+/* T01501（S3776）：全局键盘监听把「Esc 关浮层 / 输入框让行 / Ctrl+F 搜索 / 上下移动
+   / Enter 勾选 / Space 展开依据」六类语义塞在一个处理器里，且每类都带前置守卫，
+   嵌套与短路判断叠加后复杂度超阈值。拆为六个语义函数 + 一张「键 → 处理」分派表，
+   新增快捷键只加一条映射；守卫集中在主监听里，避免每个处理函数重复判页态。 */
+const EDITABLE_TAGS=["input","select","textarea"];
+function closeFloatingPanels(e){
+  const m=$("#expMenu");if(m)m.style.display="none";
+  const pm=$("#pasteModal");if(pm)pm.style.display="none";
+  if(EDITABLE_TAGS.includes((e.target.tagName||"").toLowerCase()))e.target.blur();
+}
+function focusSearchBox(e){e.preventDefault();$("#q").focus();}
+function moveRow(delta,e){
+  const arr=visibleItems();if(!arr.length)return;   // 无可见行时原实现直接返回，不阻止滚动
+  e.preventDefault();
+  const i=arr.findIndex(x=>x.seq===curSeq);
+  // 首/末行再按方向键时钳在边界内（i<0 表示当前无选中，从首/末起算）
+  const j=delta>0?Math.min(arr.length-1,(i<0?0:i+1)):Math.max(0,(i<0?1:i-1));
+  curSeq=arr[j].seq;highlightRow();
+}
+function toggleCurrentRow(){
+  if(!curSeq)return;
+  const it=items.find(x=>x.seq===curSeq);if(!it)return;
+  it.ok=!it.ok;render();highlightRow();
+}
+function expandCurrentRow(){
+  if(!curSeq)return;
+  toggleBasis(curSeq);
+}
+/* 行级快捷键：仅在「工作台-复核页且有数据」时生效。
+   注意 preventDefault 的位置：必须与重构前逐字一致地放在各自守卫之内。
+   原因：<button> 的点击是由 Enter/Space 的 keydown 默认行为合成的，一旦在按钮
+   聚焦时无条件 preventDefault，合成的 click 会被吞掉——「生成」按钮按下无效。
+   （T01501 实施中此处曾踩坑：把 preventDefault 提到分派表里统一调用，导致 #goRes 失效。） */
+const ROW_KEYS={
+  ArrowDown(e){moveRow(1,e);},
+  ArrowUp(e){moveRow(-1,e);},
+  Enter(e){if(curSeq){e.preventDefault();toggleCurrentRow();}},
+  " "(e){if(curSeq){e.preventDefault();expandCurrentRow();}},
+};
 document.addEventListener("keydown",e=>{
   const tag=(e.target.tagName||"").toLowerCase();
-  if(e.key==="Escape"){const m=$("#expMenu");if(m)m.style.display="none";
-    const pm=$("#pasteModal");if(pm)pm.style.display="none";
-    if(["input","select","textarea"].includes(tag))e.target.blur();
-return;}
-  if(["input","select","textarea"].includes(tag))return;
+  if(e.key==="Escape"){closeFloatingPanels(e);return;}
+  if(EDITABLE_TAGS.includes(tag))return;
   if(e.key.toLowerCase()==="f"&&(e.ctrlKey||e.metaKey)){
-    if(document.body.dataset.page==="work"&&document.body.dataset.step==="review"){e.preventDefault();$("#q").focus();}
+    if(document.body.dataset.page==="work"&&document.body.dataset.step==="review")focusSearchBox(e);
     return;}
   if(!items.length||document.body.dataset.page!=="work"||document.body.dataset.step!=="review")return;
-  const arr=visibleItems();if(!arr.length)return;
-  let i=arr.findIndex(x=>x.seq===curSeq);
-  if(e.key==="ArrowDown"){e.preventDefault();curSeq=arr[Math.min(arr.length-1,(i<0?0:i+1))].seq;highlightRow();}
-  else if(e.key==="ArrowUp"){e.preventDefault();curSeq=arr[Math.max(0,(i<0?1:i-1))].seq;highlightRow();}
-  else if(e.key==="Enter"&&curSeq){e.preventDefault();
-    const it=items.find(x=>x.seq===curSeq);it.ok=!it.ok;render();highlightRow();}
-  else if(e.key===" "&&curSeq){e.preventDefault();toggleBasis(curSeq);}
+  const h=ROW_KEYS[e.key];if(h)h(e);
 });
 function highlightRow(){document.querySelectorAll("#tbody tr").forEach(tr=>tr.classList.toggle("cur",+tr.dataset.seq===curSeq));
   const tr=document.querySelector(`#tbody tr[data-seq="${curSeq}"]`);if(tr)tr.scrollIntoView({block:"nearest"});}
@@ -2619,6 +2718,34 @@ function saveFormState(){
     }));
   }catch(e){/* 存储满/隐私模式等场景静默降级，不影响主流程 */}
 }
+/* T01501（S3776）：IFPUG 与 PERT 两条恢复链的守卫/回填步骤各自成段，混在一个函数里
+   使嵌套与条件判断叠加超阈值。拆为「赋值」与「渲染」两阶段——顺序语义关键：
+   原实现是先给两个域赋值，再 goPage 切页，最后各自渲染/跳步；渲染依赖页面已切换，
+   故切页必须在渲染之前，不能把两阶段合并。
+   恢复口径与调用顺序完全不变。 */
+function assignIfpugState(s){
+  items=s.items;gSummary=s.gSummary||null;gSid=s.gSid||null;curFile=s.curFile||null;
+}
+function renderIfpugState(s){
+  render();
+  goStep(s.step&&s.step!=='upload'?s.step:'review');
+}
+function assignPertState(s){
+  pertPid=s.pertPid||null;pertItems=s.pertItems||[];pertSummary=s.pertSummary||null;
+}
+function renderPertState(s){
+  pertFillPhase();
+  if(s.pertPhase)$("#pertPhase").value=s.pertPhase;
+  if(pertPid && $("#pertProjSel"))pertLoadProjects();
+  pertStep(s.pertstep&&s.pertstep!=='in'?s.pertstep:'edit');
+  // 空串不写入：占位态（""）表示"未填"，写入会把输入框填成空串，覆盖浏览器自动填充
+  const setv=(id,val)=>{const el=$(id);if(el&&val!=="")el.value=val;};
+  setv('#pertO',s.pertO);setv('#pertM',s.pertM);setv('#pertP',s.pertP);
+  setv('#pertD',s.pertD);setv('#pertEst',s.pertEst);
+  const cur=$("#pertCur");if(cur&&s.pertPid)cur.textContent='项目 #'+s.pertPid;
+  if(typeof renderPert==='function'&&pertItems.length)renderPert();
+  if(typeof applyPertSummary==='function'&&pertSummary)applyPertSummary(pertSummary);
+}
 function restoreFormState(){
   let s=null;
   try{
@@ -2629,23 +2756,12 @@ function restoreFormState(){
   const hasIfpug=s && Array.isArray(s.items) && s.items.length>0;
   const hasPert=s && (s.pertPid || (Array.isArray(s.pertItems) && s.pertItems.length));
   if(!hasIfpug && !hasPert)return false;
-  // 恢复数据
-  if(hasIfpug){items=s.items;gSummary=s.gSummary||null;gSid=s.gSid||null;curFile=s.curFile||null;}
-  if(hasPert){pertPid=s.pertPid||null;pertItems=s.pertItems||[];pertSummary=s.pertSummary||null;}
+  // 恢复数据：先给两个域赋值 → 切页 → 各自渲染
+  if(hasIfpug)assignIfpugState(s);
+  if(hasPert)assignPertState(s);
   goPage(s.page||'work');
-  if(hasIfpug){render();goStep(s.step&&s.step!=='upload'?s.step:'review');}
-  if(hasPert){
-    pertFillPhase();
-    if(s.pertPhase)$("#pertPhase").value=s.pertPhase;
-    if(hasPert && pertPid && $("#pertProjSel"))pertLoadProjects();
-    pertStep(s.pertstep&&s.pertstep!=='in'?s.pertstep:'edit');
-    const setv=(id,val)=>{const el=$(id);if(el&&val!=="")el.value=val;};
-    setv('#pertO',s.pertO);setv('#pertM',s.pertM);setv('#pertP',s.pertP);
-    setv('#pertD',s.pertD);setv('#pertEst',s.pertEst);
-    const cur=$("#pertCur");if(cur&&s.pertPid)cur.textContent='项目 #'+s.pertPid;
-    if(typeof renderPert==='function'&&pertItems.length)renderPert();
-    if(typeof applyPertSummary==='function'&&pertSummary)applyPertSummary(pertSummary);
-  }
+  if(hasIfpug)renderIfpugState(s);
+  if(hasPert)renderPertState(s);
   toast('已恢复上次未完成的录入');
   return true;
 }

@@ -90,20 +90,30 @@ def save_cfg(con, pid, cfg):
     con.commit()
 
 
+def _phase_days(rows):
+    """按阶段聚合预期人天与条目数，返回 (by_phase, total_days)。
+
+    T01501（S3776）：原循环里同时做 None→float 兜底、期望值累加、字典初始化与
+    嵌套字典自增，认知复杂度超阈值。拆出后 summarize 只剩「聚合 → 按阶段展开 → 换算人月」
+    三步线性流程，聚合口径（浮点兜底为 0、total 累加顺序）完全不变。
+    """
+    by = {}
+    total = 0.0
+    for ph, o, m, p in rows:
+        e = exp(float(o or 0), float(m or 0), float(p or 0))
+        total += e
+        slot = by.setdefault(ph, {"days": 0.0, "count": 0})
+        slot["days"] += e
+        slot["count"] += 1
+    return by, total
+
+
 def summarize(con, pid):
     """按阶段汇总预期人天与占比，叠加调节系数得人月。"""
     rows = con.execute(
         "SELECT phase,optimistic,most_likely,pessimistic FROM pert_items "
         "WHERE project_id=? ORDER BY id", (pid,)).fetchall()
-    by = {}
-    total = 0.0
-    for ph, o, m, p in rows:
-        o, m, p = float(o or 0), float(m or 0), float(p or 0)
-        e = exp(o, m, p)
-        total += e
-        by.setdefault(ph, {"days": 0.0, "count": 0})
-        by[ph]["days"] += e
-        by[ph]["count"] += 1
+    by, total = _phase_days(rows)
     phases = []
     for ph in PHASES:
         b = by.get(ph, {"days": 0.0, "count": 0})

@@ -9,6 +9,12 @@ import urllib.request
 
 PORT = sys.argv[1] if len(sys.argv) > 1 else '8032'
 API = f'http://127.0.0.1:{PORT}'
+# T01501（S1192）：方法名与「估算功能点」标题在下方多处复用，提取常量避免改口径时漏改
+METHOD = '估算功能点'
+CX_DEFAULT = '中'   # 补默认复杂度
+EP_GENERATE = '/api/generate'   # T01501(S1192)：接口路径原内联 3 处
+TITLE = 'S3-API冒烟'
+DOCX = 'data/testdocs/t00928_req.docx'
 fails = []
 check = lambda n, ok, d='': (print(f"  {'PASS' if ok else 'FAIL'}  {n} {d}"), None if ok else fails.append(n))
 
@@ -30,7 +36,7 @@ check('规则表种子（v1，6 条内置）', rules['ok'] and rules['version'] 
 
 # 2) 识别：meta 携带规则版本
 import base64
-doc = open('data/testdocs/t00928_req.docx', 'rb').read()
+doc = open(DOCX, 'rb').read()
 payload = {"name": "t00928_req.docx", "b64": base64.b64encode(doc).decode(), "job": "s3rec"}
 res = call('/api/recognize', payload)
 check('识别 ok 且 meta.rules_version=1', res.get('ok') and res['meta']['rules']['rules_version'] == 1,
@@ -38,8 +44,8 @@ check('识别 ok 且 meta.rules_version=1', res.get('ok') and res['meta']['rules
 
 # 3) 生成（异步）：落库 + history_id
 items = res['items']
-hist_items = [{**it, 'cx': '中', 'ok': True} for it in items]
-g = call('/api/generate', {'items': items, 'method': '估算功能点', 'title': 'S3-API冒烟',
+hist_items = [{**it, 'cx': CX_DEFAULT, 'ok': True} for it in items]
+g = call(EP_GENERATE, {'items': items, 'method': METHOD, 'title': TITLE,
                            'job': 's3gen', 'hist_items': hist_items, 'source_name': 't00928_req.docx'})
 check('生成 ok 且自动落库', g.get('ok') and bool(g.get('history_id')), f"fp={g.get('summary', {}).get('ufp')}")
 
@@ -48,7 +54,7 @@ l = call('/api/history?limit=10')
 check('历史列表可见', l['ok'] and l['total'] >= 1, f"total={l['total']}")
 d = call('/api/history/' + g['history_id'])
 check('详情明细一致', d['ok'] and len(d['row']['items']) == len(items))
-g2 = call('/api/generate', {'items': items, 'method': '估算功能点', 'title': 'S3-API冒烟',
+g2 = call(EP_GENERATE, {'items': items, 'method': METHOD, 'title': TITLE,
                             'job': 's3gen2', 'hist_items': hist_items, 'reopen_group': call(f"/api/history/{g['history_id']}/group")['versions'][0]['version_group']})
 vs = call(f"/api/history/{g2['history_id']}/group")['versions']
 check('重开同组版本递增', [v['version_no'] for v in vs] == [1, 2])
@@ -60,7 +66,7 @@ h2_items = [dict(x) for x in hist_items]
 h2_items = h2_items[1:]                                     # removed（末条被删）
 h2_items[0]['cx'] = '低'                                    # changed（改留存条目的复杂度）
 h2_items.append({**hist_items[0], 'desc': 'S3新增功能点', 'system': 'S3新增系统'})   # added
-g3 = call('/api/generate', {'items': [i for i in items], 'method': '估算功能点', 'title': 'S3-API冒烟',
+g3 = call(EP_GENERATE, {'items': [i for i in items], 'method': METHOD, 'title': TITLE,
                             'job': 's3gen3', 'hist_items': h2_items,
                             'reopen_group': call(f"/api/history/{g['history_id']}/group")['versions'][0]['version_group']})
 df = call(f"/api/history/diff?a={g['history_id']}&b={g3['history_id']}")

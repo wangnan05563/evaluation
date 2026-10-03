@@ -5,6 +5,12 @@
 import base64
 import re
 
+# 本模块保持「零依赖」：不 import 本包内其他模块。
+# T01501 实施中曾把 METHODS 改为 `from engine import METHODS` 以消除重复字面量，
+# 但这引入了对 sys.path 顺序的隐式依赖——当两份 scripts/ 同时在路径上时，
+# 会加载到另一份 engine.py 并抛 ImportError，而 S1192 本就未命中本文件
+# （重复只存在于 engine.py 的 4 处函数签名）。故按本模块原设计意图回退，
+# 口径正本仍在 engine.METHODS，改动请同步 engine.py。
 TYPES = ("EI", "EO", "EQ", "ILF", "EIF")
 REUSES = ("高", "中", "低")
 MODIFIES = ("新增", "修改", "删除")

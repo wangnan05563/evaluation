@@ -9,12 +9,24 @@ import zipfile
 SCHEMA_VER = 1            # 数据结构版本号（首版；后续迁移在此登记）
 KEEP_BACKUPS = 7          # FR-5.6：备份保留 N 份
 
+# T01501（python:S1192）：备份/导出/导入三处反复出现的数据文件名，提取为常量。
+# 原为 4 个字面量在 3 个函数里重复内联，改名/增删须同步 4 处，易漏。
+F_PERT_DB = "pert.db"                        # PERT 三点估算库
+F_ESTIMATION_DB = "estimation.db"            # M1 估算历史库
+F_RECOGNITION_RULES = "recognition_rules.json"   # 识别规则表
+F_RATES_VERSIONS = "rates_versions.json"     # 费率版本表
+F_SCHEMA_VER = "schema_ver"                  # schema 版本标记文件
+# 参与备份的数据文件（不含 schema_ver：它随迁移写入，单独处理）
+DATA_FILES = (F_PERT_DB, F_ESTIMATION_DB, F_RECOGNITION_RULES, F_RATES_VERSIONS)
+# 参与导出的数据文件 = 备份集 + schema_ver
+EXPORT_FILES = DATA_FILES + (F_SCHEMA_VER,)
+
 # 迁移登记表：{from_ver: 升级函数(data_dir)->None}，逐级幂等执行
 MIGRATIONS = {}
 
 
 def _migrate(data_dir):
-    ver_path = os.path.join(data_dir, "schema_ver")
+    ver_path = os.path.join(data_dir, F_SCHEMA_VER)
     cur = 1
     if os.path.exists(ver_path):
         try:
@@ -47,8 +59,7 @@ def _migrate(data_dir):
 
 def backup_on_start(data_dir, keep=KEEP_BACKUPS):
     """FR-5.6：启动时备份 pert.db + 三个 json 到 backups/<ts>/，保留最近 keep 份。"""
-    files = [n for n in ("pert.db", "estimation.db", "recognition_rules.json",
-                         "rates_versions.json") if os.path.exists(os.path.join(data_dir, n))]
+    files = [n for n in DATA_FILES if os.path.exists(os.path.join(data_dir, n))]
     if not files:
         return None
     ts = time.strftime("%Y%m%d-%H%M%S")
@@ -71,9 +82,7 @@ def backup_on_start(data_dir, keep=KEEP_BACKUPS):
 
 def export_zip(data_dir, out_path):
     """FR-5.6：导出全部数据（pert.db + json + schema_ver），不含 uploads/generated。"""
-    names = [n for n in ("pert.db", "estimation.db", "recognition_rules.json",
-                         "rates_versions.json", "schema_ver")
-             if os.path.exists(os.path.join(data_dir, n))]
+    names = [n for n in EXPORT_FILES if os.path.exists(os.path.join(data_dir, n))]
     with zipfile.ZipFile(out_path, "w", zipfile.ZIP_DEFLATED) as z:
         for n in names:
             z.write(os.path.join(data_dir, n), n)
@@ -86,17 +95,17 @@ def import_zip(zip_path, data_dir):
     try:
         with zipfile.ZipFile(zip_path) as z:
             names = z.namelist()
-            if "pert.db" not in names:
-                raise VImportErr("缺少 pert.db，不是有效的数据包")
-            if "schema_ver" in names:
+            if F_PERT_DB not in names:
+                raise VImportErr(f"缺少 {F_PERT_DB}，不是有效的数据包")
+            if F_SCHEMA_VER in names:
                 try:
-                    pkg_ver = int(z.read("schema_ver").decode().strip() or 1)
+                    pkg_ver = int(z.read(F_SCHEMA_VER).decode().strip() or 1)
                 except Exception:
                     pkg_ver = 1
                 if pkg_ver > SCHEMA_VER:
                     raise VImportErr(f"数据包 schema 版本 {pkg_ver} 高于当前 {SCHEMA_VER}，请先升级应用")
             backup_on_start(data_dir, keep=3)      # 导入前自动留档
-            for n in ("pert.db", "recognition_rules.json", "rates_versions.json", "schema_ver"):
+            for n in (F_PERT_DB, F_RECOGNITION_RULES, F_RATES_VERSIONS, F_SCHEMA_VER):
                 if n in names:
                     z.extract(n, data_dir)
             return names

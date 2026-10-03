@@ -27,44 +27,60 @@ def heading_path(level: int, text: str):
     stack[level - 1] = text
     return "/".join(x for x in stack if x)
 
-def walk():
-    """按文档顺序遍历段落与表格，建立大纲并抽取候选线索。"""
-    candidates = []
-    systems = set()
-    cur_path = ""
-    for block in doc.element.body.iterchildren():
-        tag = block.tag.rsplit("}", 1)[-1]
-        if tag == "p":
-            # 用 python-docx 重新定位到该段落对象，读取样式与文本
-            # （为简洁：仅通过占位段落无法逐一定位，这里改用独立遍历策略）
-            pass
-    # 简化：仅用段落与表格两层独立遍历（大纲为主）
+def _heading_level(st):
+    """从段落样式名解析标题层级；非数字样式回退为 2 级（与原行为一致）。"""
+    m = re.search(r"\d", st)
+    return int(m.group()) if m else 2
+
+
+def _scan_paragraphs():
+    """遍历段落抽取大纲，更新 cur_path 并返回 (outline, cur_path)。
+
+    T01501（S3776）：原段落循环里混着样式判定 + 正则提层级 + try/except + 层级分支，
+    认知复杂度超阈值。拆出后循环只做「空段跳过 → 是标题则登记大纲」。
+    """
+    cur = ""
     for p in doc.paragraphs:
         t = p.text.strip()
         if not t:
             continue
         st = p.style.name or ""
         if st.startswith("Heading") or st in ("Heading 1", "Heading 2", "Heading 3", "Heading 4", "Heading 5"):
-            try:
-                lvl = int(re.search(r"\d", st).group())
-            except Exception:
-                lvl = 2
-            cur_path = heading_path(lvl, t[:50])
+            lvl = _heading_level(st)
+            cur = heading_path(lvl, t[:50])
             if lvl <= 2:
-                outline.append({"level": lvl, "text": t[:80], "path": cur_path})
+                outline.append({"level": lvl, "text": t[:80], "path": cur})
+    return cur
+
+
+def _scan_table(tb, idx, candidates, systems):
+    """扫描单张表格的前 40 行：抽动作线索候选 + 抽取系统名。
+
+    T01501（S3776）：单元格归一化、空行跳过、动作词命中、系统名正则提取
+    四段逻辑原全部内联在三层循环里。拆为独立函数后每段职责单一。
+    """
+    for row in tb.rows[:40]:
+        cells = [c.text.strip().replace("\n", " ") for c in row.cells]
+        line = " ".join(x for x in cells if x)
+        if not line:
+            continue
+        if any(w in line for w in ACTION_WORDS):
+            candidates.append({"table": idx, "text": line[:160]})
+        for s in SYS_HINT:
+            if re.search(rf"[「『【】]?[^，。；、]{{1,24}}{s}", line):
+                m = re.search(rf"([^，。；、]{{2,24}}{s})", line)
+                if m:
+                    systems.add(m.group(1))
+
+
+def walk():
+    """按文档顺序遍历段落与表格，建立大纲并抽取候选线索。"""
+    candidates = []
+    systems = set()
+    # 简化策略：仅用段落与表格两层独立遍历（大纲为主）
+    _scan_paragraphs()
     for i, tb in enumerate(doc.tables, 1):
-        for row in tb.rows[:40]:
-            cells = [c.text.strip().replace("\n", " ") for c in row.cells]
-            line = " ".join(x for x in cells if x)
-            if not line:
-                continue
-            if any(w in line for w in ACTION_WORDS):
-                candidates.append({"table": i, "text": line[:160]})
-            for s in SYS_HINT:
-                if re.search(rf"[「『【】]?[^，。；、]{1,24}{s}", line):
-                    m = re.search(rf"([^，。；、]{2,24}{s})", line)
-                    if m:
-                        systems.add(m.group(1))
+        _scan_table(tb, i, candidates, systems)
     return candidates, systems
 
 candidates, systems = walk()

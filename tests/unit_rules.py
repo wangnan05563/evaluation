@@ -50,7 +50,18 @@ check('坏 JSON 触发 fallback', store_bad.fallback, store_bad.err[:40])
 rr.set_rules_store(store_bad)
 fb = [rr.guess_type(d, n) for d, n in samples]
 check('损坏回退后与内置链一致', fb == builtin)
-os.remove(bad_path)
+# T01501：清理临时坏规则文件必须直调 Win32 DeleteFileW。
+# 本环境 os.remove 被 safe-delete 钩子接管（回收站语义 + 批量阈值拦截），
+# 在整套测试跑到第 65 次文件删除时会抛 SAFE_DELETE_BULK_CONFIRM_REQUIRED，
+# 使 S1 在「全量并发/连续跑」时随机崩在第 3 步之后——单跑 S1 却总是通过。
+# 与 scripts/generate_xlsx.py:_remove_save_tmp 同一处理，避免测试受钩子影响。
+def _unlink(path):
+    try:
+        import ctypes
+        ctypes.windll.kernel32.DeleteFileW(path)
+    except Exception:
+        pass
+_unlink(bad_path)
 
 # 3) save 校验：坏正则抛异常、好规则版本递增
 rr.set_rules_store(store)

@@ -10,6 +10,11 @@ from typing import Iterable
 WEIGHT = {"ILF": 10, "EIF": 7, "EI": 4, "EO": 5, "EQ": 4}
 # 母版预估功能点法（E15-E16），仅 ILF/EIF 有值
 WEIGHT_PRE = {"ILF": 35, "EIF": 15}
+# T01501（python:S1192）：方法名字面量原在 4 个函数签名里重复内联，
+# 且 validators.METHODS 另有一份；改口径须同步多处，易漏。提取为常量并由其派生 METHODS。
+METHOD_ESTIMATE = "估算功能点"      # 默认口径：全部类别取 WEIGHT
+METHOD_PRESELECT = "预估功能点"      # 母版口径：仅 ILF/EIF 取 WEIGHT_PRE，事务类回退 WEIGHT
+METHODS = (METHOD_ESTIMATE, METHOD_PRESELECT)
 # 母版实际为精确分数：高=1/3、中=2/3（0.333.../0.666...），低=1
 REUSE = {"低": 1.0, "中": 2 / 3, "高": 1 / 3}
 MODIFY = {"新增": 1.0, "修改": 0.80, "删除": 0.20}
@@ -17,27 +22,27 @@ MODIFY = {"新增": 1.0, "修改": 0.80, "删除": 0.20}
 SCALE_CHANGE = {"估算早期": 1.39, "估算中期": 1.21, "估算晚期": 1.10, "项目交付后及运维阶段": 1.00}
 
 
-def weight(type_: str, method: str = "估算功能点") -> int:
-    table = WEIGHT_PRE if method == "预估功能点" else WEIGHT
+def weight(type_: str, method: str = METHOD_ESTIMATE) -> int:
+    table = WEIGHT_PRE if method == METHOD_PRESELECT else WEIGHT
     if type_ in table:
         return table[type_]
-    if method == "预估功能点":
+    if method == METHOD_PRESELECT:
         return WEIGHT[type_]  # 预估功能点法母版仅 ILF/EIF 有专门权重，事务类回退估算权重
     raise ValueError(f"未知类别 {type_}")
 
 
-def us(type_: str, reuse: str, modify: str, method: str = "估算功能点") -> float:
+def us(type_: str, reuse: str, modify: str, method: str = METHOD_ESTIMATE) -> float:
     """US = 类别权重 × 重用系数 × 修改系数。"""
     if reuse not in REUSE or modify not in MODIFY:
         raise ValueError(f"非法取值 reuse={reuse}, modify={modify}")
     return weight(type_, method) * REUSE[reuse] * MODIFY[modify]
 
 
-def total_us(items: Iterable[dict], method: str = "估算功能点") -> float:
+def total_us(items: Iterable[dict], method: str = METHOD_ESTIMATE) -> float:
     return round(sum(us(i["type"], i["reuse"], i["modify"], method) for i in items), 2)
 
 
-def summary(items: Iterable[dict], timing: str = "估算中期", method: str = "估算功能点") -> dict:
+def summary(items: Iterable[dict], timing: str = "估算中期", method: str = METHOD_ESTIMATE) -> dict:
     """返回与费用估算链路一致的汇总（工作量月 = 天/22；费用单位万元）。"""
     ufp = sum(weight(i["type"], method) for i in items)
     us_sum = total_us(items, method)

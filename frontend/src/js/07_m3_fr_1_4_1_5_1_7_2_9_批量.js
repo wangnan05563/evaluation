@@ -61,24 +61,54 @@ function pasteApply(){
   const n=pasteRows.length;pasteClose();render();saveFormState();
   toast(`已追加 ${n} 行到复核清单`);}
 /* FR-1.7：全局快捷键（应用内 keydown；输入控件聚焦时让位） */
+/* T01501（S3776）：全局键盘监听把「Esc 关浮层 / 输入框让行 / Ctrl+F 搜索 / 上下移动
+   / Enter 勾选 / Space 展开依据」六类语义塞在一个处理器里，且每类都带前置守卫，
+   嵌套与短路判断叠加后复杂度超阈值。拆为六个语义函数 + 一张「键 → 处理」分派表，
+   新增快捷键只加一条映射；守卫集中在主监听里，避免每个处理函数重复判页态。 */
+const EDITABLE_TAGS=["input","select","textarea"];
+function closeFloatingPanels(e){
+  const m=$("#expMenu");if(m)m.style.display="none";
+  const pm=$("#pasteModal");if(pm)pm.style.display="none";
+  if(EDITABLE_TAGS.includes((e.target.tagName||"").toLowerCase()))e.target.blur();
+}
+function focusSearchBox(e){e.preventDefault();$("#q").focus();}
+function moveRow(delta,e){
+  const arr=visibleItems();if(!arr.length)return;   // 无可见行时原实现直接返回，不阻止滚动
+  e.preventDefault();
+  const i=arr.findIndex(x=>x.seq===curSeq);
+  // 首/末行再按方向键时钳在边界内（i<0 表示当前无选中，从首/末起算）
+  const j=delta>0?Math.min(arr.length-1,(i<0?0:i+1)):Math.max(0,(i<0?1:i-1));
+  curSeq=arr[j].seq;highlightRow();
+}
+function toggleCurrentRow(){
+  if(!curSeq)return;
+  const it=items.find(x=>x.seq===curSeq);if(!it)return;
+  it.ok=!it.ok;render();highlightRow();
+}
+function expandCurrentRow(){
+  if(!curSeq)return;
+  toggleBasis(curSeq);
+}
+/* 行级快捷键：仅在「工作台-复核页且有数据」时生效。
+   注意 preventDefault 的位置：必须与重构前逐字一致地放在各自守卫之内。
+   原因：<button> 的点击是由 Enter/Space 的 keydown 默认行为合成的，一旦在按钮
+   聚焦时无条件 preventDefault，合成的 click 会被吞掉——「生成」按钮按下无效。
+   （T01501 实施中此处曾踩坑：把 preventDefault 提到分派表里统一调用，导致 #goRes 失效。） */
+const ROW_KEYS={
+  ArrowDown(e){moveRow(1,e);},
+  ArrowUp(e){moveRow(-1,e);},
+  Enter(e){if(curSeq){e.preventDefault();toggleCurrentRow();}},
+  " "(e){if(curSeq){e.preventDefault();expandCurrentRow();}},
+};
 document.addEventListener("keydown",e=>{
   const tag=(e.target.tagName||"").toLowerCase();
-  if(e.key==="Escape"){const m=$("#expMenu");if(m)m.style.display="none";
-    const pm=$("#pasteModal");if(pm)pm.style.display="none";
-    if(["input","select","textarea"].includes(tag))e.target.blur();
-return;}
-  if(["input","select","textarea"].includes(tag))return;
+  if(e.key==="Escape"){closeFloatingPanels(e);return;}
+  if(EDITABLE_TAGS.includes(tag))return;
   if(e.key.toLowerCase()==="f"&&(e.ctrlKey||e.metaKey)){
-    if(document.body.dataset.page==="work"&&document.body.dataset.step==="review"){e.preventDefault();$("#q").focus();}
+    if(document.body.dataset.page==="work"&&document.body.dataset.step==="review")focusSearchBox(e);
     return;}
   if(!items.length||document.body.dataset.page!=="work"||document.body.dataset.step!=="review")return;
-  const arr=visibleItems();if(!arr.length)return;
-  let i=arr.findIndex(x=>x.seq===curSeq);
-  if(e.key==="ArrowDown"){e.preventDefault();curSeq=arr[Math.min(arr.length-1,(i<0?0:i+1))].seq;highlightRow();}
-  else if(e.key==="ArrowUp"){e.preventDefault();curSeq=arr[Math.max(0,(i<0?1:i-1))].seq;highlightRow();}
-  else if(e.key==="Enter"&&curSeq){e.preventDefault();
-    const it=items.find(x=>x.seq===curSeq);it.ok=!it.ok;render();highlightRow();}
-  else if(e.key===" "&&curSeq){e.preventDefault();toggleBasis(curSeq);}
+  const h=ROW_KEYS[e.key];if(h)h(e);
 });
 function highlightRow(){document.querySelectorAll("#tbody tr").forEach(tr=>tr.classList.toggle("cur",+tr.dataset.seq===curSeq));
   const tr=document.querySelector(`#tbody tr[data-seq="${curSeq}"]`);if(tr)tr.scrollIntoView({block:"nearest"});}
@@ -220,6 +250,34 @@ function saveFormState(){
     }));
   }catch(e){/* 存储满/隐私模式等场景静默降级，不影响主流程 */}
 }
+/* T01501（S3776）：IFPUG 与 PERT 两条恢复链的守卫/回填步骤各自成段，混在一个函数里
+   使嵌套与条件判断叠加超阈值。拆为「赋值」与「渲染」两阶段——顺序语义关键：
+   原实现是先给两个域赋值，再 goPage 切页，最后各自渲染/跳步；渲染依赖页面已切换，
+   故切页必须在渲染之前，不能把两阶段合并。
+   恢复口径与调用顺序完全不变。 */
+function assignIfpugState(s){
+  items=s.items;gSummary=s.gSummary||null;gSid=s.gSid||null;curFile=s.curFile||null;
+}
+function renderIfpugState(s){
+  render();
+  goStep(s.step&&s.step!=='upload'?s.step:'review');
+}
+function assignPertState(s){
+  pertPid=s.pertPid||null;pertItems=s.pertItems||[];pertSummary=s.pertSummary||null;
+}
+function renderPertState(s){
+  pertFillPhase();
+  if(s.pertPhase)$("#pertPhase").value=s.pertPhase;
+  if(pertPid && $("#pertProjSel"))pertLoadProjects();
+  pertStep(s.pertstep&&s.pertstep!=='in'?s.pertstep:'edit');
+  // 空串不写入：占位态（""）表示"未填"，写入会把输入框填成空串，覆盖浏览器自动填充
+  const setv=(id,val)=>{const el=$(id);if(el&&val!=="")el.value=val;};
+  setv('#pertO',s.pertO);setv('#pertM',s.pertM);setv('#pertP',s.pertP);
+  setv('#pertD',s.pertD);setv('#pertEst',s.pertEst);
+  const cur=$("#pertCur");if(cur&&s.pertPid)cur.textContent='项目 #'+s.pertPid;
+  if(typeof renderPert==='function'&&pertItems.length)renderPert();
+  if(typeof applyPertSummary==='function'&&pertSummary)applyPertSummary(pertSummary);
+}
 function restoreFormState(){
   let s=null;
   try{
@@ -230,23 +288,12 @@ function restoreFormState(){
   const hasIfpug=s && Array.isArray(s.items) && s.items.length>0;
   const hasPert=s && (s.pertPid || (Array.isArray(s.pertItems) && s.pertItems.length));
   if(!hasIfpug && !hasPert)return false;
-  // 恢复数据
-  if(hasIfpug){items=s.items;gSummary=s.gSummary||null;gSid=s.gSid||null;curFile=s.curFile||null;}
-  if(hasPert){pertPid=s.pertPid||null;pertItems=s.pertItems||[];pertSummary=s.pertSummary||null;}
+  // 恢复数据：先给两个域赋值 → 切页 → 各自渲染
+  if(hasIfpug)assignIfpugState(s);
+  if(hasPert)assignPertState(s);
   goPage(s.page||'work');
-  if(hasIfpug){render();goStep(s.step&&s.step!=='upload'?s.step:'review');}
-  if(hasPert){
-    pertFillPhase();
-    if(s.pertPhase)$("#pertPhase").value=s.pertPhase;
-    if(hasPert && pertPid && $("#pertProjSel"))pertLoadProjects();
-    pertStep(s.pertstep&&s.pertstep!=='in'?s.pertstep:'edit');
-    const setv=(id,val)=>{const el=$(id);if(el&&val!=="")el.value=val;};
-    setv('#pertO',s.pertO);setv('#pertM',s.pertM);setv('#pertP',s.pertP);
-    setv('#pertD',s.pertD);setv('#pertEst',s.pertEst);
-    const cur=$("#pertCur");if(cur&&s.pertPid)cur.textContent='项目 #'+s.pertPid;
-    if(typeof renderPert==='function'&&pertItems.length)renderPert();
-    if(typeof applyPertSummary==='function'&&pertSummary)applyPertSummary(pertSummary);
-  }
+  if(hasIfpug)renderIfpugState(s);
+  if(hasPert)renderPertState(s);
   toast('已恢复上次未完成的录入');
   return true;
 }

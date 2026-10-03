@@ -85,6 +85,34 @@ class RulesStore:
         self.reload()
         return self.version()
 
+    @staticmethod
+    def _scope_texts(rule, d, n):
+        """按 scope 取出该规则应匹配的文本集合。
+
+        T01501（S3776）：scope 分派 + 空值过滤原内联在主循环里，与 exclude/异常处理
+        交织后认知复杂度超阈值。抽成独立方法后，「取文本 → 判命中 → 排除」三段线性可读。
+        scope 语义：desc 只看描述；name 只看文件名；其余（any）看两者拼接。
+        """
+        scope = rule.get('scope') or 'any'
+        texts = {'desc': [d], 'name': [n]}.get(scope, [d, d + ' ' + n])
+        return [t for t in texts if t]
+
+    @staticmethod
+    def _matches(rule, texts):
+        """规则是否命中：任一 pattern 在任一文本中 search 到，且不在 exclude 名单内。
+        坏正则（re.error）按「不命中」处理，与原行为一致——单条规则配错不应中断整表匹配。"""
+        try:
+            hit = any(re.compile(pat).search(t)
+                      for pat in (rule.get('patterns') or [])
+                      for t in texts)
+            if hit and rule.get('exclude'):
+                ex = re.compile('|'.join(rule['exclude']))
+                if any(ex.search(t) for t in texts):
+                    hit = False
+            return hit
+        except re.error:
+            return False
+
     def apply(self, desc, name):
         """返回 (type, hit_rule_id)；未命中返回 (None, None)。"""
         self.maybe_reload()
@@ -94,19 +122,6 @@ class RulesStore:
         for r in rules:
             if not r.get('enabled', True):
                 continue
-            scope = r.get('scope') or 'any'
-            texts = {'desc': [d], 'name': [n]}.get(scope, [d, d + ' ' + n])
-            texts = [t for t in texts if t]
-            try:
-                hit = any(re.compile(pat).search(t)
-                          for pat in (r.get('patterns') or [])
-                          for t in texts)
-                if hit and r.get('exclude'):
-                    ex = re.compile('|'.join(r['exclude']))
-                    if any(ex.search(t) for t in texts):
-                        hit = False
-            except re.error:
-                hit = False
-            if hit:
+            if self._matches(r, self._scope_texts(r, d, n)):
                 return r.get('type') or DEFAULT_TYPE, r.get('id') or r.get('name') or '?'
         return None, None

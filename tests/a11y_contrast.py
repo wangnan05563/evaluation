@@ -53,6 +53,10 @@ PAIRS = [
 
 THEMES = {"light": ":root", "dark": '[data-theme="dark"]', "contrast": '[data-theme="contrast"]'}
 
+# WCAG 2.1 阈值：1.4.3 正文 ≥4.5:1（large text ≥3:1）；1.4.11 非文本 UI 组件 ≥3:1
+AA_TEXT = 4.5
+AA_NON_TEXT = 3.0
+
 
 def parse_tokens(css_text):
     """按选择器块切分，抽取 --name: #hex / var(--x) 定义。"""
@@ -99,7 +103,25 @@ def ratio(fg, bg):
     return round((hi + 0.05) / (lo + 0.05), 2)
 
 
+def _eval_pair(theme, pair, toks):
+    """评估一组配对，返回 (record, is_unresolved)。令牌解析不出 #RRGGBB 时 record 为 None。"""
+    fg_name, bg_name, usage, is_text = pair
+    fg = resolve(toks.get(fg_name, ""), toks)
+    bg = resolve(toks.get(bg_name, ""), toks)
+    if not fg or not bg:
+        return {"theme": theme, "pair": f"{fg_name}/{bg_name}",
+                "fg": toks.get(fg_name), "bg": toks.get(bg_name)}, True
+    r = ratio(fg, bg)
+    need = AA_TEXT if is_text else AA_NON_TEXT
+    return {"theme": theme, "pair": f"{fg_name}/{bg_name}", "usage": usage,
+            "fg": fg, "bg": bg, "ratio": r, "need": need,
+            "kind": "text" if is_text else "non-text",
+            "pass": r >= need}, False
+
+
 def audit():
+    """逐主题逐配对计算对比度。T01501（S3776）：原双层循环内联判空与三元，
+    拆出 _eval_pair 后主流程只做「收集结果 / 归集未达标」。"""
     css_text = CSS.read_text(encoding="utf-8")
     all_toks = parse_tokens(css_text)
     # :root 是基础层，dark/contrast 未覆盖的令牌继承之
@@ -108,21 +130,10 @@ def audit():
     for theme in THEMES:
         toks = dict(base)
         toks.update(all_toks.get(theme, {}))
-        for fg_name, bg_name, usage, is_text in PAIRS:
-            fg = resolve(toks.get(fg_name, ""), toks)
-            bg = resolve(toks.get(bg_name, ""), toks)
-            if not fg or not bg:
-                unresolved.append({"theme": theme, "pair": f"{fg_name}/{bg_name}",
-                                   "fg": toks.get(fg_name), "bg": toks.get(bg_name)})
-                continue
-            r = ratio(fg, bg)
-            need = 4.5 if is_text else 3.0
-            rec = {"theme": theme, "pair": f"{fg_name}/{bg_name}", "usage": usage,
-                   "fg": fg, "bg": bg, "ratio": r, "need": need,
-                   "kind": "text" if is_text else "non-text",
-                   "pass": r >= need}
-            results.append(rec)
-            if not rec["pass"]:
+        for pair in PAIRS:
+            rec, bad = _eval_pair(theme, pair, toks)
+            (unresolved if bad else results).append(rec)
+            if not bad and not rec["pass"]:
                 critical.append(rec)
     return results, critical, unresolved
 

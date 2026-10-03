@@ -35,6 +35,24 @@ else:
     _USER_DATA = _APP_ROOT / "data"          # dev：保持项目 data/（勿指项目根，会与源码混放）
 APP_DATA = Path(os.environ.get("WE_DATA") or _USER_DATA)
 
+# ---------------- 常量（T01501 / python:S1192） ----------------
+# 抽出的都是「同一语义在多处内联的字面量」：改一处须同步 N 处的年代，
+# 漏改不会报错、只会静默产生行为分叉。
+F_CONFIG = "config.json"            # 配置中心持久化
+F_PERT_DB = "pert.db"               # PERT 库
+F_TEMPLATE = "template.xlsx"        # 内置母版
+UPLOAD_FALLBACK_NAME = "req.docx"    # 上传请求未带文件名时的占位名（原内联 3 处）
+F_RECOGNITION_RULES = "recognition_rules.json"   # 识别规则表
+F_RATES_VERSIONS = "rates_versions.json"         # 费率版本表
+F_SCHEMA_VER = "schema_ver"                      # schema 版本标记（由 datakeeper 读写）
+DIR_TEMPLATES = "templates"         # 自定义母版目录（相对 APP_DATA）
+CHAT_SUFFIX = "/chat/completions"   # OpenAI 兼容端点后缀
+F_PACKAGE_JSON = "package.json"     # 前端工程清单（技术栈探测用）
+SYS_TICKET = "票据业务系统"          # 项目主系统名（上下文推断的归并目标）
+AUTH_BEARER = "Bearer "              # 鉴权头前缀
+# 开发语言 → 母版语系标识的对照（Excel 公式按语系取值，见 _CTX_LANG_EXT）
+EXT_JAVA = ".java"
+
 
 def _migrate_legacy_data():
     """升级兼容：旧版把 config.json/pert.db/template.xlsx 存在 exe 旁 data/，
@@ -45,7 +63,7 @@ def _migrate_legacy_data():
     if not legacy.is_dir():
         return
     APP_DATA.mkdir(parents=True, exist_ok=True)
-    for name in ("config.json", "pert.db", "template.xlsx"):
+    for name in (F_CONFIG, F_PERT_DB, F_TEMPLATE):
         src, dst = legacy / name, APP_DATA / name
         if src.is_file() and not dst.exists():
             try:
@@ -108,7 +126,7 @@ def _resolve_template():
         return Path(env)
     bundled = _RES / "tpl" / "template.xlsx"      # PyInstaller --add-data 时存放母版
     if bundled.exists():
-        dst = APP_DATA / "template.xlsx"
+        dst = APP_DATA / F_TEMPLATE
         if not dst.exists():
             shutil.copy2(bundled, dst)            # 首次运行将母版落到可写目录
         return dst
@@ -123,7 +141,7 @@ RULES = None
 RATES = None
 try:
     import recognition_rules as _rrules
-    _rules_path = APP_DATA / "recognition_rules.json"
+    _rules_path = APP_DATA / F_RECOGNITION_RULES
     _rules_seed = _RES / "data" / "recognition_rules.json"
     if not _rules_path.exists() and _rules_seed.exists():
         import shutil
@@ -138,7 +156,7 @@ except Exception as e:
 import gb_engine as _gb
 from datetime import datetime as _dt
 try:
-    _rates_path = APP_DATA / "rates_versions.json"
+    _rates_path = APP_DATA / F_RATES_VERSIONS
     _rates_seed = _RES / "data" / "rates_versions.json"
     if not _rates_path.exists() and _rates_seed.exists():
         import shutil
@@ -314,7 +332,7 @@ def save_config(payload):
 # 直接抛 "File is not a zip file" / "Truncated central directory" /
 # "Package not found"（实测 recognize 5 并发 60s：610/1122 = 54% 500）。
 def _upload_path(name):
-    safe = os.path.basename(str(name or "req.docx"))
+    safe = os.path.basename(str(name or UPLOAD_FALLBACK_NAME))
     return UPLOAD / f"{int(time.time() * 1000)}_{uuid.uuid4().hex[:8]}_{safe}"
 
 
@@ -348,7 +366,7 @@ def _recalc_settings():
 def chat_completions_url(api):
     """拼 chat/completions 端点，兼容前端可能已带完整路径。"""
     api = (api or "").rstrip("/")
-    return api + "/chat/completions" if not api.endswith("/chat/completions") else api
+    return api + CHAT_SUFFIX if not api.endswith(CHAT_SUFFIX) else api
 
 
 # ---------------- 版本检测与一键更新 ----------------
@@ -359,7 +377,7 @@ def _detect_app_version():
     if env:
         return env
     for base in (_RES, _APP_ROOT):
-        pj = base / "package.json"
+        pj = base / F_PACKAGE_JSON
         if pj.exists():
             try:
                 return json.loads(pj.read_text(encoding="utf-8-sig")).get("version") or "dev"
@@ -397,20 +415,26 @@ def check_update():
         return {"ok": False, "msg": f"更新源访问失败：{e}", "current": APP_VERSION}
 
 
+def _stream_update_to(tmp, req):
+    """把响应体按 64KB 分块写入 tmp，同时累计已收字节到进度表。返回 Content-Length。"""
+    with urlopen(req, timeout=30) as r, open(tmp, "wb") as f:
+        _UPDATE_STATE["total"] = int(r.headers.get("Content-Length") or 0)
+        while True:
+            chunk = r.read(1 << 16)
+            if not chunk:
+                break
+            f.write(chunk)
+            _UPDATE_STATE["received"] += len(chunk)
+    return _UPDATE_STATE["total"]
+
+
 def _download_update(url):
     try:
         _UPDATE_STATE.update(state="downloading", received=0, total=0, error="")
         UPDATE_FILE.parent.mkdir(parents=True, exist_ok=True)
         tmp = UPDATE_FILE.with_suffix(".part")
         req = Request(url, headers={"User-Agent": "WorkloadEval/" + APP_VERSION})
-        with urlopen(req, timeout=30) as r, open(tmp, "wb") as f:
-            _UPDATE_STATE["total"] = int(r.headers.get("Content-Length") or 0)
-            while True:
-                chunk = r.read(1 << 16)
-                if not chunk:
-                    break
-                f.write(chunk)
-                _UPDATE_STATE["received"] += len(chunk)
+        _stream_update_to(tmp, req)
         os.replace(tmp, UPDATE_FILE)   # 下载完整才替换，中断残留 .part 不影响重下
         _UPDATE_STATE["state"] = "done"
     except Exception as e:
@@ -579,8 +603,52 @@ def _heading_features(doc):
     return titles
 
 
-_SYS_KW = ("票据业务系统", "票据交易平台", "业务系统", "财务系统", "铁建财务",
+_SYS_KW = (SYS_TICKET, "票据交易平台", "业务系统", "财务系统", "铁建财务",
            "互联平台", "消息平台", "移动端", "核心系统", "网银", "信贷", "影像")
+
+
+_SYS_TAIL = (SYS_TICKET, "票据交易系统", "票据交易管理系统", "票据交易平台", "业务系统",
+             "财务系统", "综合服务平台", "互联平台", "消息平台")
+
+
+def _cover_candidates(t, tails):
+    """在一行文本里找出所有以系统后缀词结尾的完整词块候选。
+
+    T01501（S3776）：原为 _cover_system_name 内的「后缀词循环 + while 向左延伸」
+    双层嵌套，叠加外层段循环后复杂度超阈值。抽离后取候选与挑最长各归一处。
+    延伸规则不变：从后缀词起点向左吃掉连续中英文，直到遇非中英文字符。
+    """
+    cands = []
+    for suf in tails:
+        idx = t.find(suf)
+        while idx >= 0:
+            start = idx
+            while start > 0 and (t[start - 1].isalpha() or '一' <= t[start - 1] <= '鿿'):
+                start -= 1
+            cands.append(t[start:idx + len(suf)])
+            idx = t.find(suf, idx + 1)
+    return cands
+
+
+def _cover_system_name(doc):
+    """从封面标题区（前 20 段）提取完整系统名；未命中返回 None。
+
+    截断口径不变：跳过空行与超 24 字的行，取候选中最长者。
+    """
+    for p in doc.paragraphs[:20]:
+        t = (p.text or "").strip()
+        if not t or len(t) > 24:
+            continue
+        cands = _cover_candidates(t, _SYS_TAIL)
+        if cands:
+            return max(cands, key=len).strip()
+    return None
+
+
+def _doc_full_text(doc):
+    """拼接文档正文所有段落文本（按 body 下的 p 元素顺序）。"""
+    return "\n".join(_ptext(p) for p in doc.element.body.iterchildren()
+                     if p.tag.rsplit("}", 1)[-1] == "p")
 
 
 def _extract_doc_system(doc):
@@ -592,34 +660,16 @@ def _extract_doc_system(doc):
     （约束：系统名称必须从文档内容精准提取，禁止用票据系统兜底）。
     返回单个字符串主系统名（用于 Excel 系统分组，避免多值分组爆炸）。
     """
-    # 1) 文档封面标题区（前 20 段，跳过空行）：完整系统名通常独占一行且较短。
-    #    对每行取以系统后缀词（…系统/…平台）结尾的最长词块作候选；无专门后缀词的行忽略。
-    _tail = ("票据业务系统", "票据交易系统", "票据交易管理系统", "票据交易平台", "业务系统",
-             "财务系统", "综合服务平台", "互联平台", "消息平台")
-    for p in doc.paragraphs[:20]:
-        t = (p.text or "").strip()
-        if not t or len(t) > 24:
-            continue
-        cands = []
-        for suf in _tail:
-            idx = t.find(suf)
-            while idx >= 0:
-                # 从关键词起点向左延伸至非中英文起点，得到「XX<suf>」完整系统名
-                start = idx
-                while start > 0 and (t[start - 1].isalpha() or '\u4e00' <= t[start - 1] <= '\u9fff'):
-                    start -= 1
-                cands.append(t[start:idx + len(suf)])
-                idx = t.find(suf, idx + 1)
-        if cands:
-            return max(cands, key=len).strip()
+    # 1) 文档封面标题区：完整系统名通常独占一行且较短
+    cover = _cover_system_name(doc)
+    if cover:
+        return cover
     # 2) 全文按系统关键词出现频次取主系统名。票据类文档正文中「票据」语境高密度出现
     #    （票据/票据业务系统等），优先归并为「票据业务系统」，避免「信贷」等弱词因计数拔高而误判。
-    full = "\n".join(_ptext(p) for p in doc.element.body.iterchildren()
-                     if p.tag.rsplit("}", 1)[-1] == "p")
-    n_ticket = full.count("票据")
-    if n_ticket >= 10 and ("票据" in full):
-        if "票据业务系统" in full or "票据交易" in full or "票据系统" in full:
-            return "票据业务系统"
+    full = _doc_full_text(doc)
+    if full.count("票据") >= 10:
+        if SYS_TICKET in full or "票据交易" in full or "票据系统" in full:
+            return SYS_TICKET
     hits = {}
     for kw in _SYS_KW:
         c = full.count(kw)
@@ -627,8 +677,7 @@ def _extract_doc_system(doc):
             hits[kw] = c
     if not hits:
         return "综合平台"  # 文档确实未提及任何系统，才允许通用兜底
-    best = max(hits, key=hits.get)
-    return best
+    return max(hits, key=hits.get)
 
 
 def _norm_key(s):
@@ -760,26 +809,36 @@ def _doc_text_excerpt(path, max_chars=6000):
         return ""
 
 
+def _pdf_to_excerpt(path, max_chars):
+    """PDF 文本抽取；pypdf 不可用或解析异常时返回空串（调用方据此回退提示）。
+
+    T01501（S3776）：原与 docx 分支交织在 _file_to_excerpt 里，双层 try + 逐页累计
+    长度判断使认知复杂度超阈值。拆出后各自只剩一条线性流程。
+    截断口径不变：逐页累积超过 max_chars 即停止，最后再按 max_chars 硬截。
+    """
+    try:
+        from pypdf import PdfReader
+    except Exception:
+        return ""
+    try:
+        parts, total = [], 0
+        for page in PdfReader(str(path)).pages:
+            t = (page.extract_text() or "").strip()
+            if t:
+                parts.append(t)
+                total += len(t)
+            if total > max_chars:
+                break
+        return "\n".join(parts)[:max_chars]
+    except Exception:
+        return ""
+
+
 def _file_to_excerpt(path, max_chars=6000):
     """按扩展名提取需求文本（docx 用 python-docx，pdf 用 pypdf），供 AI 拆分/识别使用。"""
     ext = os.path.splitext(str(path))[-1].lower()
     if ext == ".pdf":
-        try:
-            from pypdf import PdfReader
-        except Exception:
-            return ""
-        try:
-            reader = PdfReader(str(path))
-            parts = []
-            for page in reader.pages:
-                t = (page.extract_text() or "").strip()
-                if t:
-                    parts.append(t)
-                if sum(len(x) for x in parts) > max_chars:
-                    break
-            return "\n".join(parts)[:max_chars]
-        except Exception:
-            return ""
+        return _pdf_to_excerpt(path, max_chars)
     return _doc_text_excerpt(path, max_chars)
 
 
@@ -793,12 +852,12 @@ _CTX_LANG_EXT = {".java", ".py", ".js", ".ts", ".tsx", ".jsx", ".go", ".rs", ".c
 def _detect_stack_from_manifest(root):
     """根据工程清单文件推断技术栈，返回 (stack 集合, 命中清单相对路径)。"""
     stack, hits = set(), {}
-    for mf in ("package.json", "pom.xml", "build.gradle", "requirements.txt",
+    for mf in (F_PACKAGE_JSON, "pom.xml", "build.gradle", "requirements.txt",
                "pyproject.toml", "go.mod", "Cargo.toml"):
         f = root / mf
         if f.is_file():
             hits[mf] = str(f)
-            if mf == "package.json":
+            if mf == F_PACKAGE_JSON:
                 stack.add("Node.js / JS/TS")
             elif mf in ("pom.xml", "build.gradle"):
                 stack.add("Java")
@@ -813,13 +872,67 @@ def _detect_stack_from_manifest(root):
         for p in list(root.rglob("*"))[:20000]:
             if p.suffix in _CTX_LANG_EXT:
                 found.add(p.suffix)
-        if ".java" in found:
-            stack.add("Java")
-        if ".py" in found:
-            stack.add("Python")
-        if found - {".java", ".py"}:
-            stack.add(",".join(sorted(found - {".java", ".py"})))
+        # T01501（S1192）：.java/.py 原在此内联 3 次（判断 + 差集 + 差集），
+        # 改判定语言须同步 3 处，漏改会静默产生「Java 既不入栈又混进杂项列表」的分叉。
+        for ext, label in ((EXT_JAVA, "Java"), (".py", "Python")):
+            if ext in found:
+                stack.add(label)
+        others = found - {EXT_JAVA, ".py"}
+        if others:
+            stack.add(",".join(sorted(others)))
     return stack, hits
+
+
+_CTX_MAX_FILES = 20000          # 遍历文件数上限，避免大仓库拖垮
+_CTX_MAX_LINES_PER_FILE = 2000  # 单文件行数计入上限，二进制/超大文件不撑爆统计
+_CTX_MAX_TOP = 30               # 一级目录/文件各取前 N 个
+
+
+def _count_code_lines(p):
+    """统计单个文件的代码行数（单文件封顶 _CTX_MAX_LINES_PER_FILE）；读失败按 0 计。"""
+    try:
+        with p.open(encoding="utf-8", errors="ignore") as fh:
+            return min(sum(1 for _ in fh), _CTX_MAX_LINES_PER_FILE)
+    except Exception:
+        return 0
+
+
+def _walk_project_stats(root):
+    """遍历项目统计 (total_files, total_lines, ext_count)。
+
+    T01501（S3776）：原三重判据（上限 / 跳过目录 / 是文件）内嵌在循环里，再套
+    try/except 读行，认知复杂度超阈值。拆出后主循环只做「跳过判定 + 累加」。
+    遍历口径不变：总数达上限即停；路径含任一跳过目录段即略过；无扩展名文件不计入分布。
+    """
+    total_files = total_lines = 0
+    ext_count = {}
+    for p in root.rglob("*"):
+        if total_files >= _CTX_MAX_FILES:
+            break
+        if any(seg in _CTX_SKIP_DIRS for seg in p.parts):
+            continue
+        if not p.is_file():
+            continue
+        total_files += 1
+        ext = p.suffix.lower()
+        if ext:
+            ext_count[ext] = ext_count.get(ext, 0) + 1
+        if ext in _CTX_LANG_EXT:
+            total_lines += _count_code_lines(p)
+    return total_files, total_lines, ext_count
+
+
+def _read_manifest_head(root, manifests):
+    """取前 2 个工程清单文件的前 14 行有效内容，拼成 prompt 友好的依赖片段。"""
+    dep_lines = []
+    for mf, rel in list(manifests.items())[:2]:
+        try:
+            src = Path(root, rel).read_text(encoding="utf-8", errors="ignore")
+            lines = [l.strip() for l in src.splitlines() if l.strip()][:14]
+            dep_lines.append(f"[{rel}]\n  " + "\n  ".join(lines))
+        except Exception:
+            pass
+    return dep_lines
 
 
 def _scan_project_context(root):
@@ -829,36 +942,11 @@ def _scan_project_context(root):
         return {"ok": False, "error": f"目录不存在: {root}"}
     # 一级子目录与根文件（跳过构建/依赖目录）
     top_dirs = sorted(d.name for d in root.iterdir()
-                      if d.is_dir() and d.name not in _CTX_SKIP_DIRS)[:30]
-    top_files = sorted(f.name for f in root.iterdir() if f.is_file())[:30]
-    # 遍历统计（限制数量，避免大仓库拖垮）
-    total_files = total_lines = 0
-    ext_count = {}
-    for p in root.rglob("*"):
-        if total_files >= 20000:
-            break
-        if any(seg in _CTX_SKIP_DIRS for seg in p.parts):
-            continue
-        if p.is_file():
-            total_files += 1
-            ext = p.suffix.lower()
-            if ext:
-                ext_count[ext] = ext_count.get(ext, 0) + 1
-            if p.suffix.lower() in _CTX_LANG_EXT:
-                try:
-                    with p.open(encoding="utf-8", errors="ignore") as fh:
-                        total_lines += min(sum(1 for _ in fh), 2000)
-                except Exception:
-                    pass
+                      if d.is_dir() and d.name not in _CTX_SKIP_DIRS)[:_CTX_MAX_TOP]
+    top_files = sorted(f.name for f in root.iterdir() if f.is_file())[:_CTX_MAX_TOP]
+    total_files, total_lines, ext_count = _walk_project_stats(root)
     stack, manifests = _detect_stack_from_manifest(root)
-    dep_lines = []
-    for mf, rel in list(manifests.items())[:2]:
-        try:
-            src = Path(root, rel).read_text(encoding="utf-8", errors="ignore")
-            lines = [l.strip() for l in src.splitlines() if l.strip()][:14]
-            dep_lines.append(f"[{rel}]\n  " + "\n  ".join(lines))
-        except Exception:
-            pass
+    dep_lines = _read_manifest_head(root, manifests)
     return {
         "ok": True, "root": str(root),
         "tech_stack": sorted(stack) or ["未知"],
@@ -922,6 +1010,35 @@ def _project_prompt_prefix():
     return "【项目级上下文】\n" + text + "\n\n"
 
 
+_LLM_VALID_TYPES = ("ILF", "EIF", "EI", "EO", "EQ")
+
+
+def _normalize_extras(arr, local_items):
+    """把模型返回的数组规整为功能点候选；类型非法的条目直接丢弃。
+
+    T01501（S3776）：原「遍历 → 类型判合法 → 拼字段（含 system 回退三级嵌套）」整段
+    内联在 _llm_refine 尾部，与请求/解析逻辑交织。拆出后主函数只剩「调接口 → 解析 → 规整」。
+    system 回退口径不变：模型未给则沿用首个本地功能点的系统名，都沒有则「综合平台」。
+    """
+    fallback_system = (local_items[0]["system"] if local_items else "综合平台")
+    extras = []
+    if not isinstance(arr, list):
+        return extras
+    for x in arr:
+        if not isinstance(x, dict):
+            continue
+        t = (x.get("type") or "").strip().upper()
+        if t not in _LLM_VALID_TYPES:
+            continue
+        extras.append({
+            "system": x.get("system") or fallback_system,
+            "m1": x.get("count_item", ""), "m2": "", "desc": x.get("desc", ""),
+            "count_item": x.get("count_item", ""), "type": t,
+            "reuse": "中", "modify": "新增",
+        })
+    return extras
+
+
 def _llm_refine(path, local_items, llm):
     """调用 OpenAI 兼容接口（Agnes /v1/chat/completions）让模型复核/补全功能点。
     返回 (extra_items, meta)。"""
@@ -947,35 +1064,14 @@ def _llm_refine(path, local_items, llm):
     }, ensure_ascii=False).encode("utf-8")
     req = Request(url, data=body, method="POST", headers={
         "Content-Type": "application/json",
-        "Authorization": "Bearer " + llm["key"],
+        "Authorization": AUTH_BEARER + llm["key"],
     })
     t0 = time.time()
     with urlopen(req, timeout=60) as r:
         resp = json.loads(r.read().decode("utf-8"))
     dt = round(time.time() - t0, 2)
     content = resp["choices"][0]["message"]["content"].strip()
-    # 提取 JSON 数组（容忍 ```json 包裹）
-    m = re.search(r"\[\s*[\s\S]*?\]\s*$", content)
-    arr_text = m.group(0) if m else content
-    try:
-        arr = json.loads(arr_text)
-    except Exception:
-        # 再尝试去 markdown 围栏
-        arr_text2 = re.sub(r"\s*```$", "", re.sub(r"^```(?:json)?\s*", "", content, flags=re.M), flags=re.M).strip()
-        arr = json.loads(arr_text2)
-    extras = []
-    if isinstance(arr, list):
-        for x in arr:
-            if not isinstance(x, dict): continue
-            t = (x.get("type") or "").strip().upper()
-            if t not in ("ILF", "EIF", "EI", "EO", "EQ"):
-                continue
-            extras.append({
-                "system": x.get("system") or (local_items[0]["system"] if local_items else "综合平台"),
-                "m1": x.get("count_item", ""), "m2": "", "desc": x.get("desc", ""),
-                "count_item": x.get("count_item", ""), "type": t,
-                "reuse": "中", "modify": "新增",
-            })
+    extras = _normalize_extras(_extract_json_array(content), local_items)
     meta = {"enabled": True, "url": url, "model": llm["model"], "elapsed_s": dt, "added": len(extras)}
     return extras, meta
 
@@ -1013,7 +1109,7 @@ def _llm_pert_split(api, model, key, excerpt):
                                     {"role": "user", "content": user}],
                        "temperature": 0.1}, ensure_ascii=False).encode("utf-8")
     req = Request(url, data=body, method="POST", headers={
-        "Content-Type": "application/json", "Authorization": "Bearer " + key})
+        "Content-Type": "application/json", "Authorization": AUTH_BEARER + key})
     with urlopen(req, timeout=120) as r:
         resp = json.loads(r.read().decode("utf-8"))
     content = resp["choices"][0]["message"]["content"].strip()
@@ -1038,6 +1134,61 @@ def _llm_pert_split(api, model, key, excerpt):
                 o = m = p = None
             out.append({"desc": desc, "phase": phase, "system": (x.get("system") or "").strip(),
                         "optimistic": o, "most_likely": m, "pessimistic": p})
+    return out
+
+
+# ---------------- 诊断包 / 母版目录（T01501：从 do_GET 抽出） ----------------
+# 抽出原因：do_GET 是 179 行的路由分发函数，内嵌 zip 打包与目录遍历两个独立职责，
+# 使其认知复杂度远超阈值（python:S3776）。抽出后 do_GET 只做「匹配路径 → 调处理器」。
+
+def _build_diag_zip():
+    """M8/FR-5.4：打包诊断包（日志 + 脱敏配置 + 版本信息），返回 zip 路径。
+
+    注：T01481 评估过加 TTL 缓存（P1-3），但诊断包按需即时生成是产品语义
+    （用户点一次就应拿到当下快照），不为此做语义妥协。
+    """
+    import zipfile
+    os.makedirs(APP_DATA / "diag", exist_ok=True)
+    zp = APP_DATA / "diag" / f"diag_{time.strftime('%Y%m%d-%H%M%S')}.zip"
+    with zipfile.ZipFile(zp, "w", zipfile.ZIP_DEFLATED) as z:
+        lj = APP_DATA / "logs" / "server.jsonl"
+        if lj.exists():
+            z.write(lj, "logs/server.jsonl")
+        for n in (F_RECOGNITION_RULES, F_RATES_VERSIONS, F_SCHEMA_VER):
+            f = APP_DATA / n
+            if not f.exists():
+                continue
+            try:
+                z.writestr(f"config/{n}", f.read_text(encoding="utf-8"))   # 无密钥字段，原样归档
+            except Exception:
+                pass
+        z.writestr("version.json", json.dumps({
+            "app": "workload-estimate", "schema_ver": SCHEMA_VER,
+            "python": sys.version.split()[0],
+            "routes": ["/api/health", "/api/recognize", "/api/generate", "/api/history",
+                       "/api/rules", "/api/rates", "/api/config", "/api/diag",
+                       "/api/data/export"]}, ensure_ascii=False, indent=1))
+    SLOG.info("diag", "export", size=zp.stat().st_size)
+    return zp
+
+
+def _template_entry(f):
+    """母版目录项：同名 .meta.json 提供口径说明；解析失败按空说明处理。"""
+    meta = f.with_suffix(".meta.json")
+    try:
+        m = json.loads(meta.read_text(encoding="utf-8")) if meta.exists() else {}
+    except Exception:
+        m = {}
+    return {"name": f.stem, "file": str(f), "note": m.get("note", ""),
+            "mapping": m.get("mapping", {})}
+
+
+def _list_templates():
+    """M9/FR-2.8：母版目录（xlsx + meta.json 口径说明），内置母版固定排在首位。"""
+    tdir = APP_DATA / DIR_TEMPLATES
+    os.makedirs(tdir, exist_ok=True)
+    out = [_template_entry(f) for f in sorted(tdir.glob("*.xlsx"))]
+    out.insert(0, {"name": "默认母版", "file": str(g.TPL), "note": "内置母版（原始布局）", "mapping": {}})
     return out
 
 
@@ -1104,44 +1255,13 @@ class Handler(BaseHTTPRequestHandler):
                 return self._json(503, {"ok": False, "msg": "规则表不可用（已回退内置识别链）"})
             return self._json(200, RULES.list_rules())
         if u.path == "/api/templates":
-                # M9/FR-2.8：母版目录（xlsx + meta.json 口径说明）
-                tdir = APP_DATA / "templates"
-                os.makedirs(tdir, exist_ok=True)
-                out = []
-                for f in sorted(tdir.glob("*.xlsx")):
-                    meta = f.with_suffix(".meta.json")
-                    m = json.loads(meta.read_text(encoding="utf-8")) if meta.exists() else {}
-                    out.append({"name": f.stem, "file": str(f), "note": m.get("note", ""),
-                                "mapping": m.get("mapping", {})})
-                out.insert(0, {"name": "默认母版", "file": str(g.TPL), "note": "内置母版（原始布局）", "mapping": {}})
-                return self._json(200, {"ok": True, "templates": out})
+            # M9/FR-2.8：母版目录（xlsx + meta.json 口径说明）
+            return self._json(200, {"ok": True, "templates": _list_templates()})
         if u.path == "/api/diag":
             # M8/FR-5.4：一键诊断包（日志近7天 + 脱敏配置 + 版本信息；不含 uploads/generated）
             # 注：T01481 评估过加 TTL 缓存（P1-3），但诊断包按需即时生成是产品语义
             # （用户点一次就应拿到当下快照），不为此做语义妥协。
-            import zipfile
-            os.makedirs(APP_DATA / "diag", exist_ok=True)
-            zp = APP_DATA / "diag" / f"diag_{time.strftime('%Y%m%d-%H%M%S')}.zip"
-            with zipfile.ZipFile(zp, "w", zipfile.ZIP_DEFLATED) as z:
-                lj = APP_DATA / "logs" / "server.jsonl"
-                if lj.exists():
-                    z.write(lj, "logs/server.jsonl")
-                for n in ("recognition_rules.json", "rates_versions.json", "schema_ver"):
-                    f = APP_DATA / n
-                    if f.exists():
-                        try:
-                            txt = f.read_text(encoding="utf-8")
-                            z.writestr(f"config/{n}", txt)   # 无密钥字段，原样归档
-                        except Exception:
-                            pass
-                z.writestr("version.json", json.dumps({
-                    "app": "workload-estimate", "schema_ver": SCHEMA_VER,
-                    "python": sys.version.split()[0],
-                    "routes": ["/api/health", "/api/recognize", "/api/generate", "/api/history",
-                               "/api/rules", "/api/rates", "/api/config", "/api/diag",
-                               "/api/data/export"]}, ensure_ascii=False, indent=1))
-            SLOG.info("diag", "export", size=zp.stat().st_size)
-            return self._json(200, {"ok": True, "file": str(zp)})
+            return self._json(200, {"ok": True, "file": str(_build_diag_zip())})
         if u.path == "/api/data/export":
             # M8/FR-5.6：导出全部数据（pert.db + json + schema_ver）
             import zipfile
@@ -1208,8 +1328,8 @@ class Handler(BaseHTTPRequestHandler):
             key = cfg["llm"].get("key") or ""
             try:
                 if api and key:
-                    url = chat_completions_url(api).replace("/chat/completions", "/models")
-                    req = Request(url, method="GET", headers={"Authorization": "Bearer " + key})
+                    url = chat_completions_url(api).replace(CHAT_SUFFIX, "/models")
+                    req = Request(url, method="GET", headers={"Authorization": AUTH_BEARER + key})
                     with urlopen(req, timeout=15) as r:
                         data = json.loads(r.read().decode("utf-8"))
                     ids = [m.get("id") for m in data.get("data", []) if m.get("id")]
@@ -1280,7 +1400,7 @@ class Handler(BaseHTTPRequestHandler):
                 except V.VErr as e:
                     SLOG.warn("api", "validate_fail", path=u.path, field=e.field)
                     return self._json(400, {"ok": False, "msg": e.msg, "field": e.field})
-                name = payload.get("name", "req.docx")
+                name = payload.get("name", UPLOAD_FALLBACK_NAME)
                 b64 = payload.get("b64", "")
                 src = _upload_path(name)
                 src.write_bytes(base64.b64decode(b64))
@@ -1347,7 +1467,7 @@ class Handler(BaseHTTPRequestHandler):
                 name, b64, note, mapping = pl.get("name"), pl.get("b64"), pl.get("note", ""), pl.get("mapping", {})
                 if not name or not re.fullmatch(r"[\w一-鿿-]{1,40}", name):
                     return self._json(400, {"ok": False, "msg": "母版名称非法", "field": "name"})
-                tdir = APP_DATA / "templates"
+                tdir = APP_DATA / DIR_TEMPLATES
                 os.makedirs(tdir, exist_ok=True)
                 (tdir / f"{name}.xlsx").write_bytes(base64.b64decode(b64))
                 (tdir / f"{name}.meta.json").write_text(
@@ -1479,7 +1599,7 @@ class Handler(BaseHTTPRequestHandler):
                 t0 = time.time()
                 try:
                     req = Request(url, data=body, method="POST", headers={
-                        "Content-Type": "application/json", "Authorization": "Bearer " + key})
+                        "Content-Type": "application/json", "Authorization": AUTH_BEARER + key})
                     with urlopen(req, timeout=20) as r:
                         resp = json.loads(r.read().decode("utf-8"))
                     dt = round(time.time() - t0, 2)
@@ -1692,7 +1812,7 @@ class Handler(BaseHTTPRequestHandler):
                 llm_ready = bool(llm_on and saved.get("api") and saved.get("key"))
                 excerpt = None
                 src_path = None
-                fname = payload.get("name", "req.docx")
+                fname = payload.get("name", UPLOAD_FALLBACK_NAME)
                 if text:
                     excerpt = text  # 自由文本直取
                 elif b64:

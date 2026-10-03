@@ -128,9 +128,16 @@ const goDisabled = await ev(`document.querySelector('#goRes').disabled`);
 check('键盘 Space 可全选确认', okCnt !== '0' && goDisabled === false, `okCnt=${okCnt} goRes.disabled=${goDisabled}`);
 
 // 生成：键盘 Enter
+// 防回归（T01501 实施中踩过）：按钮的 click 由 Enter keydown 的默认行为合成，
+// 若全局键盘处理器在按钮聚焦时无条件 preventDefault，click 会被吞掉 ——
+// 表现为「聚焦生成按钮按 Enter 无反应、永远进不了结果页」，但页面无任何异常。
+// 故此处必须用真实 Enter 事件验证，不能改成 .click() 绕过。
 await focusEl('#goRes');
 await key('Enter');
-if (!(await waitStep('result', 150))) throw new Error('键盘触发生成后未进入结果页');
+if (!(await waitStep('result', 150))) {
+  const dbg = await ev(`JSON.stringify({step:document.body.dataset.step,disabled:document.querySelector('#goRes').disabled,prog:(document.querySelector('#genProgTxt')||{}).textContent||''})`);
+  throw new Error('键盘触发生成后未进入结果页 ' + dbg);
+}
 check('键盘可完成「复核→生成→结果页」', true, `sid=${await ev('gSid')}`);
 
 // 导出：展开导出菜单并聚焦 CSV 项，Enter 触发
