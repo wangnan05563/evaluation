@@ -44,6 +44,9 @@ F_TEMPLATE = "template.xlsx"        # 内置母版
 UPLOAD_FALLBACK_NAME = "req.docx"    # 上传请求未带文件名时的占位名（原内联 3 处）
 F_RECOGNITION_RULES = "recognition_rules.json"   # 识别规则表
 F_RATES_VERSIONS = "rates_versions.json"         # 费率版本表
+DIR_I18N = "i18n"                     # 界面文案字典目录（相对 APP_DATA）
+I18N_DEFAULT_LANG = "zh-CN"           # 默认语言；未带 lang 或不支持时回落
+I18N_SUPPORTED = ("zh-CN", "en-US")   # 支持的语言白名单（防目录穿越，见 /api/i18n）
 F_SCHEMA_VER = "schema_ver"                      # schema 版本标记（由 datakeeper 读写）
 DIR_TEMPLATES = "templates"         # 自定义母版目录（相对 APP_DATA）
 CHAT_SUFFIX = "/chat/completions"   # OpenAI 兼容端点后缀
@@ -198,6 +201,76 @@ try:
 except Exception as e:
     RATES = None
     print(f"[rates] 初始化失败: {type(e).__name__}: {e}", flush=True)
+
+# 界面文案字典（FR-5.5）：data/i18n/{lang}.json 外置，不发版可补翻译。
+# 为什么不走 /static/：该路由白名单只放行 .js/.css 且显式禁子路径（防目录穿越），
+# 放行 .json 会扩大攻击面，故单独走 /api/i18n 的 _json() 通道。
+def _i18n_lang(lang):
+    """把外部传入的 lang 收敛为白名单内的值。
+
+    双重用途：既决定读哪个字典，也作为响应里回显的 lang——
+    不可直接把原始入参回显（`?lang=../../config` 会原样出现在响应中，
+    虽读不到文件但属反射型瑕疵，也会让前端误判当前语言）。
+    """
+    return lang if lang in I18N_SUPPORTED else I18N_DEFAULT_LANG
+
+
+def _i18n_path(lang):
+    """返回字典路径；lang 已在 _i18n_lang 收敛为白名单值，此处只做路径二次确认。"""
+    p = (APP_DATA / DIR_I18N / f"{_i18n_lang(lang)}.json").resolve()
+    # 双保险：白名单已挡 lang，但再确认一次路径确实位于 i18n 目录内
+    root = (APP_DATA / DIR_I18N).resolve()
+    if root not in p.parents:
+        return None
+    return p
+
+
+def _i18n_seed():
+    """首启播种内置字典：data/i18n/ 不存在时从只读资源目录拷一份。
+
+    与识别规则表/费率版本表同一套播种惯例（见 RULES/RATES 初始化）。
+
+    候选源依次尝试 _RES（打包内只读资源）与 _APP_ROOT（exe 同级）——
+    spec 的 datas 历史上只收了 frontend/tpl，若只查_RES 则冻结态下会静默落空，
+    表现为「开发模式正常、安装版翻译全失效」。多试一个来源即覆盖两种形态。
+    用户后续自行编辑的字典不会被覆盖（仅在目标文件缺失时拷贝）。
+    """
+    dst_dir = APP_DATA / DIR_I18N
+    try:
+        if not dst_dir.exists():
+            dst_dir.mkdir(parents=True, exist_ok=True)
+        for lang in I18N_SUPPORTED:
+            dst = dst_dir / f"{lang}.json"
+            if dst.exists():
+                continue
+            for base in (_RES, _APP_ROOT):
+                src = base / "data" / DIR_I18N / f"{lang}.json"
+                if src.exists():
+                    import shutil
+                    shutil.copyfile(src, dst)
+                    break
+            else:
+                print(f"[i18n] 内置字典缺失（{lang}），该语言将回退显示 key", flush=True)
+    except Exception as e:
+        print(f"[i18n] 字典播种失败（不影响启动）: {type(e).__name__}: {e}", flush=True)
+
+
+def load_i18n(lang):
+    """读界面文案字典。字典缺失返回空字典而非抛错——i18n 是增强项，
+    缺翻译时前端 t() 会回退显示 key（中文原文），不应让整个接口 500。"""
+    p = _i18n_path(lang)
+    if not p or not p.exists():
+        return {}
+    try:
+        with open(p, "rb") as f:
+            doc = json.loads(f.read().decode("utf-8-sig"))
+        return doc.get("strings") if isinstance(doc, dict) and isinstance(doc.get("strings"), dict) else {}
+    except Exception as e:
+        print(f"[i18n] 字典读取失败（{lang}）: {type(e).__name__}: {e}", flush=True)
+        return {}
+
+
+_i18n_seed()   # 启动即播种，使全新安装的实例也能取到字典
 
 # M8/FR-5.3、5.4、5.6：统一校验层 + 结构化日志 + 备份迁移
 import validators as V
@@ -1257,6 +1330,14 @@ class Handler(BaseHTTPRequestHandler):
         if u.path == "/api/templates":
             # M9/FR-2.8：母版目录（xlsx + meta.json 口径说明）
             return self._json(200, {"ok": True, "templates": _list_templates()})
+        if u.path == "/api/i18n":
+            # FR-5.5：界面文案字典。lang 收敛为白名单值，不接受任意文件名，
+            # 响应中的 lang 也用收敛后的值（不回显原始入参）。
+            # 字典缺失仍返 200 + 空 strings：前端 t() 回退显示 key（中文原文），
+            # 属可降级增强项，不该让页面因缺翻译而报错。
+            q = parse_qs(u.query)
+            lang = _i18n_lang((q.get("lang") or [I18N_DEFAULT_LANG])[0])
+            return self._json(200, {"ok": True, "lang": lang, "strings": load_i18n(lang)})
         if u.path == "/api/diag":
             # M8/FR-5.4：一键诊断包（日志近7天 + 脱敏配置 + 版本信息；不含 uploads/generated）
             # 注：T01481 评估过加 TTL 缓存（P1-3），但诊断包按需即时生成是产品语义

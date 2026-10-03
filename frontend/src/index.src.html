@@ -14,40 +14,40 @@
 <body data-page="work" data-step="upload" data-pertstep="in">
 <div class="wrap">
   <header class="top">
-    <div class="brand"><i aria-hidden="true" data-lucide="chart-spline" class="lic"></i><div><h1>工作量评估助手</h1></div></div>
+    <div class="brand"><i aria-hidden="true" data-lucide="chart-spline" class="lic"></i><div><h1 data-i18n="app.title">工作量评估助手</h1></div></div>
     <nav class="menu">
-      <button class="m-item on" id="mi-work" data-page="work" onclick="goPage('work')"><i aria-hidden="true" data-lucide="calculator" class="lic"></i><span class="lbl">IFPUG 估算</span><span class="tip">上传需求 → 审核功能点 → 生成成品造价表</span></button>
-      <button class="m-item" id="mi-pert" data-page="pert" onclick="goPage('pert')"><i aria-hidden="true" data-lucide="activity" class="lic"></i><span class="lbl">PERT 估算</span><span class="tip">三点估算，输入乐观/最可能/悲观自动算预期</span></button>
-      <button class="m-item" id="mi-fast" data-page="fast" onclick="goPage('fast')"><i aria-hidden="true" data-lucide="zap" class="lic"></i><span class="lbl">快速估算</span><span class="tip">NESMA 预估/估算法，数 ILF/EIF 即出规模与费用（FR-2.1）</span></button>
-      <button class="m-item" id="mi-config" data-page="config" onclick="goPage('config')"><i aria-hidden="true" data-lucide="settings" class="lic"></i><span class="lbl">配置中心</span><span class="tip">大模型识别增强、连接测试与模型管理</span></button>
-      <button class="m-item" id="mi-help" data-page="help" onclick="goPage('help')"><i aria-hidden="true" data-lucide="book-open" class="lic"></i><span class="lbl">帮助文档</span><span class="tip">评估方法论与计算算法说明</span></button>
+      <button class="m-item on" id="mi-work" data-page="work" onclick="goPage('work')"><i aria-hidden="true" data-lucide="calculator" class="lic"></i><span class="lbl" data-i18n="nav.work">IFPUG 估算</span><span class="tip" data-i18n="nav.work.tip">上传需求 → 审核功能点 → 生成成品造价表</span></button>
+      <button class="m-item" id="mi-pert" data-page="pert" onclick="goPage('pert')"><i aria-hidden="true" data-lucide="activity" class="lic"></i><span class="lbl" data-i18n="nav.pert">PERT 估算</span><span class="tip" data-i18n="nav.pert.tip">三点估算，输入乐观/最可能/悲观自动算预期</span></button>
+      <button class="m-item" id="mi-fast" data-page="fast" onclick="goPage('fast')"><i aria-hidden="true" data-lucide="zap" class="lic"></i><span class="lbl" data-i18n="nav.fast">快速估算</span><span class="tip" data-i18n="nav.fast.tip">NESMA 预估/估算法，数 ILF/EIF 即出规模与费用（FR-2.1）</span></button>
+      <button class="m-item" id="mi-config" data-page="config" onclick="goPage('config')"><i aria-hidden="true" data-lucide="settings" class="lic"></i><span class="lbl" data-i18n="nav.config">配置中心</span><span class="tip" data-i18n="nav.config.tip">大模型识别增强、连接测试与模型管理</span></button>
+      <button class="m-item" id="mi-help" data-page="help" onclick="goPage('help')"><i aria-hidden="true" data-lucide="book-open" class="lic"></i><span class="lbl" data-i18n="nav.help">帮助文档</span><span class="tip" data-i18n="nav.help.tip">评估方法论与计算算法说明</span></button>
     </nav>
   </header>
 
   <!-- ============ 页面一：工作量估算 ============ -->
   <main class="page" id="pg-work">
   <!-- 副标题参照 PERT 页布局：置于步骤导航栏正上方（T00390） -->
-  <div class="card-title" style="margin-bottom:14px"><i aria-hidden="true" data-lucide="calculator"></i>IFPUG 估算 <span style="font-size:12px;color:var(--muted);font-weight:400">需求文档 → IFPUG 功能点 → 成品造价表（引擎直连）</span><span style="flex:1"></span><button class="btn btn-ghost" onclick="histOpen()" title="查看历史估算：重开 / 另存为 / 删除"><i aria-hidden="true" data-lucide="history" style="width:15px;height:15px"></i>历史估算</button></div>
+  <div class="card-title" style="margin-bottom:14px"><i aria-hidden="true" data-lucide="calculator"></i><span data-i18n="nav.work">IFPUG 估算</span> <span style="font-size:12px;color:var(--muted);font-weight:400" data-i18n="work.subtitle">需求文档 → IFPUG 功能点 → 成品造价表（引擎直连）</span><span style="flex:1"></span><button class="btn btn-ghost" onclick="histOpen()" data-i18n="title=work.history.title" title="查看历史估算：重开 / 另存为 / 删除"><i aria-hidden="true" data-lucide="history" style="width:15px;height:15px"></i><span data-i18n="work.history">历史估算</span></button></div>
   <div class="mark" id="restoreBar" style="display:none;margin:-6px 0 10px"></div>
   <div class="steps" style="margin-bottom:18px">
-      <div class="step on" id="st1" role="button" tabindex="0" onclick="goStepNav('upload')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();goStepNav('upload')}" title="返回上传需求"><span class="n">1</span><span>上传需求</span></div><div class="sep"></div>
-      <div class="step" id="st2" role="button" tabindex="0" onclick="goStepNav('review')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();goStepNav('review')}" title="前往审核功能点"><span class="n">2</span><span>审核功能点</span></div><div class="sep"></div>
-      <div class="step" id="st3" role="button" tabindex="0" onclick="goStepNav('result')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();goStepNav('result')}" title="前往结果与下载"><span class="n">3</span><span>结果与下载</span></div>
+      <div class="step on" id="st1" role="button" tabindex="0" onclick="goStepNav('upload')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();goStepNav('upload')}" data-i18n="title=steps.upload.title" title="返回上传需求"><span class="n">1</span><span data-i18n="steps.upload">上传需求</span></div><div class="sep"></div>
+      <div class="step" id="st2" role="button" tabindex="0" onclick="goStepNav('review')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();goStepNav('review')}" data-i18n="title=steps.review.title" title="前往审核功能点"><span class="n">2</span><span data-i18n="steps.review">审核功能点</span></div><div class="sep"></div>
+      <div class="step" id="st3" role="button" tabindex="0" onclick="goStepNav('result')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();goStepNav('result')}" data-i18n="title=steps.result.title" title="前往结果与下载"><span class="n">3</span><span data-i18n="steps.result">结果与下载</span></div>
     </div>
 
   <section class="view" id="v-history">
     <div class="glass pad">
-      <div class="card-title"><i aria-hidden="true" data-lucide="history"></i>历史估算
+      <div class="card-title"><i aria-hidden="true" data-lucide="history"></i><span data-i18n="history.title">历史估算</span>
         <span style="flex:1"></span>
-        <button class="btn btn-ghost" onclick="histClose()" title="返回估算流程"><i aria-hidden="true" data-lucide="x" style="width:15px;height:15px"></i>返回</button></div>
+        <button class="btn btn-ghost" onclick="histClose()" data-i18n="title=history.back.title" title="返回估算流程"><i aria-hidden="true" data-lucide="x" style="width:15px;height:15px"></i><span data-i18n="history.back">返回</span></button></div>
       <div class="toolbar" style="margin-bottom:12px">
-        <div class="search"><i aria-hidden="true" data-lucide="search"></i><input id="histQuery" placeholder="按需求标题 / 文件名搜索…" onkeydown="if(event.key==='Enter')histSearch()"></div>
-        <button class="btn btn-ghost" onclick="histSearch()" title="搜索"><i aria-hidden="true" data-lucide="search" style="width:15px;height:15px"></i>搜索</button>
-        <button class="btn btn-primary" id="hdifBtn" disabled onclick="histDiff()" style="margin-left:8px"><i aria-hidden="true" data-lucide="git-compare" style="width:15px;height:15px"></i>对比所选（0/2）</button>
+        <div class="search"><i aria-hidden="true" data-lucide="search"></i><input id="histQuery" data-i18n-ph="history.search.ph" placeholder="按需求标题 / 文件名搜索…" onkeydown="if(event.key==='Enter')histSearch()"></div>
+        <button class="btn btn-ghost" onclick="histSearch()" data-i18n="title=history.search.title" title="搜索"><i aria-hidden="true" data-lucide="search" style="width:15px;height:15px"></i><span data-i18n="history.search">搜索</span></button>
+        <button class="btn btn-primary" id="hdifBtn" disabled onclick="histDiff()" style="margin-left:8px"><i aria-hidden="true" data-lucide="git-compare" style="width:15px;height:15px"></i><span data-i18n="history.compare">对比所选（0/2）</span></button>
       </div>
       <table>
-        <thead><tr><th style="width:34px"><input type="checkbox" id="hdifAll" onchange="histDiffAll(this.checked)" title="清空选择"></th><th>时间</th><th>需求标题</th><th>功能点</th><th>US 合计</th><th>操作</th></tr></thead>
-        <tbody id="histRows"><tr><td colspan="6" style="color:var(--muted)">加载中…</td></tr></tbody>
+        <thead><tr><th style="width:34px"><input type="checkbox" id="hdifAll" onchange="histDiffAll(this.checked)" data-i18n="title=history.clearSel" title="清空选择"></th><th data-i18n="history.col.time">时间</th><th data-i18n="history.col.title">需求标题</th><th data-i18n="history.col.fp">功能点</th><th data-i18n="history.col.us">US 合计</th><th data-i18n="history.col.action">操作</th></tr></thead>
+        <tbody id="histRows"><tr><td colspan="6" style="color:var(--muted)" data-i18n="common.loading">加载中…</td></tr></tbody>
       </table>
       <div class="cfg-note" style="margin-top:12px">
         <i aria-hidden="true" data-lucide="info" style="width:14px;height:14px;vertical-align:-2px;color:var(--brand)"></i>
@@ -327,15 +327,20 @@
     </div>
 
     <div class="glass pad" style="margin-top:16px">
-      <div class="card-title"><i aria-hidden="true" data-lucide="palette"></i>外观（M5/FR-4.1-4.3）</div>
-      <div class="cfg-row"><span>主题模式</span>
+      <div class="card-title"><i aria-hidden="true" data-lucide="palette"></i><span data-i18n="appearance.title">外观（M5/FR-4.1-4.3）</span></div>
+      <div class="cfg-row"><span data-i18n="appearance.theme">主题模式</span>
         <span id="themeSeg">
-          <button class="btn btn-ghost tm" data-m="light" onclick="setThemeMode('light')">亮色</button>
-          <button class="btn btn-ghost tm" data-m="dark" onclick="setThemeMode('dark')">暗色</button>
-          <button class="btn btn-ghost tm" data-m="contrast" onclick="setThemeMode('contrast')">高对比</button>
-          <button class="btn btn-ghost tm" data-m="system" onclick="setThemeMode('system')">跟随系统</button>
+          <button class="btn btn-ghost tm" data-m="light" onclick="setThemeMode('light')" data-i18n="theme.light">亮色</button>
+          <button class="btn btn-ghost tm" data-m="dark" onclick="setThemeMode('dark')" data-i18n="theme.dark">暗色</button>
+          <button class="btn btn-ghost tm" data-m="contrast" onclick="setThemeMode('contrast')" data-i18n="theme.contrast">高对比</button>
+          <button class="btn btn-ghost tm" data-m="system" onclick="setThemeMode('system')" data-i18n="theme.system">跟随系统</button>
         </span></div>
-      <div class="cfg-row"><span>主色（改一处全局生效，导出表头同步）</span>
+      <div class="cfg-row"><span data-i18n="appearance.lang">界面语言（FR-5.5）</span>
+        <span id="langSeg">
+          <button class="btn btn-ghost lm" data-l="zh-CN" onclick="setLang('zh-CN')" data-i18n="lang.zh">简体中文</button>
+          <button class="btn btn-ghost lm" data-l="en-US" onclick="setLang('en-US')" data-i18n="lang.en">English</button>
+        </span></div>
+      <div class="cfg-row"><span data-i18n="appearance.brand">主色（改一处全局生效，导出表头同步）</span>
         <span style="display:flex;gap:6px;align-items:center">
           <span id="brandPresets"></span>
           <input id="brandCustom" placeholder="#RRGGBB" style="width:90px;font-family:monospace" onchange="setBrand(this.value)">

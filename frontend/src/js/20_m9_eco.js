@@ -63,11 +63,75 @@ async function tplUpload(inp){const f=inp.files&&inp.files[0];if(!f)return;
   if(!r.ok){toast("上传失败："+r.msg);return;}
   tplPick(name);await tplLoad();toast(`母版「${name}」已接入（列映射请对照口径说明人工核对首件）`);
   inp.value="";}
-/* FR-5.5：i18n 骨架（t(key) 查表；zh-CN 全量由构建校验，en-US 骨架后续补） */
-let __I18N=null;
-async function i18nLoad(){
-  if(__I18N)return __I18N;
-  try{__I18N=await(await fetch("/static/i18n/zh-CN.json")).json();}catch(e){__I18N={};}
-  return __I18N;}
-function t(key){return (__I18N&&__I18N[key])||key;}
-window.addEventListener("DOMContentLoaded",()=>{i18nLoad();tplLoad();});
+/* FR-5.5：界面多语言。字典经 /api/i18n?lang= 读取（不走 /static/ ——该路由
+   白名单只放行 .js/.css 且禁子路径，放行 .json 会扩大目录穿越面）。
+   t(key) 缺译文时回退显示 key 本身（key 即中文原文），故未配置语言也不会白屏。 */
+const I18N_DEFAULT = "zh-CN";
+let __I18N = null;          // 当前语言字典 {key: 文案}
+let __I18N_LANG = "";
+async function i18nLoad(lang){
+  lang = lang || localStorage.getItem("wl_lang") || I18N_DEFAULT;
+  if(__I18N && __I18N_LANG === lang) return __I18N;
+  try{
+    const r = await(await fetch(API + "/api/i18n?lang=" + encodeURIComponent(lang), {cache:"no-store"})).json();
+    __I18N = (r && r.ok && r.strings) ? r.strings : {};
+  }catch(e){ __I18N = {}; }   // 字典服务不可用：回退显示 key，不阻塞页面
+  __I18N_LANG = lang;
+  return __I18N;
+}
+function t(key){ return (__I18N && __I18N[key]) || key; }
+/** 切换语言：落盘 → 重载字典 → 重刷 data-i18n 标注的节点 */
+async function setLang(lang){
+  if(!lang || lang === __I18N_LANG) return;
+  localStorage.setItem("wl_lang", lang);
+  await i18nLoad(lang);
+  applyI18n();
+  document.documentElement.lang = lang;
+  if(typeof langSegPaint === "function") langSegPaint();
+  toast(t("common.langSwitched"));
+}
+/* data-i18n 机制：把文案与结构解耦，避免为每种语言复制一份 DOM。
+   - <span data-i18n="key">替换文本内容
+   - <span data-i18n="text=key">    同上（显式形态）
+   - <div  data-i18n="title=key">   只替换 title 属性，不动子节点
+   - <div  data-i18n="title=key|text=key">  两者都换
+   - <input data-i18n-ph="key">     替换 placeholder
+
+   两条硬约束（均由S12 实测暴露后加固）：
+   1) 带 attr= 形态的节点常含子元素（图标、嵌套 span）。若把裸 key 当文本替换，
+      textContent 赋值会摧毁这些子节点——故裸 key 只在「无子元素」时才写文本，
+      有子元素则跳过并 console.warn 提示改用 attr= 形态。
+   2) key 是语义化的英文标识（如 app.title），t() 的回退值就是key 本身。
+      若缺译文时写入 key，用户会直接看到 "app.title" 这类内部标识——
+      故缺译文时**一律不动 DOM**，保留服务端渲染的中文原文。
+      只有 applyI18n 才改 DOM，且必须 t(key) 命中才改。 */
+function applyI18n(root){
+  const scope = root || document;
+  scope.querySelectorAll("[data-i18n]").forEach(el => {
+    const spec = el.getAttribute("data-i18n") || "";
+    // 先确认该 key 在当前字典里有译文，再决定是否动 DOM（属性/文本统一口径）
+    const parts = spec.split("|").map(p => (p.includes("=") ? p.split("=") : [null, p]));
+    if (parts.some(([, k]) => k && k.trim() && !__I18N?.[k.trim()])) return;   // 缺译文：原样保留
+    parts.forEach(([attr, key]) => {
+      if(!key) return;
+      const v = t(key.trim());
+      if(!v) return;
+      if(attr === null){
+        if(el.children.length === 0){ el.textContent = v; }
+        else { console.warn("[i18n] 跳过含子元素的裸 key（会摧毁 DOM），请改用 attr= 形态:", key.trim()); }
+      }else{
+        el.setAttribute(attr.trim(), v);
+      }
+    });
+  });
+  scope.querySelectorAll("[data-i18n-ph]").forEach(el => {
+    const key = el.getAttribute("data-i18n-ph");
+    if(!__I18N?.[key]) return;              // 缺译文：保留原 placeholder
+    el.setAttribute("placeholder", t(key));
+  });
+}
+window.addEventListener("DOMContentLoaded",async ()=>{
+  await i18nLoad();          // 字典就绪后再刷文案，避免首屏闪中文
+  applyI18n();
+  tplLoad();
+});

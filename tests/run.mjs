@@ -1,8 +1,10 @@
 #!/usr/bin/env node
 /** M4/FR-5.2 编排器：npm test 一条命令跑核心链路自动化测试。
  *  用法：npm test [-- --only=S1,S3] [-- --with-flaky]
- *  套件：S1/S2/S10 单测(python) · S3 API 冒烟(隔离实例) · S4/S5/S7/S8/S9/S11 UI 冒烟(CDP+无头 Chrome) · S6 flaky(默认 skip)。
- *  另有独立 WCAG 对比度审计：python tests/a11y_contrast.py（FR-UI05，非 npm test 套件）。 */
+ *  套件：S1/S2/S10 单测(python) · S3 API 冒烟(隔离实例) · S4/S5/S7/S8/S9/S11/S12 UI 冒烟(CDP+无头 Chrome) · S6 flaky(默认 skip)。
+ *  另有独立 WCAG 对比度审计：python tests/a11y_contrast.py（FR-UI05，非 npm test 套件）。
+ *  ⚠ 须用带依赖的解释器：PYTHON="/f/Program Files/Python3.14/python" npm test
+ *    （默认 python 缺 openpyxl，会导致 S3~S12 全部「API 实例未就绪」假失败）。 */
 import { spawn, spawnSync } from 'node:child_process';
 import net from 'node:net';
 import fs from 'node:fs';
@@ -81,6 +83,7 @@ const suites = [
   { id: 'S9', title: 'UI 键盘可完成主链路（FR-UI05）', kind: 'ui', script: 'tests/ui_a11y_keyboard.mjs' },
   { id: 'S10', title: '命令行/无人值守模式（FR-FE10）', kind: 'py', script: 'tests/unit_cli.py' },
   { id: 'S11', title: 'UI 动效/骨架屏/空态插画（FR-UI04/UI07）', kind: 'ui', script: 'tests/ui_motion.mjs' },
+  { id: 'S12', title: 'UI 界面多语言（FR-5.5）', kind: 'ui', script: 'tests/ui_i18n.mjs' },
 ];
 
 let server = null, chrome = null;

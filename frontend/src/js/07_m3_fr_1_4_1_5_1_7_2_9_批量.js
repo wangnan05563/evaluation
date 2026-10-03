@@ -125,7 +125,16 @@ function brandPaint(){const cur=localStorage.getItem('wl_brand')||'#2563EB';
     style="width:24px;height:24px;border-radius:50%;border:2px solid ${hex===cur?'var(--ink)':'transparent'};background:${hex};cursor:pointer"></button>`).join('');
   const inp=document.getElementById('brandCustom');if(inp)inp.value=cur;
   const pick=document.getElementById('brandPick');if(pick)pick.value=cur;}
-window.addEventListener('DOMContentLoaded',()=>{themeSegPaint();brandPaint();});
+window.addEventListener('DOMContentLoaded',()=>{themeSegPaint();brandPaint();langSegPaint();});
+/* FR-5.5：语言切换选中态（与 themeSegPaint 同一套内联样式口径，不另立CSS 规则）。
+   读取实际生效语言而非 localStorage 原值：字典加载失败时会回退默认语言，
+   此时若仍高亮用户所选的那项会误导（界面实际没切成那个语言）。 */
+function langSegPaint(){
+  const cur=(typeof __I18N_LANG!=='undefined'&&__I18N_LANG)||localStorage.getItem('wl_lang')||'zh-CN';
+  document.querySelectorAll('#langSeg .lm').forEach(b=>{const on=b.dataset.l===cur;
+    b.style.borderColor=on?'var(--brand)':'var(--line)';b.style.color=on?'var(--brand)':'var(--ink-2)';
+    b.style.fontWeight=on?'700':'500';});
+}
 
 /* M8/FR-5.4、5.6：诊断包与数据导出导入 */
 async function diagExport(){try{
