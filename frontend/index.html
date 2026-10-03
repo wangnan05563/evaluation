@@ -27,15 +27,19 @@ lucide.createIcons({icons});\``);if(typeof document>"u")throw new Error("`create
 </script>
 <style>
 :root{
-  --bg:#F4F6FA; --card:#FFFFFF; --ink:#1F2937; --ink-2:#374151; --muted:#6B7280; --line:#E5E7EB; --line-2:#EEF1F6;
+  --bg:#F4F6FA; --card:#FFFFFF; --ink:#1F2937; --ink-2:#374151; --muted:#5B6472; --line:#E5E7EB; --line-2:#EEF1F6;
+  /* FR-UI05（WCAG 1.4.11）：--line 仅用于装饰性分隔（卡片/表格线/进度条），不承载控件边界；
+     控件边界改用 --line-ctrl（≥3:1），避免为达标把装饰线全加粗成「重边框」观感。 */
+  /* 取 #7C8697 而非更浅的值：需同时满足 on --card(3.68:1) 与 on --bg(3.4:1) 两种落点 */
+  --line-ctrl:#7C8697;
   --brand:#2563EB; --brand-ink:#1D4ED8; --brand-soft:#EFF4FF; --cyan:#0EA5E9;
-  --ok:#16A34A; --ok-soft:#ECFDF3; --warn:#D97706; --warn-soft:#FFF7ED; --danger:#DC2626;
+  --ok:#15803D; --ok-soft:#ECFDF3; --warn:#B45309; --warn-soft:#FFF7ED; --danger:#C81E1E;
   /* M5/FR-3.1：语义令牌补全（徽章/告警/表面/类别色板/图表） */
   --ok-ink:#166534; --ok-border:#D1FADF; --warn-ink:#92400E; --warn-border:#FDE8C8; --danger-soft:#FEF2F2;
-  --surface-2:#FAFBFC; --drop-line:#CBD5E1; --switch-track:#D9DEE9; --on-brand:#FFFFFF; --danger-ink:#B91C1C;
+  --surface-2:#FAFBFC; --drop-line:#7C8697; --switch-track:#D9DEE9; --on-brand:#FFFFFF; --danger-ink:#B91C1C;
   --cat-ilf-bg:#DEEBFF; --cat-ilf-ink:#1D4ED8; --cat-eif-bg:#E7ECF7; --cat-eif-ink:#4B5878;
-  --cat-ei-bg:#F3E8FF; --cat-ei-ink:#7E22CE; --cat-eo-bg:#FFF3E0; --cat-eo-ink:#D97706;
-  --cat-eq-bg:#E0F2FE; --cat-eq-ink:#0284C7;
+  --cat-ei-bg:#F3E8FF; --cat-ei-ink:#7E22CE; --cat-eo-bg:#FFF3E0; --cat-eo-ink:#92400E;
+  --cat-eq-bg:#E0F2FE; --cat-eq-ink:#075985;
   --chart-grid:#E5E7EB; --chart-tip-bg:#FFFFFF; --chart-tip-ink:#1F2937;
   --fs-xs:11px; --fs-sm:12px; --fs-md:14px; --fs-lg:15px; --fs-xl:18px;
   --r-lg:16px; --r-md:10px; --r-full:999px;
@@ -44,12 +48,16 @@ lucide.createIcons({icons});\``);if(typeof document>"u")throw new Error("`create
   --ff:"Inter","PingFang SC","Microsoft YaHei",system-ui,sans-serif;
 }
 [data-theme="dark"]{
-  --bg:#0F172A; --card:#1E293B; --ink:#E2E8F0; --ink-2:var(--drop-line); --muted:#94A3B8; --line:#334155; --line-2:#273449;
+  --bg:#0F172A; --card:#1E293B; --ink:#E2E8F0; --ink-2:#94A3B8; --muted:#94A3B8; --line:#334155; --line-2:#273449;
+  --line-ctrl:#64748B;
+  /* FR-UI05：暗色下品牌色必须提亮，否则浅色底的 #2563EB 在深色 card 上仅 2.83:1（远低于 4.5）。
+     此前暗色块完全未覆盖 --brand/--brand-ink，是本次审计最严重的一处缺失。 */
+  --brand:#60A5FA; --brand-ink:#93C5FD; --on-brand:#0F172A;
   --brand-soft:#1E3A5F; --cyan:#38BDF8;
   --ok:#4ADE80; --ok-soft:#14321F; --ok-ink:#86EFAC; --ok-border:#1F5133;
   --warn:#FBBF24; --warn-soft:#33230A; --warn-ink:#FCD34D; --warn-border:#4A3510; --danger:#F87171; --danger-soft:#3B1212;
-  --surface-2:#172033; --drop-line:#475569; --switch-track:#475569; --danger-ink:#FCA5A5;
-  --cat-ilf-bg:#1E3A5F; --cat-ilf-ink:#93C5FD; --cat-eif-bg:#273449; --cat-eif-ink:var(--drop-line);
+  --surface-2:#172033; --drop-line:#64748B; --switch-track:#475569; --danger-ink:#FCA5A5;
+  --cat-ilf-bg:#1E3A5F; --cat-ilf-ink:#93C5FD; --cat-eif-bg:#273449; --cat-eif-ink:#CBD5E1;
   --cat-ei-bg:#3B2154; --cat-ei-ink:#D8B4FE; --cat-eo-bg:#3B2A0F; --cat-eo-ink:#FCD34D;
   --cat-eq-bg:#0C3A54; --cat-eq-ink:#7DD3FC;
   --chart-grid:#334155; --chart-tip-bg:#1E293B; --chart-tip-ink:#E2E8F0;
@@ -58,10 +66,16 @@ lucide.createIcons({icons});\``);if(typeof document>"u")throw new Error("`create
 }
 [data-theme="contrast"]{
   --bg:#000000; --card:#000000; --ink:#FFFFFF; --ink-2:#FFFFFF; --muted:#E0E0E0; --line:#FFFFFF; --line-2:#FFFFFF;
+  --line-ctrl:#FFFFFF;
   --brand:#FFFF00; --brand-ink:#FFFF00; --brand-soft:#1A1A00; --cyan:#00FFFF;
   --ok:#00FF00; --ok-soft:#001A00; --ok-ink:#00FF00; --ok-border:#00FF00;
   --warn:#FFFF00; --warn-soft:#1A1A00; --warn-ink:#FFFF00; --warn-border:#FFFF00; --danger:#FF6666; --danger-soft:#1A0000;
-  --surface-2:#000000; --drop-line:#FFFFFF; --switch-track:#FFFFFF; --on-brand:#000000;
+  --danger-ink:#FF8A8A; --on-brand:#000000;
+  --surface-2:#000000; --drop-line:#FFFFFF; --switch-track:#FFFFFF;
+  /* 高对比模式此前未覆盖类别色板，浅色徽标（#FFF3E0 等）在黑底上反而对比不足 */
+  --cat-ilf-bg:#001A33; --cat-ilf-ink:#66B2FF; --cat-eif-bg:#1A1A1A; --cat-eif-ink:#FFFFFF;
+  --cat-ei-bg:#2A0033; --cat-ei-ink:#E0B0FF; --cat-eo-bg:#2A1A00; --cat-eo-ink:#FFD966;
+  --cat-eq-bg:#002033; --cat-eq-ink:#66D9FF;
   --chart-grid:#FFFFFF; --chart-tip-bg:#000000; --chart-tip-ink:#FFFFFF;
 }
 *{box-sizing:border-box;margin:0;padding:0}
@@ -113,6 +127,22 @@ body[data-step="upload"] #v-upload,body[data-step="review"] #v-review,body[data-
 #histDiff table{width:100%;border-collapse:collapse;margin-top:6px}
 #histDiff th,#histDiff td{border-bottom:1px solid var(--line);padding:8px 10px;text-align:left;vertical-align:top;font-size:13px}
 #histDiff th{color:var(--muted);font-weight:600;background:var(--line-2)}
+
+/* ===== FR-UI05：可访问性补充 =====
+ * 1) 键盘可达性：以下自定义控件原为 div/span + click（SonarQube Web:S6848
+ *    交互元素键盘等价 / Web:S6819 原生语义标签），已补 role+tabindex+keydown。
+ *    :focus-visible 已有全局 2px 品牌色焦点环，这里补 hover/focus 态一致性与
+ *    高对比主题下的焦点环兜底（品牌色在部分背景上需加 outline-offset 区分）。
+ * 2) 焦点环本身须满足 WCAG 2.4.11/1.4.11（≥3:1），暗色下 --brand 已提亮至
+ *    5.75:1（见 :root 注释），此处不重复覆盖颜色，仅保证偏移与不遮挡。 */
+.step:focus-visible,.tnode:focus-visible,.drop:focus-visible,
+.switch:focus-visible,.sortable:focus-visible,.model-chip:focus-visible,
+#pertDrop:focus-visible{outline:2px solid var(--brand);outline-offset:2px;border-radius:var(--r-md)}
+/* 键盘聚焦时与 hover 同等提示，避免「鼠标用户看得出、键盘用户看不出焦点在哪」 */
+.step:focus-visible,.tnode:focus-visible,.model-chip:focus-visible{background:var(--brand-soft)}
+.drop:focus-visible,#pertDrop:focus-visible{border-color:var(--brand)}
+/* 开关用 role=switch，状态由 aria-checked 播报；此处仅做视觉兜底 */
+.switch:focus-visible{outline-offset:3px}
 
 @media print{
   .menu,.steps,.btn,.toolbar,.up-grid,.exp-wrap,.mark,#restoreBar,.card-title .btn{display:none!important}
@@ -329,9 +359,9 @@ tr.rowr.showb .basis{display:block}
   <div class="card-title" style="margin-bottom:14px"><i aria-hidden="true" data-lucide="calculator"></i>IFPUG 估算 <span style="font-size:12px;color:var(--muted);font-weight:400">需求文档 → IFPUG 功能点 → 成品造价表（引擎直连）</span><span style="flex:1"></span><button class="btn btn-ghost" onclick="histOpen()" title="查看历史估算：重开 / 另存为 / 删除"><i aria-hidden="true" data-lucide="history" style="width:15px;height:15px"></i>历史估算</button></div>
   <div class="mark" id="restoreBar" style="display:none;margin:-6px 0 10px"></div>
   <div class="steps" style="margin-bottom:18px">
-      <div class="step on" id="st1" onclick="goStepNav('upload')" title="返回上传需求"><span class="n">1</span><span>上传需求</span></div><div class="sep"></div>
-      <div class="step" id="st2" onclick="goStepNav('review')" title="前往审核功能点"><span class="n">2</span><span>审核功能点</span></div><div class="sep"></div>
-      <div class="step" id="st3" onclick="goStepNav('result')" title="前往结果与下载"><span class="n">3</span><span>结果与下载</span></div>
+      <div class="step on" id="st1" role="button" tabindex="0" onclick="goStepNav('upload')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();goStepNav('upload')}" title="返回上传需求"><span class="n">1</span><span>上传需求</span></div><div class="sep"></div>
+      <div class="step" id="st2" role="button" tabindex="0" onclick="goStepNav('review')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();goStepNav('review')}" title="前往审核功能点"><span class="n">2</span><span>审核功能点</span></div><div class="sep"></div>
+      <div class="step" id="st3" role="button" tabindex="0" onclick="goStepNav('result')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();goStepNav('result')}" title="前往结果与下载"><span class="n">3</span><span>结果与下载</span></div>
     </div>
 
   <section class="view" id="v-history">
@@ -360,10 +390,10 @@ tr.rowr.showb .basis{display:block}
     <div class="up-grid">
       <div class="glass pad">
         <div class="card-title"><i aria-hidden="true" data-lucide="folder-open"></i>上传需求说明书</div>
-        <div class="drop" id="drop">
+        <div class="drop" id="drop" role="button" tabindex="0" aria-label="上传需求文档：可拖拽文件到此处，或按回车键选择文件">
           <i aria-hidden="true" data-lucide="cloud-upload" class="big"></i>
           <b>拖拽需求文档到这里，或点击选择</b>
-          <p>支持 .docx 需求说明书；上传后由本地引擎解析并生成 IFPUG 候选功能点</p>
+          <p>支持 .docx 需求说明书；上传后由本地引擎解析并生成 IFPUG 候选功能点（键盘：Tab 聚焦后按回车选择文件）</p>
           <input type="file" id="file" accept=".docx" hidden>
           <div class="filebar" id="filebar">
             <div class="f-ic"><i aria-hidden="true" data-lucide="file-text"></i></div>
@@ -420,7 +450,7 @@ tr.rowr.showb .basis{display:block}
         </div>
         <div style="overflow:auto">
         <table>
-          <thead><tr><th style="width:34px"><input type="checkbox" id="ckAll" title="全选/全不选（确认所有功能项）" onchange="toggleAllCk(this.checked)"></th><th onclick="sortBy('desc')" class="sortable" title="按描述排序">功能项描述 <span id="s-desc"></span></th><th onclick="sortBy('type')" class="sortable" title="按类型排序">计数项 · 类别 <span id="s-type"></span></th><th style="width:168px">复杂度</th><th style="width:60px">UFP</th><th style="width:86px">重用</th><th style="width:86px">修改</th><th onclick="sortBy('us')" class="sortable" title="按 US 排序" style="width:60px">US <span id="s-us"></span></th><th>状态</th></tr></thead>
+          <thead><tr><th style="width:34px"><input type="checkbox" id="ckAll" title="全选/全不选（确认所有功能项）" aria-label="全选/全不选，确认所有功能项" onchange="toggleAllCk(this.checked)"></th><th onclick="sortBy('desc')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();sortBy('desc')}" class="sortable" role="button" tabindex="0" aria-sort="none" title="按描述排序">功能项描述 <span id="s-desc"></span></th><th onclick="sortBy('type')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();sortBy('type')}" class="sortable" role="button" tabindex="0" aria-sort="none" title="按类型排序">计数项 · 类别 <span id="s-type"></span></th><th style="width:168px">复杂度</th><th style="width:60px">UFP</th><th style="width:86px">重用</th><th style="width:86px">修改</th><th onclick="sortBy('us')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();sortBy('us')}" class="sortable" role="button" tabindex="0" aria-sort="none" title="按 US 排序" style="width:60px">US <span id="s-us"></span></th><th>状态</th></tr></thead>
           <tbody id="tbody"></tbody>
         </table>
         </div>
@@ -535,7 +565,7 @@ tr.rowr.showb .basis{display:block}
         <div class="cfg-row">
           <span class="sw-label"><i aria-hidden="true" data-lucide="toggle-right" style="width:16px;height:16px;color:var(--muted)"></i>启用大模型辅助识别
           </span>
-          <span class="switch on" id="llmSwitch" data-on="1"></span>
+          <span class="switch on" id="llmSwitch" data-on="1" role="switch" tabindex="0" aria-checked="true" aria-label="启用大模型辅助识别"></span>
         </div>
         <div class="fields" style="margin-top:12px">
           <div class="fill"><div class="f-w">模型开发商（预设）</div><select id="providerSel" onchange="onProviderChange()"></select></div>
@@ -575,7 +605,7 @@ tr.rowr.showb .basis{display:block}
         配置一个项目代码目录，AI 估算工作量时会自动扫描该目录（技术栈 / 目录结构 / 依赖 / 规模），把「项目级上下文」注入提示词，使评估更贴合实际代码。
       </p>
       <div class="cfg-row">
-        <input id="ctxDir" type="text" placeholder="例如：D:\code\otherProjects\foo 或 /root/proj" style="flex:1;padding:10px 12px;border:1px solid var(--line);border-radius:var(--r-md);font-family:var(--ff);font-size:13px;outline:none">
+        <input id="ctxDir" type="text" placeholder="例如：D:\code\otherProjects\foo 或 /root/proj" style="flex:1;padding:10px 12px;border:1px solid var(--line-ctrl);border-radius:var(--r-md);font-family:var(--ff);font-size:13px;outline:none">
         <button class="btn btn-ghost" onclick="openDirPicker()" title="浏览选择目录" aria-label="浏览选择目录"><i aria-hidden="true" data-lucide="folder-search" style="width:15px;height:15px"></i></button>
         <button class="btn btn-primary" onclick="saveCtxDir()" title="保存" aria-label="保存"><i aria-hidden="true" data-lucide="save" style="width:15px;height:15px"></i></button>
         <button class="btn btn-ghost" onclick="analyzeCtx()" title="扫描分析" aria-label="扫描分析"><i aria-hidden="true" data-lucide="scan-search" style="width:15px;height:15px"></i></button>
@@ -593,7 +623,7 @@ tr.rowr.showb .basis{display:block}
         配置更新源 JSON 地址（返回 <code>{version, url, notes}</code>）。应用启动与打开帮助页时自动检测；发现新版本后在帮助页提供一键下载安装。
       </p>
       <div class="cfg-row">
-        <input id="updUrl" type="text" placeholder="例如：http://内网服务器/workload-eval/latest.json" style="flex:1;padding:10px 12px;border:1px solid var(--line);border-radius:var(--r-md);font-family:var(--ff);font-size:13px;outline:none">
+        <input id="updUrl" type="text" placeholder="例如：http://内网服务器/workload-eval/latest.json" style="flex:1;padding:10px 12px;border:1px solid var(--line-ctrl);border-radius:var(--r-md);font-family:var(--ff);font-size:13px;outline:none">
         <button class="btn btn-primary" onclick="saveUpdateUrl()" title="保存" aria-label="保存"><i aria-hidden="true" data-lucide="save" style="width:15px;height:15px"></i></button>
       </div>
       <div class="cfg-note">
@@ -891,9 +921,9 @@ tr.rowr.showb .basis{display:block}
   <main class="page" id="pg-pert">
       <div class="card-title"><i aria-hidden="true" data-lucide="activity"></i>PERT 三点估算 <span style="font-size:12px;color:var(--muted);font-weight:400">预期 = (O + 4M + P) ÷ 6　·　σ = (P − O) ÷ 6</span></div>
       <div class="steps" style="margin-bottom:18px">
-        <div class="step on" id="pst1" onclick="pertStep('in')"><span class="n">1</span><span>需求输入</span></div><div class="sep"></div>
-        <div class="step" id="pst2" onclick="pertStep('edit')"><span class="n">2</span><span>估算录入</span></div><div class="sep"></div>
-        <div class="step" id="pst3" onclick="pertStep('gen')"><span class="n">3</span><span>结果与生成</span></div>
+        <div class="step on" id="pst1" role="button" tabindex="0" onclick="pertStep('in')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();pertStep('in')}"><span class="n">1</span><span>需求输入</span></div><div class="sep"></div>
+        <div class="step" id="pst2" role="button" tabindex="0" onclick="pertStep('edit')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();pertStep('edit')}"><span class="n">2</span><span>估算录入</span></div><div class="sep"></div>
+        <div class="step" id="pst3" role="button" tabindex="0" onclick="pertStep('gen')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();pertStep('gen')}"><span class="n">3</span><span>结果与生成</span></div>
       </div>
       <!-- 步骤1：需求输入（项目 + 上传/文本） -->
       <section class="view" id="pv-in">
@@ -901,30 +931,30 @@ tr.rowr.showb .basis{display:block}
         <!-- 左侧：上传需求说明书（Word/PDF），参照 IFPUG 卡片样式（card-title + 图标 + 投影） -->
         <div class="glass pad">
           <div class="card-title"><i aria-hidden="true" data-lucide="folder-open"></i>上传需求说明书</div>
-          <div id="pertDrop" style="border:1.5px dashed var(--line);border-radius:var(--r-md);background:var(--surface-2);padding:22px 14px;text-align:center;cursor:pointer;margin-top:10px;transition:.2s">
+          <div id="pertDrop" role="button" tabindex="0" aria-label="上传 PERT 需求说明书：可拖拽文件到此处，或按回车键选择文件（支持 Word 与 PDF）" style="border:1.5px dashed var(--line-ctrl);border-radius:var(--r-md);background:var(--surface-2);padding:22px 14px;text-align:center;cursor:pointer;margin-top:10px;transition:.2s">
             <i aria-hidden="true" data-lucide="cloud-upload" style="width:30px;height:30px;color:var(--brand)"></i>
-            <div style="font-size:12px;margin-top:6px;color:var(--ink-2)">点击选择或拖拽需求说明书（Word / PDF）</div>
+            <div style="font-size:12px;margin-top:6px;color:var(--ink-2)">点击选择或拖拽需求说明书（Word / PDF）；键盘可按回车选择</div>
             <div id="pertUpName" style="font-size:11px;color:var(--muted);margin-top:6px"></div>
             <input id="pertUpFile" type="file" accept=".docx,.doc,.pdf" style="display:none">
           </div>
           <div class="cfg-note" style="margin-top:12px">支持 Word（.docx / .doc）、PDF；AI 自动拆分功能点并评估工作量。</div>
           <div class="f-w" style="margin-top:16px">或粘贴需求文本</div>
-          <textarea id="pertTextArea" placeholder="描述一个或多个功能需求（AI 将自动拆分功能点并用 PERT 评估工作量），例如：新增票据到期自动扣款功能，支持批量选择票据、调用人行接口逐张扣款，扣款成功后生成传票并支持逐张打印。&#10;&#10;结构化字段也可直接写：需求标题 / 描述 / 优先级" rows="5" style="width:100%;margin-top:8px;padding:10px 12px;border:1px solid var(--line);border-radius:var(--r-md);font-family:var(--ff);font-size:12px;outline:none;resize:vertical;box-sizing:border-box;line-height:1.6"></textarea>
+          <textarea id="pertTextArea" placeholder="描述一个或多个功能需求（AI 将自动拆分功能点并用 PERT 评估工作量），例如：新增票据到期自动扣款功能，支持批量选择票据、调用人行接口逐张扣款，扣款成功后生成传票并支持逐张打印。&#10;&#10;结构化字段也可直接写：需求标题 / 描述 / 优先级" rows="5" style="width:100%;margin-top:8px;padding:10px 12px;border:1px solid var(--line-ctrl);border-radius:var(--r-md);font-family:var(--ff);font-size:12px;outline:none;resize:vertical;box-sizing:border-box;line-height:1.6"></textarea>
           <div class="cfg-note" style="margin-top:14px">识别出的功能点将进入下一步「估算录入」供勾选确认。</div>
         </div>
         <!-- 右侧：项目参数配置，与上传栏同为独立卡片，视觉区隔清晰 -->
         <div class="glass pad">
           <div class="card-title"><i aria-hidden="true" data-lucide="settings-2"></i>项目参数配置</div>
           <div class="f-w">项目名称</div>
-          <input id="pertName" type="text" placeholder="例如：票据系统功能优化" style="width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:var(--r-md);font-family:var(--ff);font-size:13px;outline:none">
+          <input id="pertName" type="text" placeholder="例如：票据系统功能优化" style="width:100%;padding:10px 12px;border:1px solid var(--line-ctrl);border-radius:var(--r-md);font-family:var(--ff);font-size:13px;outline:none">
           <div class="f-w" style="margin-top:12px">估算人</div>
-          <input id="pertEst" type="text" placeholder="姓名" style="width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:var(--r-md);font-family:var(--ff);font-size:13px;outline:none">
+          <input id="pertEst" type="text" placeholder="姓名" style="width:100%;padding:10px 12px;border:1px solid var(--line-ctrl);border-radius:var(--r-md);font-family:var(--ff);font-size:13px;outline:none">
           <div style="margin-top:14px">
             <button class="btn btn-primary" style="width:100%;justify-content:center" onclick="pertNew()" title="新建项目"><i aria-hidden="true" data-lucide="folder-plus"></i>新建项目</button>
           </div>
           <div style="height:1px;background:var(--line);margin:16px 0"></div>
           <div class="f-w">选择已有项目</div>
-          <select id="pertProjSel" onchange="pertPickProj()" style="width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:var(--r-md);font-family:var(--ff);font-size:13px;outline:none;background:var(--card)">
+          <select id="pertProjSel" onchange="pertPickProj()" style="width:100%;padding:10px 12px;border:1px solid var(--line-ctrl);border-radius:var(--r-md);font-family:var(--ff);font-size:13px;outline:none;background:var(--card)">
             <option value="">— 请选择 —</option>
           </select>
           <div style="margin-top:14px">
@@ -943,11 +973,11 @@ tr.rowr.showb .basis{display:block}
           <span style="display:flex;gap:8px;align-items:center"><span class="tcount" id="pertCount">0 项</span><button class="btn btn-ghost" style="padding:4px 10px;font-size:12px" onclick="pertStep('in')" title="更换项目" aria-label="更换项目"><i aria-hidden="true" data-lucide="folder-open" style="width:15px;height:15px"></i></button></span>
         </div>
         <div class="toolbar" style="margin-bottom:10px;flex-wrap:wrap">
-          <select id="pertPhase" style="width:110px;padding:10px 12px;border:1px solid var(--line);border-radius:var(--r-md);font-family:var(--ff);font-size:13px;outline:none;background:var(--card)"><option>开发</option></select>
-          <input id="pertD" type="text" placeholder="功能描述" style="flex:1;min-width:150px;padding:10px 12px;border:1px solid var(--line);border-radius:var(--r-md);font-family:var(--ff);font-size:13px;outline:none">
-          <input id="pertO" type="number" min="0" step="0.1" placeholder="乐观" title="乐观值（人天）" style="width:70px;padding:10px 6px;border:1px solid var(--line);border-radius:var(--r-md);font-family:var(--ff);font-size:13px;outline:none;text-align:center">
-          <input id="pertM" type="number" min="0" step="0.1" placeholder="最可能" title="最可能值（人天，必填）" style="width:70px;padding:10px 6px;border:1px solid var(--line);border-radius:var(--r-md);font-family:var(--ff);font-size:13px;outline:none;text-align:center">
-          <input id="pertP" type="number" min="0" step="0.1" placeholder="悲观" title="悲观值（人天）" style="width:70px;padding:10px 6px;border:1px solid var(--line);border-radius:var(--r-md);font-family:var(--ff);font-size:13px;outline:none;text-align:center">
+          <select id="pertPhase" style="width:110px;padding:10px 12px;border:1px solid var(--line-ctrl);border-radius:var(--r-md);font-family:var(--ff);font-size:13px;outline:none;background:var(--card)"><option>开发</option></select>
+          <input id="pertD" type="text" placeholder="功能描述" style="flex:1;min-width:150px;padding:10px 12px;border:1px solid var(--line-ctrl);border-radius:var(--r-md);font-family:var(--ff);font-size:13px;outline:none">
+          <input id="pertO" type="number" min="0" step="0.1" placeholder="乐观" title="乐观值（人天）" style="width:70px;padding:10px 6px;border:1px solid var(--line-ctrl);border-radius:var(--r-md);font-family:var(--ff);font-size:13px;outline:none;text-align:center">
+          <input id="pertM" type="number" min="0" step="0.1" placeholder="最可能" title="最可能值（人天，必填）" style="width:70px;padding:10px 6px;border:1px solid var(--line-ctrl);border-radius:var(--r-md);font-family:var(--ff);font-size:13px;outline:none;text-align:center">
+          <input id="pertP" type="number" min="0" step="0.1" placeholder="悲观" title="悲观值（人天）" style="width:70px;padding:10px 6px;border:1px solid var(--line-ctrl);border-radius:var(--r-md);font-family:var(--ff);font-size:13px;outline:none;text-align:center">
           <button class="btn btn-ghost" onclick="pertAdd()" title="添加" aria-label="添加"><i aria-hidden="true" data-lucide="plus" style="width:15px;height:15px"></i></button>
         </div>
           <div style="overflow:auto">
@@ -1031,10 +1061,15 @@ function refreshTotals(){
 function buildTree(){
   const sys={};items.forEach(x=>sys[x.system]=(sys[x.system]||0)+1);
   // 首节点"全部功能点"用于清除过滤；节点通过 data-sys 携带系统名，点击经 filterSys(this) 传递，避免内联字符串拼接转义问题
+  // FR-UI05：树节点是可点击控件，须补 role=button + tabindex=0 + Enter/Space 键效，
+  // 否则键盘用户无法按模块筛选（SonarQube Web:S6848 交互元素键盘等价）。
+  // data-sys 用 escAttr 转义后同时拼进 data 属性与 keydown 的 this 引用需谨慎——
+  // 故 keydown 直接复用 onclick 的表达式文本（this 绑定同一元素，天然安全）。
+  const tnode=(sysAttr,icon,label)=>`<div class="tnode"${sysAttr} role="button" tabindex="0" onclick="filterSys(this)" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();filterSys(this)}"><i aria-hidden="true" data-lucide="${icon}"></i>${label}</div>`;
   $("#tree").innerHTML=
-    `<div class="tnode" data-sys="" onclick="filterSys(this)"><i aria-hidden="true" data-lucide="layers"></i>全部功能点 <span class="cnt">${items.length}</span></div>`+
+    tnode(' data-sys=""',"layers",`全部功能点 <span class="cnt">${items.length}</span>`)+
     Object.entries(sys).map(([k,n]) =>
-    `<div class="tnode" data-sys="${escAttr(k)}" onclick="filterSys(this)"><i aria-hidden="true" data-lucide="folder"></i>${escAttr(k)} <span class="cnt">${n}</span></div>`).join("");
+    tnode(` data-sys="${escAttr(k)}"`,"folder",`${escAttr(k)} <span class="cnt">${n}</span>`)).join("");
   window.lucide&&lucide.createIcons();
 }
 let sortState=null;   // M3/FR-1.4：{key,dir} 作用于渲染副本，items 原序与 seq 引用稳定
@@ -1063,7 +1098,10 @@ function sortBy(key){if(!sortState||sortState.key!==key)sortState={key,dir:1};
   else if(sortState.dir===1)sortState={key,dir:-1};else sortState=null;
 render();}
 function updateSortInd(){["desc","type","us"].forEach(k=>{const el=document.getElementById("s-"+k);
-  if(el)el.textContent=(sortState&&sortState.key===k)?(sortState.dir===1?"▲":"▼"):"";});}
+  if(el){const on=!!(sortState&&sortState.key===k);el.textContent=on?(sortState.dir===1?"▲":"▼"):"";}
+  // FR-UI05：aria-sort 同步实际排序状态，读屏才能播报当前列与升降序（WCAG 1.3.1）
+  const th=document.querySelector(`th[onclick*="sortBy('${k}')"]`);
+  if(th)th.setAttribute("aria-sort",!sortState?"none":(sortState.key!==k?"none":(sortState.dir===1?"ascending":"descending")));});}
 function clearFilters(){$("#q").value="";["fSys","fType","fReuse"].forEach(id=>$("#"+id).value="");
   $("#fTodo").checked=false;sortState=null;render();toast("已清除筛选与排序");}
 function emptyState(icon,title,desc,actionHtml){return `<div style="text-align:center;padding:28px 12px"><i aria-hidden="true" data-lucide="${icon}" style="width:34px;height:34px;color:var(--muted)"></i><div style="font-weight:700;margin-top:10px">${title}</div><div style="font-size:12px;color:var(--muted);margin-top:6px">${desc}</div><div style="margin-top:12px">${actionHtml||""}</div></div>`;}
@@ -1340,6 +1378,8 @@ document.addEventListener("DOMContentLoaded",()=>{
   const dropEl=$("#pertDrop"),upEl=$("#pertUpFile");
   if(!dropEl)return;
   dropEl.addEventListener("click",()=>upEl.click());
+  // FR-UI05：PERT 拖放区键盘不可达，补 Enter/Space 走同一 file 路径
+  dropEl.addEventListener("keydown",e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();upEl.click();}});
   dropEl.addEventListener("dragover",e=>{e.preventDefault();dropEl.classList.add("drag");});
   dropEl.addEventListener("dragleave",()=>dropEl.classList.remove("drag"));
   dropEl.addEventListener("drop",e=>{e.preventDefault();dropEl.classList.remove("drag");if(e.dataTransfer.files[0])pertSetFile(e.dataTransfer.files[0]);});
@@ -1462,6 +1502,7 @@ async function bindConfig(){
     sel.innerHTML=Object.entries(providers).map(([k,v])=>`<option value="${k}">${v.label}</option>`).join("");
     sel.value=llmCfg.provider;
     $("#llmSwitch").classList.toggle("on",!!llmCfg.llm.enabled);
+    $("#llmSwitch").setAttribute("aria-checked",llmCfg.llm.enabled?"true":"false");   // FR-UI05：程序化设值同步 aria-checked
     $("#llmApi").value=llmCfg.llm.api||"";
     $("#llmModel").value=llmCfg.llm.model||"";
     $("#llmKey").value=llmCfg.llm.key||"";
@@ -1530,7 +1571,7 @@ function cfgRefreshDraft(){
   }catch(e){}
 }
 function cfgApplyField(k,v){
-  if(k==="enabled")$("#llmSwitch").classList.toggle("on",!!v);
+  if(k==="enabled"){$("#llmSwitch").classList.toggle("on",!!v);$("#llmSwitch").setAttribute("aria-checked",v?"true":"false");}   // FR-UI05
   else if(k==="provider"&&$("#providerSel").querySelector(`option[value="${v}"]`))$("#providerSel").value=v;
   else if(k==="rememberKey")$("#rememberKey").checked=!!v;
   else if(k==="ctxDir")$("#ctxDir").value=v||"";
@@ -1791,7 +1832,8 @@ async function fetchModels(){
 function renderModels(list){
   const box=$("#modelList");
   if(!list||!list.length){box.innerHTML='<span style="font-size:12px;color:var(--muted)">无可用模型。</span>';return;}
-  box.innerHTML=list.map(m=>`<span class="model-chip" data-m="${m}" onclick="pickModel('${String(m).replaceAll("'","")}')">${m}</span>`).join("")+"";
+  // FR-UI05：模型芯片是可点选控件，补 role=button + tabindex=0 + Enter/Space 键效
+  box.innerHTML=list.map(m=>`<span class="model-chip" role="button" tabindex="0" data-m="${escAttr(m)}" onclick="pickModel(this.dataset.m)" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();pickModel(this.dataset.m)}">${escAttr(m)}</span>`).join("")+"";
 }
 function pickModel(m){$("#llmModel").value=m;
   document.querySelectorAll(".model-chip").forEach(c=>c.classList.toggle("sel",c.dataset.m===m));
@@ -1812,6 +1854,9 @@ function resetCfg(){
 /* 上传 */
 const drop=$("#drop"),file=$("#file");
 drop.addEventListener("click",()=>file.click());
+// FR-UI05：拖放区原为纯 div+click，键盘不可达（SonarQube Web:S6848）。
+// 补 Enter/Space 键效走同一 file.click() 路径，与鼠标点击行为完全一致。
+drop.addEventListener("keydown",e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();file.click();}});
 drop.addEventListener("dragover",e=>e.preventDefault());
 drop.addEventListener("drop",e=>{e.preventDefault();if(e.dataTransfer.files[0])setFile(e.dataTransfer.files[0]);});
 file.addEventListener("change",()=>{if(file.files[0])setFile(file.files[0]);});
@@ -1823,7 +1868,13 @@ function rstFile(){curFile=null;histClearCtx();drop.classList.remove("has");file
 function toB64(f){return new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(r.result.split(",")[1]);r.onerror=()=>rej(new Error("文件读取失败（可能已被移动、删除或无访问权限）"));r.readAsDataURL(f);});}
 
 // 开关（质量特性 / 大模型启用）点击切换 on 态
-document.querySelectorAll(".switch").forEach(s=>s.addEventListener("click",()=>s.classList.toggle("on")));
+// FR-UI05：switch 原为 span+click，键盘不可达、读屏不播报状态。
+// 统一走 toggleSwitch：同步 class + aria-checked，并支持 Enter/Space 键效。
+function toggleSwitch(el){const on=el.classList.toggle("on");el.setAttribute("aria-checked",on?"true":"false");return on;}
+document.querySelectorAll(".switch").forEach(s=>{
+  s.addEventListener("click",()=>toggleSwitch(s));
+  s.addEventListener("keydown",e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();toggleSwitch(s);}});
+});
 $("#startBtn").addEventListener("click",async ()=>{
   if(!curFile)return;
   const b=$("#startBtn");b.disabled=true;const mk=$("#progressMark");mk.textContent="正在上传并识别…";

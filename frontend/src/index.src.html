@@ -30,9 +30,9 @@
   <div class="card-title" style="margin-bottom:14px"><i aria-hidden="true" data-lucide="calculator"></i>IFPUG 估算 <span style="font-size:12px;color:var(--muted);font-weight:400">需求文档 → IFPUG 功能点 → 成品造价表（引擎直连）</span><span style="flex:1"></span><button class="btn btn-ghost" onclick="histOpen()" title="查看历史估算：重开 / 另存为 / 删除"><i aria-hidden="true" data-lucide="history" style="width:15px;height:15px"></i>历史估算</button></div>
   <div class="mark" id="restoreBar" style="display:none;margin:-6px 0 10px"></div>
   <div class="steps" style="margin-bottom:18px">
-      <div class="step on" id="st1" onclick="goStepNav('upload')" title="返回上传需求"><span class="n">1</span><span>上传需求</span></div><div class="sep"></div>
-      <div class="step" id="st2" onclick="goStepNav('review')" title="前往审核功能点"><span class="n">2</span><span>审核功能点</span></div><div class="sep"></div>
-      <div class="step" id="st3" onclick="goStepNav('result')" title="前往结果与下载"><span class="n">3</span><span>结果与下载</span></div>
+      <div class="step on" id="st1" role="button" tabindex="0" onclick="goStepNav('upload')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();goStepNav('upload')}" title="返回上传需求"><span class="n">1</span><span>上传需求</span></div><div class="sep"></div>
+      <div class="step" id="st2" role="button" tabindex="0" onclick="goStepNav('review')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();goStepNav('review')}" title="前往审核功能点"><span class="n">2</span><span>审核功能点</span></div><div class="sep"></div>
+      <div class="step" id="st3" role="button" tabindex="0" onclick="goStepNav('result')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();goStepNav('result')}" title="前往结果与下载"><span class="n">3</span><span>结果与下载</span></div>
     </div>
 
   <section class="view" id="v-history">
@@ -61,10 +61,10 @@
     <div class="up-grid">
       <div class="glass pad">
         <div class="card-title"><i aria-hidden="true" data-lucide="folder-open"></i>上传需求说明书</div>
-        <div class="drop" id="drop">
+        <div class="drop" id="drop" role="button" tabindex="0" aria-label="上传需求文档：可拖拽文件到此处，或按回车键选择文件">
           <i aria-hidden="true" data-lucide="cloud-upload" class="big"></i>
           <b>拖拽需求文档到这里，或点击选择</b>
-          <p>支持 .docx 需求说明书；上传后由本地引擎解析并生成 IFPUG 候选功能点</p>
+          <p>支持 .docx 需求说明书；上传后由本地引擎解析并生成 IFPUG 候选功能点（键盘：Tab 聚焦后按回车选择文件）</p>
           <input type="file" id="file" accept=".docx" hidden>
           <div class="filebar" id="filebar">
             <div class="f-ic"><i aria-hidden="true" data-lucide="file-text"></i></div>
@@ -121,7 +121,7 @@
         </div>
         <div style="overflow:auto">
         <table>
-          <thead><tr><th style="width:34px"><input type="checkbox" id="ckAll" title="全选/全不选（确认所有功能项）" onchange="toggleAllCk(this.checked)"></th><th onclick="sortBy('desc')" class="sortable" title="按描述排序">功能项描述 <span id="s-desc"></span></th><th onclick="sortBy('type')" class="sortable" title="按类型排序">计数项 · 类别 <span id="s-type"></span></th><th style="width:168px">复杂度</th><th style="width:60px">UFP</th><th style="width:86px">重用</th><th style="width:86px">修改</th><th onclick="sortBy('us')" class="sortable" title="按 US 排序" style="width:60px">US <span id="s-us"></span></th><th>状态</th></tr></thead>
+          <thead><tr><th style="width:34px"><input type="checkbox" id="ckAll" title="全选/全不选（确认所有功能项）" aria-label="全选/全不选，确认所有功能项" onchange="toggleAllCk(this.checked)"></th><th onclick="sortBy('desc')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();sortBy('desc')}" class="sortable" role="button" tabindex="0" aria-sort="none" title="按描述排序">功能项描述 <span id="s-desc"></span></th><th onclick="sortBy('type')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();sortBy('type')}" class="sortable" role="button" tabindex="0" aria-sort="none" title="按类型排序">计数项 · 类别 <span id="s-type"></span></th><th style="width:168px">复杂度</th><th style="width:60px">UFP</th><th style="width:86px">重用</th><th style="width:86px">修改</th><th onclick="sortBy('us')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();sortBy('us')}" class="sortable" role="button" tabindex="0" aria-sort="none" title="按 US 排序" style="width:60px">US <span id="s-us"></span></th><th>状态</th></tr></thead>
           <tbody id="tbody"></tbody>
         </table>
         </div>
@@ -236,7 +236,7 @@
         <div class="cfg-row">
           <span class="sw-label"><i aria-hidden="true" data-lucide="toggle-right" style="width:16px;height:16px;color:var(--muted)"></i>启用大模型辅助识别
           </span>
-          <span class="switch on" id="llmSwitch" data-on="1"></span>
+          <span class="switch on" id="llmSwitch" data-on="1" role="switch" tabindex="0" aria-checked="true" aria-label="启用大模型辅助识别"></span>
         </div>
         <div class="fields" style="margin-top:12px">
           <div class="fill"><div class="f-w">模型开发商（预设）</div><select id="providerSel" onchange="onProviderChange()"></select></div>
@@ -276,7 +276,7 @@
         配置一个项目代码目录，AI 估算工作量时会自动扫描该目录（技术栈 / 目录结构 / 依赖 / 规模），把「项目级上下文」注入提示词，使评估更贴合实际代码。
       </p>
       <div class="cfg-row">
-        <input id="ctxDir" type="text" placeholder="例如：D:\code\otherProjects\foo 或 /root/proj" style="flex:1;padding:10px 12px;border:1px solid var(--line);border-radius:var(--r-md);font-family:var(--ff);font-size:13px;outline:none">
+        <input id="ctxDir" type="text" placeholder="例如：D:\code\otherProjects\foo 或 /root/proj" style="flex:1;padding:10px 12px;border:1px solid var(--line-ctrl);border-radius:var(--r-md);font-family:var(--ff);font-size:13px;outline:none">
         <button class="btn btn-ghost" onclick="openDirPicker()" title="浏览选择目录" aria-label="浏览选择目录"><i aria-hidden="true" data-lucide="folder-search" style="width:15px;height:15px"></i></button>
         <button class="btn btn-primary" onclick="saveCtxDir()" title="保存" aria-label="保存"><i aria-hidden="true" data-lucide="save" style="width:15px;height:15px"></i></button>
         <button class="btn btn-ghost" onclick="analyzeCtx()" title="扫描分析" aria-label="扫描分析"><i aria-hidden="true" data-lucide="scan-search" style="width:15px;height:15px"></i></button>
@@ -294,7 +294,7 @@
         配置更新源 JSON 地址（返回 <code>{version, url, notes}</code>）。应用启动与打开帮助页时自动检测；发现新版本后在帮助页提供一键下载安装。
       </p>
       <div class="cfg-row">
-        <input id="updUrl" type="text" placeholder="例如：http://内网服务器/workload-eval/latest.json" style="flex:1;padding:10px 12px;border:1px solid var(--line);border-radius:var(--r-md);font-family:var(--ff);font-size:13px;outline:none">
+        <input id="updUrl" type="text" placeholder="例如：http://内网服务器/workload-eval/latest.json" style="flex:1;padding:10px 12px;border:1px solid var(--line-ctrl);border-radius:var(--r-md);font-family:var(--ff);font-size:13px;outline:none">
         <button class="btn btn-primary" onclick="saveUpdateUrl()" title="保存" aria-label="保存"><i aria-hidden="true" data-lucide="save" style="width:15px;height:15px"></i></button>
       </div>
       <div class="cfg-note">
@@ -592,9 +592,9 @@
   <main class="page" id="pg-pert">
       <div class="card-title"><i aria-hidden="true" data-lucide="activity"></i>PERT 三点估算 <span style="font-size:12px;color:var(--muted);font-weight:400">预期 = (O + 4M + P) ÷ 6　·　σ = (P − O) ÷ 6</span></div>
       <div class="steps" style="margin-bottom:18px">
-        <div class="step on" id="pst1" onclick="pertStep('in')"><span class="n">1</span><span>需求输入</span></div><div class="sep"></div>
-        <div class="step" id="pst2" onclick="pertStep('edit')"><span class="n">2</span><span>估算录入</span></div><div class="sep"></div>
-        <div class="step" id="pst3" onclick="pertStep('gen')"><span class="n">3</span><span>结果与生成</span></div>
+        <div class="step on" id="pst1" role="button" tabindex="0" onclick="pertStep('in')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();pertStep('in')}"><span class="n">1</span><span>需求输入</span></div><div class="sep"></div>
+        <div class="step" id="pst2" role="button" tabindex="0" onclick="pertStep('edit')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();pertStep('edit')}"><span class="n">2</span><span>估算录入</span></div><div class="sep"></div>
+        <div class="step" id="pst3" role="button" tabindex="0" onclick="pertStep('gen')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();pertStep('gen')}"><span class="n">3</span><span>结果与生成</span></div>
       </div>
       <!-- 步骤1：需求输入（项目 + 上传/文本） -->
       <section class="view" id="pv-in">
@@ -602,30 +602,30 @@
         <!-- 左侧：上传需求说明书（Word/PDF），参照 IFPUG 卡片样式（card-title + 图标 + 投影） -->
         <div class="glass pad">
           <div class="card-title"><i aria-hidden="true" data-lucide="folder-open"></i>上传需求说明书</div>
-          <div id="pertDrop" style="border:1.5px dashed var(--line);border-radius:var(--r-md);background:var(--surface-2);padding:22px 14px;text-align:center;cursor:pointer;margin-top:10px;transition:.2s">
+          <div id="pertDrop" role="button" tabindex="0" aria-label="上传 PERT 需求说明书：可拖拽文件到此处，或按回车键选择文件（支持 Word 与 PDF）" style="border:1.5px dashed var(--line-ctrl);border-radius:var(--r-md);background:var(--surface-2);padding:22px 14px;text-align:center;cursor:pointer;margin-top:10px;transition:.2s">
             <i aria-hidden="true" data-lucide="cloud-upload" style="width:30px;height:30px;color:var(--brand)"></i>
-            <div style="font-size:12px;margin-top:6px;color:var(--ink-2)">点击选择或拖拽需求说明书（Word / PDF）</div>
+            <div style="font-size:12px;margin-top:6px;color:var(--ink-2)">点击选择或拖拽需求说明书（Word / PDF）；键盘可按回车选择</div>
             <div id="pertUpName" style="font-size:11px;color:var(--muted);margin-top:6px"></div>
             <input id="pertUpFile" type="file" accept=".docx,.doc,.pdf" style="display:none">
           </div>
           <div class="cfg-note" style="margin-top:12px">支持 Word（.docx / .doc）、PDF；AI 自动拆分功能点并评估工作量。</div>
           <div class="f-w" style="margin-top:16px">或粘贴需求文本</div>
-          <textarea id="pertTextArea" placeholder="描述一个或多个功能需求（AI 将自动拆分功能点并用 PERT 评估工作量），例如：新增票据到期自动扣款功能，支持批量选择票据、调用人行接口逐张扣款，扣款成功后生成传票并支持逐张打印。&#10;&#10;结构化字段也可直接写：需求标题 / 描述 / 优先级" rows="5" style="width:100%;margin-top:8px;padding:10px 12px;border:1px solid var(--line);border-radius:var(--r-md);font-family:var(--ff);font-size:12px;outline:none;resize:vertical;box-sizing:border-box;line-height:1.6"></textarea>
+          <textarea id="pertTextArea" placeholder="描述一个或多个功能需求（AI 将自动拆分功能点并用 PERT 评估工作量），例如：新增票据到期自动扣款功能，支持批量选择票据、调用人行接口逐张扣款，扣款成功后生成传票并支持逐张打印。&#10;&#10;结构化字段也可直接写：需求标题 / 描述 / 优先级" rows="5" style="width:100%;margin-top:8px;padding:10px 12px;border:1px solid var(--line-ctrl);border-radius:var(--r-md);font-family:var(--ff);font-size:12px;outline:none;resize:vertical;box-sizing:border-box;line-height:1.6"></textarea>
           <div class="cfg-note" style="margin-top:14px">识别出的功能点将进入下一步「估算录入」供勾选确认。</div>
         </div>
         <!-- 右侧：项目参数配置，与上传栏同为独立卡片，视觉区隔清晰 -->
         <div class="glass pad">
           <div class="card-title"><i aria-hidden="true" data-lucide="settings-2"></i>项目参数配置</div>
           <div class="f-w">项目名称</div>
-          <input id="pertName" type="text" placeholder="例如：票据系统功能优化" style="width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:var(--r-md);font-family:var(--ff);font-size:13px;outline:none">
+          <input id="pertName" type="text" placeholder="例如：票据系统功能优化" style="width:100%;padding:10px 12px;border:1px solid var(--line-ctrl);border-radius:var(--r-md);font-family:var(--ff);font-size:13px;outline:none">
           <div class="f-w" style="margin-top:12px">估算人</div>
-          <input id="pertEst" type="text" placeholder="姓名" style="width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:var(--r-md);font-family:var(--ff);font-size:13px;outline:none">
+          <input id="pertEst" type="text" placeholder="姓名" style="width:100%;padding:10px 12px;border:1px solid var(--line-ctrl);border-radius:var(--r-md);font-family:var(--ff);font-size:13px;outline:none">
           <div style="margin-top:14px">
             <button class="btn btn-primary" style="width:100%;justify-content:center" onclick="pertNew()" title="新建项目"><i aria-hidden="true" data-lucide="folder-plus"></i>新建项目</button>
           </div>
           <div style="height:1px;background:var(--line);margin:16px 0"></div>
           <div class="f-w">选择已有项目</div>
-          <select id="pertProjSel" onchange="pertPickProj()" style="width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:var(--r-md);font-family:var(--ff);font-size:13px;outline:none;background:var(--card)">
+          <select id="pertProjSel" onchange="pertPickProj()" style="width:100%;padding:10px 12px;border:1px solid var(--line-ctrl);border-radius:var(--r-md);font-family:var(--ff);font-size:13px;outline:none;background:var(--card)">
             <option value="">— 请选择 —</option>
           </select>
           <div style="margin-top:14px">
@@ -644,11 +644,11 @@
           <span style="display:flex;gap:8px;align-items:center"><span class="tcount" id="pertCount">0 项</span><button class="btn btn-ghost" style="padding:4px 10px;font-size:12px" onclick="pertStep('in')" title="更换项目" aria-label="更换项目"><i aria-hidden="true" data-lucide="folder-open" style="width:15px;height:15px"></i></button></span>
         </div>
         <div class="toolbar" style="margin-bottom:10px;flex-wrap:wrap">
-          <select id="pertPhase" style="width:110px;padding:10px 12px;border:1px solid var(--line);border-radius:var(--r-md);font-family:var(--ff);font-size:13px;outline:none;background:var(--card)"><option>开发</option></select>
-          <input id="pertD" type="text" placeholder="功能描述" style="flex:1;min-width:150px;padding:10px 12px;border:1px solid var(--line);border-radius:var(--r-md);font-family:var(--ff);font-size:13px;outline:none">
-          <input id="pertO" type="number" min="0" step="0.1" placeholder="乐观" title="乐观值（人天）" style="width:70px;padding:10px 6px;border:1px solid var(--line);border-radius:var(--r-md);font-family:var(--ff);font-size:13px;outline:none;text-align:center">
-          <input id="pertM" type="number" min="0" step="0.1" placeholder="最可能" title="最可能值（人天，必填）" style="width:70px;padding:10px 6px;border:1px solid var(--line);border-radius:var(--r-md);font-family:var(--ff);font-size:13px;outline:none;text-align:center">
-          <input id="pertP" type="number" min="0" step="0.1" placeholder="悲观" title="悲观值（人天）" style="width:70px;padding:10px 6px;border:1px solid var(--line);border-radius:var(--r-md);font-family:var(--ff);font-size:13px;outline:none;text-align:center">
+          <select id="pertPhase" style="width:110px;padding:10px 12px;border:1px solid var(--line-ctrl);border-radius:var(--r-md);font-family:var(--ff);font-size:13px;outline:none;background:var(--card)"><option>开发</option></select>
+          <input id="pertD" type="text" placeholder="功能描述" style="flex:1;min-width:150px;padding:10px 12px;border:1px solid var(--line-ctrl);border-radius:var(--r-md);font-family:var(--ff);font-size:13px;outline:none">
+          <input id="pertO" type="number" min="0" step="0.1" placeholder="乐观" title="乐观值（人天）" style="width:70px;padding:10px 6px;border:1px solid var(--line-ctrl);border-radius:var(--r-md);font-family:var(--ff);font-size:13px;outline:none;text-align:center">
+          <input id="pertM" type="number" min="0" step="0.1" placeholder="最可能" title="最可能值（人天，必填）" style="width:70px;padding:10px 6px;border:1px solid var(--line-ctrl);border-radius:var(--r-md);font-family:var(--ff);font-size:13px;outline:none;text-align:center">
+          <input id="pertP" type="number" min="0" step="0.1" placeholder="悲观" title="悲观值（人天）" style="width:70px;padding:10px 6px;border:1px solid var(--line-ctrl);border-radius:var(--r-md);font-family:var(--ff);font-size:13px;outline:none;text-align:center">
           <button class="btn btn-ghost" onclick="pertAdd()" title="添加" aria-label="添加"><i aria-hidden="true" data-lucide="plus" style="width:15px;height:15px"></i></button>
         </div>
           <div style="overflow:auto">

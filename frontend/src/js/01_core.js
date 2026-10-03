@@ -27,10 +27,15 @@ function refreshTotals(){
 function buildTree(){
   const sys={};items.forEach(x=>sys[x.system]=(sys[x.system]||0)+1);
   // 首节点"全部功能点"用于清除过滤；节点通过 data-sys 携带系统名，点击经 filterSys(this) 传递，避免内联字符串拼接转义问题
+  // FR-UI05：树节点是可点击控件，须补 role=button + tabindex=0 + Enter/Space 键效，
+  // 否则键盘用户无法按模块筛选（SonarQube Web:S6848 交互元素键盘等价）。
+  // data-sys 用 escAttr 转义后同时拼进 data 属性与 keydown 的 this 引用需谨慎——
+  // 故 keydown 直接复用 onclick 的表达式文本（this 绑定同一元素，天然安全）。
+  const tnode=(sysAttr,icon,label)=>`<div class="tnode"${sysAttr} role="button" tabindex="0" onclick="filterSys(this)" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();filterSys(this)}"><i aria-hidden="true" data-lucide="${icon}"></i>${label}</div>`;
   $("#tree").innerHTML=
-    `<div class="tnode" data-sys="" onclick="filterSys(this)"><i aria-hidden="true" data-lucide="layers"></i>全部功能点 <span class="cnt">${items.length}</span></div>`+
+    tnode(' data-sys=""',"layers",`全部功能点 <span class="cnt">${items.length}</span>`)+
     Object.entries(sys).map(([k,n]) =>
-    `<div class="tnode" data-sys="${escAttr(k)}" onclick="filterSys(this)"><i aria-hidden="true" data-lucide="folder"></i>${escAttr(k)} <span class="cnt">${n}</span></div>`).join("");
+    tnode(` data-sys="${escAttr(k)}"`,"folder",`${escAttr(k)} <span class="cnt">${n}</span>`)).join("");
   window.lucide&&lucide.createIcons();
 }
 let sortState=null;   // M3/FR-1.4：{key,dir} 作用于渲染副本，items 原序与 seq 引用稳定
@@ -59,7 +64,10 @@ function sortBy(key){if(!sortState||sortState.key!==key)sortState={key,dir:1};
   else if(sortState.dir===1)sortState={key,dir:-1};else sortState=null;
 render();}
 function updateSortInd(){["desc","type","us"].forEach(k=>{const el=document.getElementById("s-"+k);
-  if(el)el.textContent=(sortState&&sortState.key===k)?(sortState.dir===1?"▲":"▼"):"";});}
+  if(el){const on=!!(sortState&&sortState.key===k);el.textContent=on?(sortState.dir===1?"▲":"▼"):"";}
+  // FR-UI05：aria-sort 同步实际排序状态，读屏才能播报当前列与升降序（WCAG 1.3.1）
+  const th=document.querySelector(`th[onclick*="sortBy('${k}')"]`);
+  if(th)th.setAttribute("aria-sort",!sortState?"none":(sortState.key!==k?"none":(sortState.dir===1?"ascending":"descending")));});}
 function clearFilters(){$("#q").value="";["fSys","fType","fReuse"].forEach(id=>$("#"+id).value="");
   $("#fTodo").checked=false;sortState=null;render();toast("已清除筛选与排序");}
 function emptyState(icon,title,desc,actionHtml){return `<div style="text-align:center;padding:28px 12px"><i aria-hidden="true" data-lucide="${icon}" style="width:34px;height:34px;color:var(--muted)"></i><div style="font-weight:700;margin-top:10px">${title}</div><div style="font-size:12px;color:var(--muted);margin-top:6px">${desc}</div><div style="margin-top:12px">${actionHtml||""}</div></div>`;}
@@ -336,6 +344,8 @@ document.addEventListener("DOMContentLoaded",()=>{
   const dropEl=$("#pertDrop"),upEl=$("#pertUpFile");
   if(!dropEl)return;
   dropEl.addEventListener("click",()=>upEl.click());
+  // FR-UI05：PERT 拖放区键盘不可达，补 Enter/Space 走同一 file 路径
+  dropEl.addEventListener("keydown",e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();upEl.click();}});
   dropEl.addEventListener("dragover",e=>{e.preventDefault();dropEl.classList.add("drag");});
   dropEl.addEventListener("dragleave",()=>dropEl.classList.remove("drag"));
   dropEl.addEventListener("drop",e=>{e.preventDefault();dropEl.classList.remove("drag");if(e.dataTransfer.files[0])pertSetFile(e.dataTransfer.files[0]);});
@@ -458,6 +468,7 @@ async function bindConfig(){
     sel.innerHTML=Object.entries(providers).map(([k,v])=>`<option value="${k}">${v.label}</option>`).join("");
     sel.value=llmCfg.provider;
     $("#llmSwitch").classList.toggle("on",!!llmCfg.llm.enabled);
+    $("#llmSwitch").setAttribute("aria-checked",llmCfg.llm.enabled?"true":"false");   // FR-UI05：程序化设值同步 aria-checked
     $("#llmApi").value=llmCfg.llm.api||"";
     $("#llmModel").value=llmCfg.llm.model||"";
     $("#llmKey").value=llmCfg.llm.key||"";
@@ -526,7 +537,7 @@ function cfgRefreshDraft(){
   }catch(e){}
 }
 function cfgApplyField(k,v){
-  if(k==="enabled")$("#llmSwitch").classList.toggle("on",!!v);
+  if(k==="enabled"){$("#llmSwitch").classList.toggle("on",!!v);$("#llmSwitch").setAttribute("aria-checked",v?"true":"false");}   // FR-UI05
   else if(k==="provider"&&$("#providerSel").querySelector(`option[value="${v}"]`))$("#providerSel").value=v;
   else if(k==="rememberKey")$("#rememberKey").checked=!!v;
   else if(k==="ctxDir")$("#ctxDir").value=v||"";
@@ -787,7 +798,8 @@ async function fetchModels(){
 function renderModels(list){
   const box=$("#modelList");
   if(!list||!list.length){box.innerHTML='<span style="font-size:12px;color:var(--muted)">无可用模型。</span>';return;}
-  box.innerHTML=list.map(m=>`<span class="model-chip" data-m="${m}" onclick="pickModel('${String(m).replaceAll("'","")}')">${m}</span>`).join("")+"";
+  // FR-UI05：模型芯片是可点选控件，补 role=button + tabindex=0 + Enter/Space 键效
+  box.innerHTML=list.map(m=>`<span class="model-chip" role="button" tabindex="0" data-m="${escAttr(m)}" onclick="pickModel(this.dataset.m)" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();pickModel(this.dataset.m)}">${escAttr(m)}</span>`).join("")+"";
 }
 function pickModel(m){$("#llmModel").value=m;
   document.querySelectorAll(".model-chip").forEach(c=>c.classList.toggle("sel",c.dataset.m===m));
@@ -808,6 +820,9 @@ function resetCfg(){
 /* 上传 */
 const drop=$("#drop"),file=$("#file");
 drop.addEventListener("click",()=>file.click());
+// FR-UI05：拖放区原为纯 div+click，键盘不可达（SonarQube Web:S6848）。
+// 补 Enter/Space 键效走同一 file.click() 路径，与鼠标点击行为完全一致。
+drop.addEventListener("keydown",e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();file.click();}});
 drop.addEventListener("dragover",e=>e.preventDefault());
 drop.addEventListener("drop",e=>{e.preventDefault();if(e.dataTransfer.files[0])setFile(e.dataTransfer.files[0]);});
 file.addEventListener("change",()=>{if(file.files[0])setFile(file.files[0]);});
@@ -819,7 +834,13 @@ function rstFile(){curFile=null;histClearCtx();drop.classList.remove("has");file
 function toB64(f){return new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(r.result.split(",")[1]);r.onerror=()=>rej(new Error("文件读取失败（可能已被移动、删除或无访问权限）"));r.readAsDataURL(f);});}
 
 // 开关（质量特性 / 大模型启用）点击切换 on 态
-document.querySelectorAll(".switch").forEach(s=>s.addEventListener("click",()=>s.classList.toggle("on")));
+// FR-UI05：switch 原为 span+click，键盘不可达、读屏不播报状态。
+// 统一走 toggleSwitch：同步 class + aria-checked，并支持 Enter/Space 键效。
+function toggleSwitch(el){const on=el.classList.toggle("on");el.setAttribute("aria-checked",on?"true":"false");return on;}
+document.querySelectorAll(".switch").forEach(s=>{
+  s.addEventListener("click",()=>toggleSwitch(s));
+  s.addEventListener("keydown",e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();toggleSwitch(s);}});
+});
 $("#startBtn").addEventListener("click",async ()=>{
   if(!curFile)return;
   const b=$("#startBtn");b.disabled=true;const mk=$("#progressMark");mk.textContent="正在上传并识别…";

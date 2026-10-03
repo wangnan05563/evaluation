@@ -1,13 +1,17 @@
 :root{
-  --bg:#F4F6FA; --card:#FFFFFF; --ink:#1F2937; --ink-2:#374151; --muted:#6B7280; --line:#E5E7EB; --line-2:#EEF1F6;
+  --bg:#F4F6FA; --card:#FFFFFF; --ink:#1F2937; --ink-2:#374151; --muted:#5B6472; --line:#E5E7EB; --line-2:#EEF1F6;
+  /* FR-UI05（WCAG 1.4.11）：--line 仅用于装饰性分隔（卡片/表格线/进度条），不承载控件边界；
+     控件边界改用 --line-ctrl（≥3:1），避免为达标把装饰线全加粗成「重边框」观感。 */
+  /* 取 #7C8697 而非更浅的值：需同时满足 on --card(3.68:1) 与 on --bg(3.4:1) 两种落点 */
+  --line-ctrl:#7C8697;
   --brand:#2563EB; --brand-ink:#1D4ED8; --brand-soft:#EFF4FF; --cyan:#0EA5E9;
-  --ok:#16A34A; --ok-soft:#ECFDF3; --warn:#D97706; --warn-soft:#FFF7ED; --danger:#DC2626;
+  --ok:#15803D; --ok-soft:#ECFDF3; --warn:#B45309; --warn-soft:#FFF7ED; --danger:#C81E1E;
   /* M5/FR-3.1：语义令牌补全（徽章/告警/表面/类别色板/图表） */
   --ok-ink:#166534; --ok-border:#D1FADF; --warn-ink:#92400E; --warn-border:#FDE8C8; --danger-soft:#FEF2F2;
-  --surface-2:#FAFBFC; --drop-line:#CBD5E1; --switch-track:#D9DEE9; --on-brand:#FFFFFF; --danger-ink:#B91C1C;
+  --surface-2:#FAFBFC; --drop-line:#7C8697; --switch-track:#D9DEE9; --on-brand:#FFFFFF; --danger-ink:#B91C1C;
   --cat-ilf-bg:#DEEBFF; --cat-ilf-ink:#1D4ED8; --cat-eif-bg:#E7ECF7; --cat-eif-ink:#4B5878;
-  --cat-ei-bg:#F3E8FF; --cat-ei-ink:#7E22CE; --cat-eo-bg:#FFF3E0; --cat-eo-ink:#D97706;
-  --cat-eq-bg:#E0F2FE; --cat-eq-ink:#0284C7;
+  --cat-ei-bg:#F3E8FF; --cat-ei-ink:#7E22CE; --cat-eo-bg:#FFF3E0; --cat-eo-ink:#92400E;
+  --cat-eq-bg:#E0F2FE; --cat-eq-ink:#075985;
   --chart-grid:#E5E7EB; --chart-tip-bg:#FFFFFF; --chart-tip-ink:#1F2937;
   --fs-xs:11px; --fs-sm:12px; --fs-md:14px; --fs-lg:15px; --fs-xl:18px;
   --r-lg:16px; --r-md:10px; --r-full:999px;
@@ -16,12 +20,16 @@
   --ff:"Inter","PingFang SC","Microsoft YaHei",system-ui,sans-serif;
 }
 [data-theme="dark"]{
-  --bg:#0F172A; --card:#1E293B; --ink:#E2E8F0; --ink-2:var(--drop-line); --muted:#94A3B8; --line:#334155; --line-2:#273449;
+  --bg:#0F172A; --card:#1E293B; --ink:#E2E8F0; --ink-2:#94A3B8; --muted:#94A3B8; --line:#334155; --line-2:#273449;
+  --line-ctrl:#64748B;
+  /* FR-UI05：暗色下品牌色必须提亮，否则浅色底的 #2563EB 在深色 card 上仅 2.83:1（远低于 4.5）。
+     此前暗色块完全未覆盖 --brand/--brand-ink，是本次审计最严重的一处缺失。 */
+  --brand:#60A5FA; --brand-ink:#93C5FD; --on-brand:#0F172A;
   --brand-soft:#1E3A5F; --cyan:#38BDF8;
   --ok:#4ADE80; --ok-soft:#14321F; --ok-ink:#86EFAC; --ok-border:#1F5133;
   --warn:#FBBF24; --warn-soft:#33230A; --warn-ink:#FCD34D; --warn-border:#4A3510; --danger:#F87171; --danger-soft:#3B1212;
-  --surface-2:#172033; --drop-line:#475569; --switch-track:#475569; --danger-ink:#FCA5A5;
-  --cat-ilf-bg:#1E3A5F; --cat-ilf-ink:#93C5FD; --cat-eif-bg:#273449; --cat-eif-ink:var(--drop-line);
+  --surface-2:#172033; --drop-line:#64748B; --switch-track:#475569; --danger-ink:#FCA5A5;
+  --cat-ilf-bg:#1E3A5F; --cat-ilf-ink:#93C5FD; --cat-eif-bg:#273449; --cat-eif-ink:#CBD5E1;
   --cat-ei-bg:#3B2154; --cat-ei-ink:#D8B4FE; --cat-eo-bg:#3B2A0F; --cat-eo-ink:#FCD34D;
   --cat-eq-bg:#0C3A54; --cat-eq-ink:#7DD3FC;
   --chart-grid:#334155; --chart-tip-bg:#1E293B; --chart-tip-ink:#E2E8F0;
@@ -30,10 +38,16 @@
 }
 [data-theme="contrast"]{
   --bg:#000000; --card:#000000; --ink:#FFFFFF; --ink-2:#FFFFFF; --muted:#E0E0E0; --line:#FFFFFF; --line-2:#FFFFFF;
+  --line-ctrl:#FFFFFF;
   --brand:#FFFF00; --brand-ink:#FFFF00; --brand-soft:#1A1A00; --cyan:#00FFFF;
   --ok:#00FF00; --ok-soft:#001A00; --ok-ink:#00FF00; --ok-border:#00FF00;
   --warn:#FFFF00; --warn-soft:#1A1A00; --warn-ink:#FFFF00; --warn-border:#FFFF00; --danger:#FF6666; --danger-soft:#1A0000;
-  --surface-2:#000000; --drop-line:#FFFFFF; --switch-track:#FFFFFF; --on-brand:#000000;
+  --danger-ink:#FF8A8A; --on-brand:#000000;
+  --surface-2:#000000; --drop-line:#FFFFFF; --switch-track:#FFFFFF;
+  /* 高对比模式此前未覆盖类别色板，浅色徽标（#FFF3E0 等）在黑底上反而对比不足 */
+  --cat-ilf-bg:#001A33; --cat-ilf-ink:#66B2FF; --cat-eif-bg:#1A1A1A; --cat-eif-ink:#FFFFFF;
+  --cat-ei-bg:#2A0033; --cat-ei-ink:#E0B0FF; --cat-eo-bg:#2A1A00; --cat-eo-ink:#FFD966;
+  --cat-eq-bg:#002033; --cat-eq-ink:#66D9FF;
   --chart-grid:#FFFFFF; --chart-tip-bg:#000000; --chart-tip-ink:#FFFFFF;
 }
 *{box-sizing:border-box;margin:0;padding:0}
@@ -85,3 +99,19 @@ body[data-step="upload"] #v-upload,body[data-step="review"] #v-review,body[data-
 #histDiff table{width:100%;border-collapse:collapse;margin-top:6px}
 #histDiff th,#histDiff td{border-bottom:1px solid var(--line);padding:8px 10px;text-align:left;vertical-align:top;font-size:13px}
 #histDiff th{color:var(--muted);font-weight:600;background:var(--line-2)}
+
+/* ===== FR-UI05：可访问性补充 =====
+ * 1) 键盘可达性：以下自定义控件原为 div/span + click（SonarQube Web:S6848
+ *    交互元素键盘等价 / Web:S6819 原生语义标签），已补 role+tabindex+keydown。
+ *    :focus-visible 已有全局 2px 品牌色焦点环，这里补 hover/focus 态一致性与
+ *    高对比主题下的焦点环兜底（品牌色在部分背景上需加 outline-offset 区分）。
+ * 2) 焦点环本身须满足 WCAG 2.4.11/1.4.11（≥3:1），暗色下 --brand 已提亮至
+ *    5.75:1（见 :root 注释），此处不重复覆盖颜色，仅保证偏移与不遮挡。 */
+.step:focus-visible,.tnode:focus-visible,.drop:focus-visible,
+.switch:focus-visible,.sortable:focus-visible,.model-chip:focus-visible,
+#pertDrop:focus-visible{outline:2px solid var(--brand);outline-offset:2px;border-radius:var(--r-md)}
+/* 键盘聚焦时与 hover 同等提示，避免「鼠标用户看得出、键盘用户看不出焦点在哪」 */
+.step:focus-visible,.tnode:focus-visible,.model-chip:focus-visible{background:var(--brand-soft)}
+.drop:focus-visible,#pertDrop:focus-visible{border-color:var(--brand)}
+/* 开关用 role=switch，状态由 aria-checked 播报；此处仅做视觉兜底 */
+.switch:focus-visible{outline-offset:3px}
