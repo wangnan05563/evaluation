@@ -145,7 +145,10 @@ async function dataImport(inp){const f=inp.files&&inp.files[0];if(!f)return;
   inp.value="";}
 
 /* FR-2.9：配置中心「识别规则」维护页 */
-function rulesLoad(){fetch(API+"/api/rules",{cache:"no-store"}).then(r=>r.json()).then(j=>{
+function rulesLoad(){
+  // FR-UI04：取数前铺骨架屏（8 列表头较宽，缺骨架会出现明显空窗）
+  $("#rulesRows").innerHTML=skeletonTable(8,4);
+  fetch(API+"/api/rules",{cache:"no-store"}).then(r=>r.json()).then(j=>{
   if(!j.ok){$("#rulesRows").innerHTML=`<tr><td colspan="8" style="color:var(--muted)">规则表不可用：${j.msg||""}（已回退内置链）</td></tr>`;return;}
   $("#rulesMeta").textContent=`v${j.version} · ${j.rules.length} 条`;
   $("#rulesRows").innerHTML=j.rules.map((r,i)=>`<tr>

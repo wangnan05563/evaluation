@@ -2,6 +2,9 @@
 let reopenCtx=null;              // {group,title,version}：重开修订上下文（生成时随请求回传服务端）
 let diffSel=[], lastDiff=null;   // FR-FE05：版本对比选择（限 2）与最近一次 diff 结果
 async function histOpen(){
+  // FR-UI04：先铺骨架屏再取数，避免「加载中…」纯文字造成的空窗与布局跳动
+  $("#histRows").innerHTML=skeletonTable(6,4);
+  goStep("history");
   try{
     const r=await fetch(API+"/api/history?limit=50",{cache:"no-store"});
     const j=await r.json();
@@ -16,10 +19,10 @@ async function histOpen(){
         <button class="btn btn-ghost" onclick="histReopen('${h.id}')" title="载入该版本到审核功能点">重开</button>
         <button class="btn btn-ghost" onclick="histSaveAs('${h.id}')" title="载入后换标题另存为新记录">另存为</button>
         <button class="btn btn-ghost" onclick="histDel('${h.id}')" title="删除该记录（不影响已下载文件）">删除</button></td></tr>`).join("")
-      :'<tr><td colspan="6" style="color:var(--muted)">暂无历史估算；完成一次生成后自动记录。</td></tr>';
-    goStep("history");
+      :'<tr><td colspan="6">'+emptyState("inbox","暂无历史估算","完成一次生成后自动记录在这里，可随时重开或对比版本","")+'</td></tr>';
   }catch(e){
-    $("#histRows").innerHTML=`<tr><td colspan="5">${errorBox(e.message,"histOpen()")}</td></tr>`;
+    // colspan 原为 5，与6 列表头不符（错误态会少铺一列宽），一并修正
+    $("#histRows").innerHTML=`<tr><td colspan="6">${errorBox(e.message,"histOpen()")}</td></tr>`;
     window.lucide&&lucide.createIcons();toast("历史加载失败："+e.message);}
 }
 function histSearch(){histOpen();}

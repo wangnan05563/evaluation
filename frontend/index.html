@@ -338,6 +338,61 @@ tr.rowr.showb .basis{display:block}
   th,td{padding:7px 6px}
   .pick{width:64px}
 }
+/* ===== FR-UI04动效 + FR-UI07 空态插画 样式 =====
+ * 依赖 10_main.css 的设计令牌（--surface-2/--line/--brand/--danger 等），
+ * 因此全部走变量取色：亮/暗/高对比三态自动适配，无需各写一份。
+ * 动画一律包在 prefers-reduced-motion: no-preference 内（见 10_main.css 的
+ * reduce 兜底已把 animation/transition 置none），双重保险。 */
+
+/* ---------- 骨架屏 ---------- */
+.skel-bar{
+  display:block;height:11px;border-radius:6px;
+  background:linear-gradient(90deg,var(--line-2) 25%,var(--line) 37%,var(--line-2) 63%);
+  background-size:400% 100%;
+}
+.skel-row td{padding:12px 10px}
+.skel-row:hover{background:transparent}   /* 骨架行不响应 hover，避免加载中被误认为可选行 */
+@media (prefers-reduced-motion: no-preference){
+  .skel-bar{animation:skelShimmer 1.4s ease-in-out infinite}
+}
+@keyframes skelShimmer{0%{background-position:100% 50%}100%{background-position:0 50%}}
+/* 高对比模式：渐变中间色与两端色差不足会「看不见在动」，改用实心 + 边框双保险 */
+[data-theme="contrast"] .skel-bar{background:var(--line);border:1px solid var(--muted)}
+
+/* ---------- 空态 / 错误态 ---------- */
+.empty-state{text-align:center;padding:30px 16px 34px}
+.empty-art{width:132px;height:96px;margin:0 auto 4px;opacity:.95}
+.empty-art svg{width:100%;height:100%;display:block}
+.empty-t{font-weight:700;font-size:14px;margin-top:8px}
+.empty-d{font-size:12px;color:var(--muted);margin-top:7px;line-height:1.75}
+.empty-a{margin-top:14px;display:flex;gap:10px;justify-content:center;align-items:center;flex-wrap:wrap}
+.empty-link{font-size:12px;color:var(--muted);text-decoration:underline}
+.empty-link:hover{color:var(--brand-ink)}
+
+/* ---------- 拖拽高亮（FR-UI04）----------
+ * 原仅靠 .drag 切换边框色；此处补底色/缩放/内阴影，让「正在接收」在弱视觉下也明确。 */
+.drop.drag,.up-zone.drag{
+  border-color:var(--brand)!important;
+  background:var(--brand-soft)!important;
+  box-shadow:inset 0 0 0 1px var(--brand);
+}
+@media (prefers-reduced-motion: no-preference){
+  .drop,.up-zone{transition:border-color .18s ease,background-color .18s ease,box-shadow .18s ease}
+  .drop.drag,.up-zone.drag{transform:scale(1.008)}
+}
+
+/* ---------- 通用交互过渡（FR-UI04 过渡补齐）----------
+ * 作用域限定在卡片/按钮/行，不做全局 * 过渡，避免影响表格与打印。 */
+.btn,.m-item,.card-title .lic,.rowr,.sysli{transition:background-color .15s ease,color .15s ease,border-color .15s ease,box-shadow .15s ease}
+.rowr:hover{background:var(--surface-2)}
+@media (prefers-reduced-motion: no-preference){
+  .rowr:hover{transform:translateX(2px)}
+}
+
+/* ---------- 打印样式隔离（20_print.css 之外的兜底）----------
+ * 骨架屏/插画属纯装饰，打印成品表时不应出现在纸面上。 */
+@media print{.skel-row,.empty-art{display:none!important}}
+
 </style>
 </head>
 <body data-page="work" data-step="upload" data-pertstep="in">
@@ -1120,9 +1175,8 @@ function updateSortInd(){
 }
 function clearFilters(){$("#q").value="";["fSys","fType","fReuse"].forEach(id=>$("#"+id).value="");
   $("#fTodo").checked=false;sortState=null;render();toast("已清除筛选与排序");}
-function emptyState(icon,title,desc,actionHtml){return `<div style="text-align:center;padding:28px 12px"><i aria-hidden="true" data-lucide="${icon}" style="width:34px;height:34px;color:var(--muted)"></i><div style="font-weight:700;margin-top:10px">${title}</div><div style="font-size:12px;color:var(--muted);margin-top:6px">${desc}</div><div style="margin-top:12px">${actionHtml||""}</div></div>`;}
-function errorBox(msg,retryFn){  // FR-1.6：统一错误态——文案+重试+诊断指引（所有错误态含下一步动作）
-  return `<div style="text-align:center;padding:22px 12px"><i aria-hidden="true" data-lucide="alert-triangle" style="width:30px;height:30px;color:var(--danger)"></i><div style="font-weight:700;margin-top:8px">操作失败</div><div style="font-size:12px;color:var(--muted);margin-top:6px">${histEsc(msg)}</div><div style="margin-top:12px"><button class="btn btn-ghost" onclick="${retryFn}">重试</button> <a href="#" onclick="goPage('help');return false" style="font-size:12px;color:var(--muted)">查看诊断指引</a></div></div>`;}
+// FR-UI07：emptyState / errorBox 已迁至 22_fr_ui04_ui07_动效_空态插画.js（补插画与语义容器），
+// 本模块只保留列表渲染，避免两处定义互相覆盖（后定义者胜出会静默改行为）。
 function rowHTML(it){
   return `<tr class="rowr ${it.ok?'done':''}" data-seq="${it.seq}" data-sys="${escAttr(it.system)}">
       <td><input type="checkbox" class="ck" ${it.ok?'checked':''}></td>
@@ -1396,9 +1450,9 @@ document.addEventListener("DOMContentLoaded",()=>{
   dropEl.addEventListener("click",()=>upEl.click());
   // FR-UI05：PERT 拖放区键盘不可达，补 Enter/Space 走同一 file 路径
   dropEl.addEventListener("keydown",e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();upEl.click();}});
-  dropEl.addEventListener("dragover",e=>{e.preventDefault();dropEl.classList.add("drag");});
-  dropEl.addEventListener("dragleave",()=>dropEl.classList.remove("drag"));
-  dropEl.addEventListener("drop",e=>{e.preventDefault();dropEl.classList.remove("drag");if(e.dataTransfer.files[0])pertSetFile(e.dataTransfer.files[0]);});
+  // FR-UI04：原用 dragover 加高亮、dragleave 移除，鼠标划过子元素时高亮反复闪烁。
+  // bindDropZone 改用 enter/leave 深度计数，只在真正离开时才熄灭。
+  bindDropZone(dropEl,pertSetFile);
   upEl.addEventListener("change",()=>{if(upEl.files[0])pertSetFile(upEl.files[0]);
 upEl.value="";});
   const ta=$("#pertTextArea");
@@ -1888,8 +1942,9 @@ drop.addEventListener("click",()=>file.click());
 // FR-UI05：拖放区原为纯 div+click，键盘不可达（SonarQube Web:S6848）。
 // 补 Enter/Space 键效走同一 file.click() 路径，与鼠标点击行为完全一致。
 drop.addEventListener("keydown",e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();file.click();}});
-drop.addEventListener("dragover",e=>e.preventDefault());
-drop.addEventListener("drop",e=>{e.preventDefault();if(e.dataTransfer.files[0])setFile(e.dataTransfer.files[0]);});
+// FR-UI04：上传区原先只有 dragover 的 preventDefault，拖入时毫无视觉反馈（无高亮）。
+// 改用 bindDropZone：dragenter/leave 计数防子元素抖动，且 drop 后才取文件。
+bindDropZone(drop,setFile);
 file.addEventListener("change",()=>{if(file.files[0])setFile(file.files[0]);});
 function setFile(f){curFile=f;histClearCtx();if(f.name.endsWith(".docx")){$("#fname").textContent=f.name;drop.classList.add("has");$("#startBtn").disabled=false;}else{toast("请选择 .docx 文件");}}
 function rstFile(){curFile=null;histClearCtx();drop.classList.remove("has");file.value="";$("#startBtn").disabled=true;}
@@ -2613,7 +2668,10 @@ async function dataImport(inp){const f=inp.files&&inp.files[0];if(!f)return;
   inp.value="";}
 
 /* FR-2.9：配置中心「识别规则」维护页 */
-function rulesLoad(){fetch(API+"/api/rules",{cache:"no-store"}).then(r=>r.json()).then(j=>{
+function rulesLoad(){
+  // FR-UI04：取数前铺骨架屏（8 列表头较宽，缺骨架会出现明显空窗）
+  $("#rulesRows").innerHTML=skeletonTable(8,4);
+  fetch(API+"/api/rules",{cache:"no-store"}).then(r=>r.json()).then(j=>{
   if(!j.ok){$("#rulesRows").innerHTML=`<tr><td colspan="8" style="color:var(--muted)">规则表不可用：${j.msg||""}（已回退内置链）</td></tr>`;return;}
   $("#rulesMeta").textContent=`v${j.version} · ${j.rules.length} 条`;
   $("#rulesRows").innerHTML=j.rules.map((r,i)=>`<tr>
@@ -2777,6 +2835,9 @@ histRestorePrompt();   // M1/FR-1.8：会话恢复未覆盖时，基于历史库
 let reopenCtx=null;              // {group,title,version}：重开修订上下文（生成时随请求回传服务端）
 let diffSel=[], lastDiff=null;   // FR-FE05：版本对比选择（限 2）与最近一次 diff 结果
 async function histOpen(){
+  // FR-UI04：先铺骨架屏再取数，避免「加载中…」纯文字造成的空窗与布局跳动
+  $("#histRows").innerHTML=skeletonTable(6,4);
+  goStep("history");
   try{
     const r=await fetch(API+"/api/history?limit=50",{cache:"no-store"});
     const j=await r.json();
@@ -2791,10 +2852,10 @@ async function histOpen(){
         <button class="btn btn-ghost" onclick="histReopen('${h.id}')" title="载入该版本到审核功能点">重开</button>
         <button class="btn btn-ghost" onclick="histSaveAs('${h.id}')" title="载入后换标题另存为新记录">另存为</button>
         <button class="btn btn-ghost" onclick="histDel('${h.id}')" title="删除该记录（不影响已下载文件）">删除</button></td></tr>`).join("")
-      :'<tr><td colspan="6" style="color:var(--muted)">暂无历史估算；完成一次生成后自动记录。</td></tr>';
-    goStep("history");
+      :'<tr><td colspan="6">'+emptyState("inbox","暂无历史估算","完成一次生成后自动记录在这里，可随时重开或对比版本","")+'</td></tr>';
   }catch(e){
-    $("#histRows").innerHTML=`<tr><td colspan="5">${errorBox(e.message,"histOpen()")}</td></tr>`;
+    // colspan 原为 5，与6 列表头不符（错误态会少铺一列宽），一并修正
+    $("#histRows").innerHTML=`<tr><td colspan="6">${errorBox(e.message,"histOpen()")}</td></tr>`;
     window.lucide&&lucide.createIcons();toast("历史加载失败："+e.message);}
 }
 function histSearch(){histOpen();}
@@ -3056,6 +3117,125 @@ function ctBindScroll(tbody, onWin) {
   sc.dataset.ctBound = "1";
   let raf = 0;
   sc.addEventListener("scroll", () => { if (!raf) raf = requestAnimationFrame(() => { raf = 0; onWin(); }); }, { passive: true });
+}
+
+/* ===== FR-UI04（上传与步骤动效） + FR-UI07（空态与错误插画） =====
+ *
+ * 背景（T01503 核实）：拖拽高亮、prefers-reduced-motion、步骤淡入初始提交即有，
+ * 真正缺的是「等待态可视」（骨架屏）与「空/错态插画」。本模块补这两块。
+ *
+ * 设计约束：
+ * 1) 骨架屏与插画一律走 CSS 变量取色，天然适配亮/暗/高对比三态，不硬编码颜色；
+ * 2) 动画全部声明在 @media (prefers-reduced-motion: no-preference) 内，
+ *    用户开启「减少动态效果」时零动画（降级为静态占位，不是白屏）；
+ * 3) 插画为纯装饰，aria-hidden 且不抢读屏顺序，语义由标题/描述文本承担。
+ */
+
+/* ---------- FR-UI04：骨架屏 ---------- */
+/* 列宽比例按各表真实列数给定，避免加载完成时表格列宽跳动（CLS） */
+const SKEL_ROWS = {
+  6: [22, 34, 16, 10, 10, 8],       // 历史表：时间/标题/规模/工作量/费用/操作
+  8: [20, 30, 12, 12, 10, 10, 14, 10], // 规则表
+};
+function skeletonTable(span, rows){
+  const n = rows || 4, widths = SKEL_ROWS[span] || [];
+  let out = "";
+  for (let r = 0; r < n; r++){
+    out += "<tr class='skel-row'>";
+    for (let c = 0; c < span; c++){
+      // 末列固定留操作位宽度，列宽稳定；每格错开动画延迟形成「流光」而非整体闪烁
+      const w = widths[c] || Math.round(100 / span);
+      const d = ((r * span + c) % 6) * 90;
+      out += `<td><span class="skel-bar" style="width:${w}%;animation-delay:${d}ms"></span></td>`;
+    }
+    out += "</tr>";
+  }
+  return out;
+}
+/** 供异步列表调用：进入骨架 → 回调填充 → 失败走 errorBox */
+function withSkeleton(tbodySel, span, loader){
+  const el = $(tbodySel);
+  if (!el) return Promise.resolve();
+  el.innerHTML = skeletonTable(span);
+  return Promise.resolve()
+    .then(loader)
+    .catch(e => { el.innerHTML = `<tr><td colspan="${span}">${errorBox(e.message, tbodySel)}</td></tr>`; throw e; });
+}
+
+/* ---------- FR-UI07：统一插画 ---------- */
+/* 线性插画风格：同一 viewBox / 同一 stroke 逻辑，视觉重量一致。
+   用 currentColor + 令牌变量，随主题切换，无需为每套主题各画一版。 */
+const ILLUS = {
+  /* 空数据：收纳盒 + 上浮卡片，表达「还没东西进来」而非「出错」 */
+  empty: `<svg viewBox="0 0 120 88" fill="none" aria-hidden="true">
+    <rect x="14" y="30" width="92" height="46" rx="8" fill="var(--surface-2)" stroke="var(--line)" stroke-width="2"/>
+    <path d="M14 42h92" stroke="var(--line)" stroke-width="2"/>
+    <rect x="30" y="12" width="60" height="26" rx="6" fill="var(--card)" stroke="var(--line-ctrl)" stroke-width="2"/>
+    <path d="M40 25h40" stroke="var(--muted)" stroke-width="2.5" stroke-linecap="round" opacity=".55"/>
+    <path d="M46 62h28" stroke="var(--brand)" stroke-width="2.5" stroke-linecap="round"/>
+  </svg>`,
+  /* 搜索无果：放大镜掠过列表，表达「换个条件再试」，引导而非报错 */
+  search: `<svg viewBox="0 0 120 88" fill="none" aria-hidden="true">
+    <rect x="16" y="16" width="66" height="56" rx="7" fill="var(--surface-2)" stroke="var(--line)" stroke-width="2"/>
+    <path d="M28 32h34M28 44h42M28 56h24" stroke="var(--muted)" stroke-width="2.5" stroke-linecap="round" opacity=".5"/>
+    <circle cx="80" cy="50" r="17" fill="var(--card)" stroke="var(--brand)" stroke-width="2.5"/>
+    <path d="M92 63l12 12" stroke="var(--brand)" stroke-width="3" stroke-linecap="round"/>
+    <path d="M74 50h12M80 44v12" stroke="var(--brand)" stroke-width="2.5" stroke-linecap="round" opacity=".7"/>
+  </svg>`,
+  /* 错误：断开的圆 + 感叹号，用 danger 语义色，区别于空态的中性色 */
+  error: `<svg viewBox="0 0 120 88" fill="none" aria-hidden="true">
+    <circle cx="60" cy="44" r="28" fill="var(--danger-soft)" stroke="var(--danger)" stroke-width="2.5"/>
+    <path d="M60 30v18" stroke="var(--danger)" stroke-width="3.5" stroke-linecap="round"/>
+    <circle cx="60" cy="56" r="2.4" fill="var(--danger)"/>
+    <path d="M28 70l-6 8M92 70l6 8" stroke="var(--danger)" stroke-width="2.5" stroke-linecap="round" opacity=".45"/>
+  </svg>`,
+  /* 上传：托盘 + 上升箭头，与 drop 区交互呼应 */
+  upload: `<svg viewBox="0 0 120 88" fill="none" aria-hidden="true">
+    <path d="M22 62v10a6 6 0 006 6h64a6 6 0 006-6V62" stroke="var(--drop-line)" stroke-width="2.5" stroke-linecap="round"/>
+    <rect x="38" y="34" width="44" height="32" rx="6" fill="var(--brand-soft)" stroke="var(--brand)" stroke-width="2"/>
+    <path d="M60 54V22M60 22l-9 9M60 22l9 9" stroke="var(--brand)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+  </svg>`,
+};
+/* 插画语义 → 具体图形的映射，供 emptyState 复用 */
+const ILLUS_KIND = { "inbox": "empty", "inbox-open": "empty", "search-x": "search", "alert-triangle": "error", "file-up": "upload" };
+
+/** 统一空态：插画 + 标题 + 描述 + 可选一键动作（FR-UX06 已有的文案骨架保留，此处补插画与语义容器） */
+function emptyState(icon, title, desc, actionHtml){
+  const art = ILLUS[ILLUS_KIND[icon] || "empty"] || ILLUS.empty;
+  return `<div class="empty-state" role="status">
+    <div class="empty-art" aria-hidden="true">${art}</div>
+    <div class="empty-t">${title}</div>
+    <div class="empty-d">${desc}</div>
+    ${actionHtml ? `<div class="empty-a">${actionHtml}</div>` : ""}
+  </div>`;
+}
+
+/** 统一错误态：danger 插画 + 原因 + 重试/诊断（保留原 errorBox 语义，补插画与 role=alert） */
+function errorBox(msg, retryFn){
+  return `<div class="empty-state" role="alert">
+    <div class="empty-art" aria-hidden="true">${ILLUS.error}</div>
+    <div class="empty-t">操作失败</div>
+    <div class="empty-d">${histEsc(msg)}</div>
+    <div class="empty-a">
+      <button class="btn btn-ghost" onclick="${retryFn}">重试</button>
+      <a href="#" onclick="goPage('help');return false" class="empty-link">查看诊断指引</a>
+    </div>
+  </div>`;
+}
+
+/* ---------- 拖拽高亮增强（FR-UI04）：dragenter/leave 计数，防子元素抖动导致高亮闪烁 ---------- */
+function bindDropZone(el, onFile){
+  if (!el) return;
+  let depth = 0;
+  const has = on => el.classList.toggle("drag", on);
+  el.addEventListener("dragenter", e => { e.preventDefault(); depth++; has(true); });
+  el.addEventListener("dragover", e => { e.preventDefault(); e.dataTransfer.dropEffect = "copy"; });
+  el.addEventListener("dragleave", e => { e.preventDefault(); if (--depth <= 0) { depth = 0; has(false); } });
+  el.addEventListener("drop", e => {
+    e.preventDefault(); depth = 0; has(false);
+    const f = e.dataTransfer.files && e.dataTransfer.files[0];
+    if (f && onFile) onFile(f);
+  });
 }
 
 </script>

@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /** M4/FR-5.2 编排器：npm test 一条命令跑核心链路自动化测试。
  *  用法：npm test [-- --only=S1,S3] [-- --with-flaky]
- *  套件：S1/S2 单测(python) · S3 API 冒烟(隔离实例) · S4/S5/S7/S8/S9 UI 冒烟(CDP+无头 Chrome) · S6 flaky(默认 skip)。
+ *  套件：S1/S2/S10 单测(python) · S3 API 冒烟(隔离实例) · S4/S5/S7/S8/S9/S11 UI 冒烟(CDP+无头 Chrome) · S6 flaky(默认 skip)。
  *  另有独立 WCAG 对比度审计：python tests/a11y_contrast.py（FR-UI05，非 npm test 套件）。 */
 import { spawn, spawnSync } from 'node:child_process';
 import net from 'node:net';
@@ -79,6 +79,8 @@ const suites = [
   { id: 'S7', title: 'UI 版本 diff 对比（FR-FE05）', kind: 'ui', script: 'tests/ui_diff.mjs' },
   { id: 'S8', title: 'UI 主题色定制（FR-TH02）', kind: 'ui', script: 'tests/ui_theme.mjs', env: { PYTHON: PY } },
   { id: 'S9', title: 'UI 键盘可完成主链路（FR-UI05）', kind: 'ui', script: 'tests/ui_a11y_keyboard.mjs' },
+  { id: 'S10', title: '命令行/无人值守模式（FR-FE10）', kind: 'py', script: 'tests/unit_cli.py' },
+  { id: 'S11', title: 'UI 动效/骨架屏/空态插画（FR-UI04/UI07）', kind: 'ui', script: 'tests/ui_motion.mjs' },
 ];
 
 let server = null, chrome = null;

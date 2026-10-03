@@ -86,9 +86,8 @@ function updateSortInd(){
 }
 function clearFilters(){$("#q").value="";["fSys","fType","fReuse"].forEach(id=>$("#"+id).value="");
   $("#fTodo").checked=false;sortState=null;render();toast("已清除筛选与排序");}
-function emptyState(icon,title,desc,actionHtml){return `<div style="text-align:center;padding:28px 12px"><i aria-hidden="true" data-lucide="${icon}" style="width:34px;height:34px;color:var(--muted)"></i><div style="font-weight:700;margin-top:10px">${title}</div><div style="font-size:12px;color:var(--muted);margin-top:6px">${desc}</div><div style="margin-top:12px">${actionHtml||""}</div></div>`;}
-function errorBox(msg,retryFn){  // FR-1.6：统一错误态——文案+重试+诊断指引（所有错误态含下一步动作）
-  return `<div style="text-align:center;padding:22px 12px"><i aria-hidden="true" data-lucide="alert-triangle" style="width:30px;height:30px;color:var(--danger)"></i><div style="font-weight:700;margin-top:8px">操作失败</div><div style="font-size:12px;color:var(--muted);margin-top:6px">${histEsc(msg)}</div><div style="margin-top:12px"><button class="btn btn-ghost" onclick="${retryFn}">重试</button> <a href="#" onclick="goPage('help');return false" style="font-size:12px;color:var(--muted)">查看诊断指引</a></div></div>`;}
+// FR-UI07：emptyState / errorBox 已迁至 22_fr_ui04_ui07_动效_空态插画.js（补插画与语义容器），
+// 本模块只保留列表渲染，避免两处定义互相覆盖（后定义者胜出会静默改行为）。
 function rowHTML(it){
   return `<tr class="rowr ${it.ok?'done':''}" data-seq="${it.seq}" data-sys="${escAttr(it.system)}">
       <td><input type="checkbox" class="ck" ${it.ok?'checked':''}></td>
@@ -362,9 +361,9 @@ document.addEventListener("DOMContentLoaded",()=>{
   dropEl.addEventListener("click",()=>upEl.click());
   // FR-UI05：PERT 拖放区键盘不可达，补 Enter/Space 走同一 file 路径
   dropEl.addEventListener("keydown",e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();upEl.click();}});
-  dropEl.addEventListener("dragover",e=>{e.preventDefault();dropEl.classList.add("drag");});
-  dropEl.addEventListener("dragleave",()=>dropEl.classList.remove("drag"));
-  dropEl.addEventListener("drop",e=>{e.preventDefault();dropEl.classList.remove("drag");if(e.dataTransfer.files[0])pertSetFile(e.dataTransfer.files[0]);});
+  // FR-UI04：原用 dragover 加高亮、dragleave 移除，鼠标划过子元素时高亮反复闪烁。
+  // bindDropZone 改用 enter/leave 深度计数，只在真正离开时才熄灭。
+  bindDropZone(dropEl,pertSetFile);
   upEl.addEventListener("change",()=>{if(upEl.files[0])pertSetFile(upEl.files[0]);
 upEl.value="";});
   const ta=$("#pertTextArea");
@@ -854,8 +853,9 @@ drop.addEventListener("click",()=>file.click());
 // FR-UI05：拖放区原为纯 div+click，键盘不可达（SonarQube Web:S6848）。
 // 补 Enter/Space 键效走同一 file.click() 路径，与鼠标点击行为完全一致。
 drop.addEventListener("keydown",e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();file.click();}});
-drop.addEventListener("dragover",e=>e.preventDefault());
-drop.addEventListener("drop",e=>{e.preventDefault();if(e.dataTransfer.files[0])setFile(e.dataTransfer.files[0]);});
+// FR-UI04：上传区原先只有 dragover 的 preventDefault，拖入时毫无视觉反馈（无高亮）。
+// 改用 bindDropZone：dragenter/leave 计数防子元素抖动，且 drop 后才取文件。
+bindDropZone(drop,setFile);
 file.addEventListener("change",()=>{if(file.files[0])setFile(file.files[0]);});
 function setFile(f){curFile=f;histClearCtx();if(f.name.endsWith(".docx")){$("#fname").textContent=f.name;drop.classList.add("has");$("#startBtn").disabled=false;}else{toast("请选择 .docx 文件");}}
 function rstFile(){curFile=null;histClearCtx();drop.classList.remove("has");file.value="";$("#startBtn").disabled=true;}
