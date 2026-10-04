@@ -151,6 +151,139 @@ await ev(`setLang('zh-CN');`); await sleep(500);
 const back = await ev(`document.querySelector('.brand h1').textContent.trim()`);
 check('可切回中文', back === '工作量评估助手', back);
 
+// ---- 13) 复核表（批次2新增，最易踩DOM 摧毁与计数插值坑） ----
+// 先造数据：空表下多数文案不渲染，无法验证
+await ev(`(()=>{items=[
+  {seq:1,system:'S1',m1:'M1',desc:'客户信息维护',count_item:'字段校验',type:'EI',reuse:'中',modify:'修改',cx:'中',ok:true,basis:'b1'},
+  {seq:2,system:'S1',m1:'M1',desc:'订单查询',count_item:'查询界面',type:'EO',reuse:'高',modify:'新增',cx:'低',ok:false,basis:'b2'}
+];syncSysFilter&&syncSysFilter();render();goStep('review');})()`);
+await sleep(500);
+const rvZh = JSON.parse(await ev(`JSON.stringify({
+  cap:document.querySelector('.cap[data-i18n]').textContent.trim(),
+  pendingPre:[...document.querySelectorAll('[data-i18n="review.side.pending_pre"]')].map(x=>x.textContent.trim())[0],
+  pendingPost:[...document.querySelectorAll('[data-i18n="review.side.pending_post"]')].map(x=>x.textContent.trim())[0],
+  listCnt:document.getElementById('listCnt').textContent.trim(),
+  thDesc:document.querySelector('[data-i18n="review.th.desc"]').textContent.trim(),
+  thDescTitle:document.querySelector('th[data-i18n="title=review.th.desc_title"]').getAttribute('title'),
+  thCx:[...document.querySelectorAll('#v-review th[data-i18n]')].map(x=>x.textContent.trim()),
+  paste:document.querySelector('[data-i18n="review.paste"]').textContent.trim(),
+  go:[...document.querySelectorAll('[data-i18n="review.dock.go"]')].map(x=>x.textContent.trim())[0],
+  hint:document.querySelector('[data-i18n="review.gen.hint"]')?document.querySelector('[data-i18n="review.gen.hint"]').textContent.trim():null,
+})`));
+check('复核表中文态：侧栏/计数/表头/按钮均为中文',
+  rvZh.cap === '功能模块' && rvZh.listCnt === '2 条候选'
+  && rvZh.thDesc === '功能项描述' && rvZh.paste === '粘贴导入' && rvZh.go === '确认无误 · 生成结果',
+  JSON.stringify(rvZh));
+// 关键：tf() 插值必须生效，且未留下 {n} 裸占位
+check('计数文案经 tf() 插值（无 {n} 残留，且数字正确）',
+  /^\d+ 条候选$/.test(rvZh.listCnt) && !rvZh.listCnt.includes('{'), rvZh.listCnt);
+check('「待确认 N项」拆成 pre/post 后语序正确（数字在两段之间）',
+  rvZh.pendingPre === '待确认' && rvZh.pendingPost === '项', JSON.stringify([rvZh.pendingPre, rvZh.pendingPost]));
+
+// 切英文：验证同一批节点
+await ev(`setLang('en-US');`); await sleep(600);
+const rvEn = JSON.parse(await ev(`JSON.stringify({
+  cap:document.querySelector('.cap[data-i18n]').textContent.trim(),
+  pendingPre:[...document.querySelectorAll('[data-i18n="review.side.pending_pre"]')].map(x=>x.textContent.trim())[0],
+  pendingPost:[...document.querySelectorAll('[data-i18n="review.side.pending_post"]')].map(x=>x.textContent.trim())[0],
+  listCnt:document.getElementById('listCnt').textContent.trim(),
+  thDesc:document.querySelector('[data-i18n="review.th.desc"]').textContent.trim(),
+  thDescTitle:document.querySelector('th[data-i18n="title=review.th.desc_title"]').getAttribute('title'),
+  thCx:[...document.querySelectorAll('#v-review th[data-i18n]')].map(x=>x.textContent.trim()),
+  paste:document.querySelector('[data-i18n="review.paste"]').textContent.trim(),
+  go:[...document.querySelectorAll('[data-i18n="review.dock.go"]')].map(x=>x.textContent.trim())[0],
+  // 关键回归点：lucide 图标是否被 textContent 摧毁
+  pasteIcon:!!document.querySelector('[data-i18n="review.paste"]').parentElement.querySelector('svg, i[data-lucide]'),
+  goIcon:!!document.querySelector('[data-i18n="review.dock.go"]').parentElement.querySelector('svg, i[data-lucide]'),
+  stepChildIntact:document.querySelector('#st1').children.length,
+})`));
+check('复核表英文态：侧栏/表头/按钮已切英文',
+  rvEn.cap === 'Function Modules' && rvEn.thDesc === 'Description' && rvEn.paste === 'Paste import',
+  JSON.stringify({cap:rvEn.cap, thDesc:rvEn.thDesc, paste:rvEn.paste}));
+check('复核表计数英文态插值正确（n candidates）',
+  /^\d+ candidates$/.test(rvEn.listCnt) && !rvEn.listCnt.includes('{'), rvEn.listCnt);
+check('「待确认 N项」英文态语序正确（Pending N items）',
+  rvEn.pendingPre === 'Pending' && rvEn.pendingPost === 'items', JSON.stringify([rvEn.pendingPre, rvEn.pendingPost]));
+// 这条直接对应批次1 的textContent 摧毁 DOM 缺陷
+check('切换语言后按钮图标未被摧毁（textContent 回归守卫）',
+  rvEn.pasteIcon === true && rvEn.goIcon === true,
+  JSON.stringify({paste:rvEn.pasteIcon, go:rvEn.goIcon}));
+check('步骤条子结构完好（序号+文案未被 textContent 摧毁）',
+  rvEn.stepChildIntact >= 2, `children=${rvEn.stepChildIntact}`);
+check('表头 title 属性同步（按描述排序 → Sort by description）',
+  rvEn.thDescTitle === 'Sort by description', rvEn.thDescTitle);
+// 复核表全块无中文残留
+const rvResidue = await ev(`(()=>{const bad=[];document.querySelectorAll('#v-review [data-i18n]').forEach(el=>{
+  if(el.children.length===0&&/[一-龥]/.test(el.textContent)) bad.push(el.getAttribute('data-i18n'));});return JSON.stringify(bad)})()`);
+check('复核表英文态无中文残留', rvResidue === '[]', rvResidue);
+// 切回中文并复原数据
+await ev(`setLang('zh-CN');items=[];render();`); await sleep(500);
+
+// ---- 14) 结果页（批次2）----
+await ev(`(()=>{gSummary={ufp:35,adjusted_fp:32,work:{low:10,mid:12,high:15},cost:{low:8,mid:9,high:11}};
+  items=[{seq:1,system:'S1',m1:'M1',desc:'D1',count_item:'C1',type:'EI',reuse:'中',modify:'修改',cx:'中',ok:true,basis:''},
+         {seq:2,system:'S2',m1:'M2',desc:'D2',count_item:'C2',type:'EO',reuse:'高',modify:'新增',cx:'低',ok:true,basis:''}];
+  render();buildResult();goStep('result');})()`);
+await sleep(600);
+const rsZh = JSON.parse(await ev(`JSON.stringify({
+  sum:[...document.querySelectorAll('[data-i18n="result.tab.sum"]')].map(x=>x.textContent.trim()),
+  gb:document.querySelector('[data-i18n="result.tab.gb"]').textContent.trim(),
+  kpiFp:document.querySelector('[data-i18n="result.kpi.fp"]').textContent.trim(),
+  kpiCost:document.querySelector('[data-i18n="result.kpi.cost"]').textContent.trim(),
+  kpiUnit:[...document.querySelectorAll('[data-i18n="result.kpi.cost_unit"]')].map(x=>x.textContent.trim())[0],
+  low:[...document.querySelectorAll('[data-i18n="result.kpi.low"]')].map(x=>x.textContent.trim())[0],
+  chart:[...document.querySelectorAll('[data-i18n^="result.chart."]')].map(x=>x.textContent.trim()),
+  sys:document.querySelector('[data-i18n="result.sys.title"]').textContent.trim(),
+  nav:document.querySelector('.r-tabs').getAttribute('aria-label'),
+})`));
+check('结果页中文态：Tab/KPI/图表标题均为中文',
+  rsZh.sum[0] === '评估汇总' && rsZh.gb === '国标造价' && rsZh.kpiFp === '未调整功能点'
+  && rsZh.kpiCost === '费用' && rsZh.sys === '分系统规模明细（US）' && rsZh.chart.length === 4,
+  JSON.stringify({sum:rsZh.sum[0], kpi:rsZh.kpiFp, chart:rsZh.chart.length}));
+
+await ev(`setLang('en-US');`); await sleep(700);
+const rsEn = JSON.parse(await ev(`JSON.stringify({
+  sum:[...document.querySelectorAll('[data-i18n="result.tab.sum"]')].map(x=>x.textContent.trim())[0],
+  gb:document.querySelector('[data-i18n="result.tab.gb"]').textContent.trim(),
+  kpiFp:document.querySelector('[data-i18n="result.kpi.fp"]').textContent.trim(),
+  kpiWorkUnit:[...document.querySelectorAll('[data-i18n="result.kpi.work_unit"]')].map(x=>x.textContent.trim())[0],
+  kpiLow:[...document.querySelectorAll('[data-i18n="result.kpi.low"]')].map(x=>x.textContent.trim())[0],
+  kpiHigh:[...document.querySelectorAll('[data-i18n="result.kpi.high"]')].map(x=>x.textContent.trim())[0],
+  chart:[...document.querySelectorAll('[data-i18n^="result.chart."]')].map(x=>x.textContent.trim()),
+  sys:document.querySelector('[data-i18n="result.sys.title"]').textContent.trim(),
+  check:document.querySelector('[data-i18n="result.check.title"]').textContent.trim(),
+  nav:document.querySelector('.r-tabs').getAttribute('aria-label'),
+  // KPI 数值须仍是数字（重渲染不能把数据清掉）
+  fp:document.getElementById('rFp').textContent.trim(),
+  cost:document.getElementById('rCost').textContent.trim(),
+  // 图表卡片图标未被摧毁
+  chartIcon:!!document.querySelector('[data-i18n="result.chart.type"]').parentElement.querySelector('svg, i[data-lucide]'),
+})`));
+check('结果页英文态：Tab/KPI/图表标题已切英文',
+  rsEn.sum === 'Summary' && rsEn.gb === 'GB Cost' && rsEn.kpiFp === 'Unadjusted FP'
+  && rsEn.sys === 'Size by System (US)' && rsEn.check === 'Validation Report',
+  JSON.stringify({sum:rsEn.sum, kpi:rsEn.kpiFp, sys:rsEn.sys}));
+check('结果页 KPI 区间标签与单位已切英文',
+  rsEn.kpiLow === 'Low' && rsEn.kpiHigh === 'High' && /person-days/.test(rsEn.kpiWorkUnit),
+  JSON.stringify({low:rsEn.kpiLow, unit:rsEn.kpiWorkUnit}));
+check('结果页四张图表标题已切英文',
+  rsEn.chart.length === 4 && rsEn.chart.every(c => /^[A-Za-z]/.test(c)), JSON.stringify(rsEn.chart));
+check('结果页 aria-label 同步（Result page navigation）',
+  rsEn.nav === 'Result page navigation', rsEn.nav);
+// 切语言触发 render()/refreshCharts() 后，KPI 数值不能被清空
+check('切换语言后 KPI 数值保持（重渲染未清空数据）',
+  rsEn.fp === '35' && rsEn.cost === '9', `fp=${rsEn.fp} cost=${rsEn.cost}`);
+check('结果页图表卡片图标未被摧毁', rsEn.chartIcon === true, `icon=${rsEn.chartIcon}`);
+// 折叠按钮的 title 属性
+const foldTitle = await ev(`document.querySelector('[data-i18n="title=result.fold.detail_title"]').getAttribute('title')`);
+check('结果页折叠按钮 title 已切英文', foldTitle === 'Collapse/expand details', foldTitle);
+
+const rsResidue = await ev(`(()=>{const bad=[];document.querySelectorAll('#v-result [data-i18n]').forEach(el=>{
+  if(el.children.length===0&&/[一-龥]/.test(el.textContent)) bad.push(el.getAttribute('data-i18n'));});return JSON.stringify(bad)})()`);
+check('结果页英文态无中文残留', rsResidue === '[]', rsResidue);
+
+await ev(`setLang('zh-CN');items=[];goStep('upload');`); await sleep(400);
+
 check('全程无页面异常', errors.length === 0, errors.slice(0, 2).join(' | '));
 const failed = res.filter(r => !r.ok);
 console.log(`\n==== 汇总 ==== 共 ${res.length} 项，通过 ${res.length - failed.length}，失败 ${failed.length}`);

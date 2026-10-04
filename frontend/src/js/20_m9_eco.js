@@ -80,6 +80,15 @@ async function i18nLoad(lang){
   return __I18N;
 }
 function t(key){ return (__I18N && __I18N[key]) || key; }
+/** 带插值的取文案：tf("review.count", {n: 5}) → "5 条候选" / "5 candidates"。
+ *  用于「数值由 JS 运行时填充」的场景——这类文案不能靠 applyI18n 写 textContent
+ * （会覆盖 JS 刚写入的数字），也不宜把变量塞进字典。
+ * 字典里用 {name} 占位；缺译文时回落为 key 本身（不做插值，避免露出 {n}）。 */
+function tf(key, vars){
+  const s = t(key);
+  if(s === key) return s;          // 未命中：直接返回 key，不插值
+  return s.replace(/\{(\w+)\}/g, (m, k) => (vars && vars[k] != null) ? vars[k] : m);
+}
 /** 切换语言：落盘 → 重载字典 → 重刷 data-i18n 标注的节点 */
 async function setLang(lang){
   if(!lang || lang === __I18N_LANG) return;
@@ -88,7 +97,14 @@ async function setLang(lang){
   applyI18n();
   document.documentElement.lang = lang;
   if(typeof langSegPaint === "function") langSegPaint();
-  toast(t("common.langSwitched"));
+  // 动态生成的文案（计数、空态、徽章、图表标题）不在 data-i18n 标注范围内——
+  // applyI18n 只处理静态节点，这些由渲染函数产出。故切换语言后必须重渲染，
+  // 否则会停留在旧语言：实测「2 条候选」在英文界面下仍显示中文。
+  // 逐个 typeof 守卫：本函数在 01_core 之后定义，调用方页面可能尚未加载对应模块。
+  if(typeof render === "function" && Array.isArray(items)) render();
+  if(typeof refreshCharts === "function" && Object.keys(_charts || {}).length) refreshCharts();
+  if(typeof rulesLoad === "function" && document.body.dataset.page === "config") rulesLoad();
+  toast(t("common.lang_switched"));
 }
 /* data-i18n 机制：把文案与结构解耦，避免为每种语言复制一份 DOM。
    - <span data-i18n="key">替换文本内容

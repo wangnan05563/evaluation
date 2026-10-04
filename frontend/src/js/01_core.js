@@ -21,7 +21,7 @@ tr.querySelector('[data-u]').textContent=ufp(it);tr.querySelector('[data-s]').te
 function refreshTotals(){
   const okT=items.filter(x=>x.ok),tU=items.reduce((a,x)=>a+ufp(x),0),tS=items.reduce((a,x)=>a+us(x),0).toFixed(2);
   $("#okCnt").textContent=okT.length;$("#leftCnt").textContent=items.length-okT.length;
-  $("#treeUfp").textContent=tU;$("#dockUfp").textContent=tU;$("#dockUs").textContent=tS;$("#listCnt").textContent=items.length+" 条候选";
+  $("#treeUfp").textContent=tU;$("#dockUfp").textContent=tU;$("#dockUs").textContent=tS;$("#listCnt").textContent=tf("review.count",{n:items.length});
   $("#goRes").disabled=okT.length!==items.length;
 }
 function buildTree(){
@@ -101,7 +101,7 @@ function render(opts){   // FR-3.3：light 模式跳过树重建/筛选同步（
   const light=opts&&opts.light;
   if(!light){buildTree();syncSysFilter();updateSortInd();}
   const arr=visibleItems();
-  $("#listCnt").textContent=arr.length+" 条候选";
+  $("#listCnt").textContent=tf("review.count",{n:arr.length});
   const bb=$("#batchBar");bb.style.display=arr.length?"flex":"none";$("#batchCnt").textContent=arr.length;
   if(!items.length){
     $("#tbody").innerHTML=`<tr><td colspan="9">${emptyState("inbox","暂无候选功能项","上传需求文档并完成识别后，候选功能点将出现在这里","")}</td></tr>`;

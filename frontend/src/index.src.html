@@ -46,7 +46,7 @@
         <button class="btn btn-primary" id="hdifBtn" disabled onclick="histDiff()" style="margin-left:8px"><i aria-hidden="true" data-lucide="git-compare" style="width:15px;height:15px"></i><span data-i18n="history.compare">对比所选（0/2）</span></button>
       </div>
       <table>
-        <thead><tr><th style="width:34px"><input type="checkbox" id="hdifAll" onchange="histDiffAll(this.checked)" data-i18n="title=history.clearSel" title="清空选择"></th><th data-i18n="history.col.time">时间</th><th data-i18n="history.col.title">需求标题</th><th data-i18n="history.col.fp">功能点</th><th data-i18n="history.col.us">US 合计</th><th data-i18n="history.col.action">操作</th></tr></thead>
+        <thead><tr><th style="width:34px"><input type="checkbox" id="hdifAll" onchange="histDiffAll(this.checked)" data-i18n="title=history.clear_sel" title="清空选择"></th><th data-i18n="history.col.time">时间</th><th data-i18n="history.col.title">需求标题</th><th data-i18n="history.col.fp">功能点</th><th data-i18n="history.col.us">US 合计</th><th data-i18n="history.col.action">操作</th></tr></thead>
         <tbody id="histRows"><tr><td colspan="6" style="color:var(--muted)" data-i18n="common.loading">加载中…</td></tr></tbody>
       </table>
       <div class="cfg-note" style="margin-top:12px">
@@ -94,48 +94,48 @@
     <div class="mark" id="reopenBanner" style="display:none;margin-bottom:12px"></div>
     <div class="av">
       <aside class="glass pad" style="padding:16px">
-        <div class="cap">功能模块</div>
+        <div class="cap" data-i18n="review.cap.module">功能模块</div>
         <div class="tree" id="tree"></div>
-        <div class="total"><span>未调整功能点 UFP</span><b id="treeUfp">0</b><span>待确认 <b class="num" id="leftCnt">0</b> 项</span></div>
+        <div class="total"><span data-i18n="review.side.ufp_unadj">未调整功能点 UFP</span><b id="treeUfp">0</b><span><span data-i18n="review.side.pending_pre">待确认</span> <b class="num" id="leftCnt">0</b> <span data-i18n="review.side.pending_post">项</span></span></div>
       </aside>
       <div class="glass pad">
         <div class="toolbar">
-          <div class="search"><i aria-hidden="true" data-lucide="search"></i><input id="q" placeholder="搜索功能项描述 / 计数项名称…"></div>
-          <select id="fSys" onchange="render()" title="按模块筛选"><option value="">全部模块</option></select>
-          <select id="fType" onchange="render()" title="按类型筛选"><option value="">全部类型</option><option>EI</option><option>EO</option><option>EQ</option><option>ILF</option><option>EIF</option></select>
-          <select id="fReuse" onchange="render()" title="按重用度筛选"><option value="">全部重用度</option><option>高</option><option>中</option><option>低</option></select>
-          <label style="display:flex;align-items:center;gap:4px;font-size:12px;color:var(--muted);white-space:nowrap"><input type="checkbox" id="fTodo" onchange="render()">仅看未确认</label>
-          <button class="btn btn-ghost" onclick="clearFilters()" title="清除全部筛选与排序" aria-label="清除全部筛选与排序"><i aria-hidden="true" data-lucide="x" style="width:15px;height:15px"></i></button>
+          <div class="search"><i aria-hidden="true" data-lucide="search"></i><input id="q" data-i18n-ph="review.search.ph" placeholder="搜索功能项描述 / 计数项名称…"></div>
+          <select id="fSys" onchange="render()" data-i18n="title=review.filter.sys_title" title="按模块筛选"><option value="" data-i18n="review.filter.sys">全部模块</option></select>
+          <select id="fType" onchange="render()" data-i18n="title=review.filter.type_title" title="按类型筛选"><option value="" data-i18n="review.filter.type">全部类型</option><option>EI</option><option>EO</option><option>EQ</option><option>ILF</option><option>EIF</option></select>
+          <select id="fReuse" onchange="render()" data-i18n="title=review.filter.reuse_title" title="按重用度筛选"><option value="" data-i18n="review.filter.reuse">全部重用度</option><option>高</option><option>中</option><option>低</option></select>
+          <label style="display:flex;align-items:center;gap:4px;font-size:12px;color:var(--muted);white-space:nowrap"><input type="checkbox" id="fTodo" onchange="render()"><span data-i18n="review.filter.todo">仅看未确认</span></label>
+          <button class="btn btn-ghost" onclick="clearFilters()" data-i18n="title=review.filter.clear|aria-label=review.filter.clear" title="清除全部筛选与排序" aria-label="清除全部筛选与排序"><i aria-hidden="true" data-lucide="x" style="width:15px;height:15px"></i></button>
           <span class="tcount" id="listCnt">0 条候选</span>
-          <button class="btn btn-ghost" onclick="pasteOpen()" title="粘贴 Excel 复制的明细批量导入"><i aria-hidden="true" data-lucide="clipboard-paste" style="width:15px;height:15px"></i>粘贴导入</button>
-          <button class="btn btn-ghost" onclick="showAllBasis()" title="展开全部判定依据" aria-label="展开全部判定依据"><i aria-hidden="true" data-lucide="eye" style="width:15px;height:15px"></i></button>
+          <button class="btn btn-ghost" onclick="pasteOpen()" data-i18n="title=review.paste_title" title="粘贴 Excel 复制的明细批量导入"><i aria-hidden="true" data-lucide="clipboard-paste" style="width:15px;height:15px"></i><span data-i18n="review.paste">粘贴导入</span></button>
+          <button class="btn btn-ghost" onclick="showAllBasis()" data-i18n="title=review.basis_all" title="展开全部判定依据" aria-label="展开全部判定依据"><i aria-hidden="true" data-lucide="eye" style="width:15px;height:15px"></i></button>
         </div>
         <div class="mark" id="batchBar" style="display:none;align-items:center;gap:8px;margin-bottom:10px">
-          <b>对筛选出的 <span id="batchCnt">0</span> 行批量：</b>
-          <select id="bReuse"><option value="">重用度…</option><option>高</option><option>中</option><option>低</option></select>
-          <select id="bModify"><option value="">修改类型…</option><option>新增</option><option>修改</option><option>删除</option></select>
-          <select id="bCx"><option value="">复杂度…</option><option>低</option><option>中</option><option>高</option></select>
-          <button class="btn btn-ghost" onclick="batchApply()" title="应用到筛选出的全部行">应用</button>
-          <button class="btn btn-ghost" onclick="batchConfirm()" title="全部标记为已确认">标记确认</button>
-          <button class="btn btn-ghost" onclick="batchDelete()" title="删除筛选出的全部行（需确认）"><i aria-hidden="true" data-lucide="trash-2" style="width:14px;height:14px"></i>删除</button>
+          <b><span data-i18n="review.batch.pre">对筛选出的</span> <span id="batchCnt">0</span> <span data-i18n="review.batch.post">行批量：</span></b>
+          <select id="bReuse"><option value="" data-i18n="review.batch.reuse">重用度…</option><option>高</option><option>中</option><option>低</option></select>
+          <select id="bModify"><option value="" data-i18n="review.batch.modify">修改类型…</option><option>新增</option><option>修改</option><option>删除</option></select>
+          <select id="bCx"><option value="" data-i18n="review.batch.cx">复杂度…</option><option>低</option><option>中</option><option>高</option></select>
+          <button class="btn btn-ghost" onclick="batchApply()" data-i18n="title=review.batch.apply_title" title="应用到筛选出的全部行"><span data-i18n="review.batch.apply">应用</span></button>
+          <button class="btn btn-ghost" onclick="batchConfirm()" data-i18n="title=review.batch.confirm_title" title="全部标记为已确认"><span data-i18n="review.batch.confirm">标记确认</span></button>
+          <button class="btn btn-ghost" onclick="batchDelete()" data-i18n="title=review.batch.del_title" title="删除筛选出的全部行（需确认）"><i aria-hidden="true" data-lucide="trash-2" style="width:14px;height:14px"></i><span data-i18n="review.batch.del">删除</span></button>
         </div>
         <div style="overflow:auto">
         <table>
-          <thead><tr><th style="width:34px"><input type="checkbox" id="ckAll" title="全选/全不选（确认所有功能项）" aria-label="全选/全不选，确认所有功能项" onchange="toggleAllCk(this.checked)"></th><th onclick="sortBy('desc')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();sortBy('desc')}" class="sortable" role="button" tabindex="0" aria-sort="none" title="按描述排序">功能项描述 <span id="s-desc"></span></th><th onclick="sortBy('type')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();sortBy('type')}" class="sortable" role="button" tabindex="0" aria-sort="none" title="按类型排序">计数项 · 类别 <span id="s-type"></span></th><th style="width:168px">复杂度</th><th style="width:60px">UFP</th><th style="width:86px">重用</th><th style="width:86px">修改</th><th onclick="sortBy('us')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();sortBy('us')}" class="sortable" role="button" tabindex="0" aria-sort="none" title="按 US 排序" style="width:60px">US <span id="s-us"></span></th><th>状态</th></tr></thead>
+          <thead><tr><th style="width:34px"><input type="checkbox" id="ckAll" data-i18n="title=review.th.select_all|aria-label=review.th.select_all_aria" title="全选/全不选（确认所有功能项）" aria-label="全选/全不选，确认所有功能项" onchange="toggleAllCk(this.checked)"></th><th onclick="sortBy('desc')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();sortBy('desc')}" class="sortable" role="button" tabindex="0" aria-sort="none" data-i18n="title=review.th.desc_title" title="按描述排序"><span data-i18n="review.th.desc">功能项描述</span> <span id="s-desc"></span></th><th onclick="sortBy('type')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();sortBy('type')}" class="sortable" role="button" tabindex="0" aria-sort="none" data-i18n="title=review.th.count_item_title" title="按类型排序"><span data-i18n="review.th.count_item">计数项 · 类别</span> <span id="s-type"></span></th><th style="width:168px" data-i18n="review.th.cx">复杂度</th><th style="width:60px" data-i18n="review.th.ufp">UFP</th><th style="width:86px" data-i18n="review.th.reuse">重用</th><th style="width:86px" data-i18n="review.th.modify">修改</th><th onclick="sortBy('us')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();sortBy('us')}" class="sortable" role="button" tabindex="0" aria-sort="none" data-i18n="title=review.th.us_title" title="按 US 排序" style="width:60px"><span data-i18n="review.th.us">US</span> <span id="s-us"></span></th><th data-i18n="review.th.status">状态</th></tr></thead>
           <tbody id="tbody"></tbody>
         </table>
         </div>
         <div class="dockbar">
           <div class="gprog" id="genProg" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" aria-live="polite">
-            <div class="gprog-top"><span id="genProgTxt">正在生成…</span><span id="genProgPct">0%</span></div>
+            <div class="gprog-top"><span id="genProgTxt" data-i18n="review.gen.working">正在生成…</span><span id="genProgPct">0%</span></div>
             <div class="gprog-track"><div class="gprog-fill" id="genProgFill"></div></div>
           </div>
-          <div style="font-size:12px;color:var(--muted);line-height:1.6">已按 IFPUG 初识，请人工复核类别与复杂度。</div>
+          <div style="font-size:12px;color:var(--muted);line-height:1.6"><span data-i18n="review.gen.hint">已按 IFPUG 初识，请人工复核类别与复杂度。</span></div>
           <div class="lt">
-            <div class="item"><span>已确认</span><b id="okCnt">0</b></div>
-            <div class="item"><span>UFP 合计</span><b id="dockUfp">0</b></div>
-            <div class="item"><span>US 合计</span><b id="dockUs">0</b></div>
-            <button class="btn btn-primary" id="goRes" disabled title="确认无误 · 生成结果"><i aria-hidden="true" data-lucide="check"></i>确认无误 · 生成结果</button>
+            <div class="item"><span data-i18n="review.dock.ok">已确认</span><b id="okCnt">0</b></div>
+            <div class="item"><span data-i18n="review.dock.ufp">UFP 合计</span><b id="dockUfp">0</b></div>
+            <div class="item"><span data-i18n="review.dock.us">US 合计</span><b id="dockUs">0</b></div>
+            <button class="btn btn-primary" id="goRes" disabled data-i18n="title=review.dock.go_title" title="确认无误 · 生成结果"><i aria-hidden="true" data-lucide="check"></i><span data-i18n="review.dock.go">确认无误 · 生成结果</span></button>
           </div>
         </div>
       </div>
@@ -143,68 +143,68 @@
   </section>
 
   <section class="view" id="v-result">
-    <div class="r-tabs" role="navigation" aria-label="结果页导航" style="position:sticky;top:0;z-index:5;display:flex;gap:8px;align-items:center;margin-bottom:12px;padding:6px 0;background:var(--bg)">
-      <button class="btn btn-ghost" id="tabSum" onclick="gbTab('sum')" style="font-weight:700">评估汇总</button>
-      <button class="btn btn-ghost" id="tabGb" onclick="gbTab('gb');gbRender()">国标造价</button>
+    <div class="r-tabs" role="navigation" data-i18n="aria-label=result.nav.aria" aria-label="结果页导航" style="position:sticky;top:0;z-index:5;display:flex;gap:8px;align-items:center;margin-bottom:12px;padding:6px 0;background:var(--bg)">
+      <button class="btn btn-ghost" id="tabSum" onclick="gbTab('sum')" style="font-weight:700"><span data-i18n="result.tab.sum">评估汇总</span></button>
+      <button class="btn btn-ghost" id="tabGb" onclick="gbTab('gb');gbRender()"><span data-i18n="result.tab.gb">国标造价</span></button>
       <span style="flex:1"></span>
-      <button class="btn btn-ghost r-anchor" data-anchor="kpisSec" onclick="rAnchor('kpisSec')">结论摘要</button>
-      <button class="btn btn-ghost r-anchor" data-anchor="rGridSec" onclick="rAnchor('rGridSec')">明细</button>
-      <button class="btn btn-ghost r-anchor" data-anchor="dlSec" onclick="rAnchor('dlSec')">导出</button>
+      <button class="btn btn-ghost r-anchor" data-anchor="kpisSec" onclick="rAnchor('kpisSec')"><span data-i18n="result.anchor.sum">结论摘要</span></button>
+      <button class="btn btn-ghost r-anchor" data-anchor="rGridSec" onclick="rAnchor('rGridSec')"><span data-i18n="result.anchor.detail">明细</span></button>
+      <button class="btn btn-ghost r-anchor" data-anchor="dlSec" onclick="rAnchor('dlSec')"><span data-i18n="result.anchor.export">导出</span></button>
     </div>
     <div id="gbCard" style="display:none">
       <div class="glass pad">
-        <div class="card-title"><i aria-hidden="true" data-lucide="landmark"></i>GB/T 36964 国标造价测算（FR-2.2/2.7）
+        <div class="card-title"><i aria-hidden="true" data-lucide="landmark"></i><span data-i18n="result.gb.title">GB/T 36964 国标造价测算（FR-2.2/2.7）</span>
           <span style="flex:1"></span><span class="tcount" id="gbRatesVer">—</span></div>
         <div id="gbFactors" style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:12px 0"></div>
         <div id="gbOut" style="font-size:13px;line-height:2" aria-live="polite"></div>
-        <p class="cfg-note" style="margin-top:10px">出处：GB/T 36964-2018《软件研发成本度量规范》· <span id="gbSource">CSBMK 基准</span>。勾选"自定义"覆盖基准值后标注<span class="mark" style="padding:1px 6px">人工调整</span>。</p>
+        <p class="cfg-note" style="margin-top:10px"><span data-i18n="result.gb.source_prefix">出处：GB/T 36964-2018《软件研发成本度量规范》· </span><span id="gbSource" data-i18n="result.gb.source_default">CSBMK 基准</span>。<span data-i18n="result.gb.custom_hint">勾选“自定义”覆盖基准值后标注</span><span class="mark" style="padding:1px 6px" data-i18n="result.gb.manual_adjust">人工调整</span>。</p>
       </div>
     </div>
     <div class="kpis" id="kpisSec" aria-live="polite">
-      <div class="kpi"><div class="k-top"><i aria-hidden="true" data-lucide="layers"></i>未调整功能点</div><b id="rFp">0</b><small>FP</small></div>
-      <div class="kpi"><div class="k-top"><i aria-hidden="true" data-lucide="scale"></i>调整后规模</div><b id="rScale">0</b><small>FP</small></div>
-      <div class="kpi"><div class="k-top"><i aria-hidden="true" data-lucide="clock"></i>工作量</div><b id="rWork">0</b><small>人天 · 中值</small>
-        <div class="band"><div class="b"><b id="rWorkL">·</b><span>下限</span></div><div class="b"><b id="rWorkM">·</b><span>中值</span></div><div class="b"><b id="rWorkH">·</b><span>上限</span></div></div></div>
-      <div class="kpi"><div class="k-top"><i aria-hidden="true" data-lucide="currency-yuan"></i>费用</div><b id="rCost">0</b><small>万元 · 中值</small>
-        <div class="band"><div class="b"><b id="rCostL">·</b><span>下限</span></div><div class="b"><b id="rCostM">·</b><span>中值</span></div><div class="b"><b id="rCostH">·</b><span>上限</span></div></div></div>
+      <div class="kpi"><div class="k-top"><i aria-hidden="true" data-lucide="layers"></i><span data-i18n="result.kpi.fp">未调整功能点</span></div><b id="rFp">0</b><small>FP</small></div>
+      <div class="kpi"><div class="k-top"><i aria-hidden="true" data-lucide="scale"></i><span data-i18n="result.kpi.scale">调整后规模</span></div><b id="rScale">0</b><small>FP</small></div>
+      <div class="kpi"><div class="k-top"><i aria-hidden="true" data-lucide="clock"></i><span data-i18n="result.kpi.work">工作量</span></div><b id="rWork">0</b><small data-i18n="result.kpi.work_unit">人天 · 中值</small>
+        <div class="band"><div class="b"><b id="rWorkL">·</b><span data-i18n="result.kpi.low">下限</span></div><div class="b"><b id="rWorkM">·</b><span data-i18n="result.kpi.mid">中值</span></div><div class="b"><b id="rWorkH">·</b><span data-i18n="result.kpi.high">上限</span></div></div></div>
+      <div class="kpi"><div class="k-top"><i aria-hidden="true" data-lucide="currency-yuan"></i><span data-i18n="result.kpi.cost">费用</span></div><b id="rCost">0</b><small data-i18n="result.kpi.cost_unit">万元 · 中值</small>
+        <div class="band"><div class="b"><b id="rCostL">·</b><span data-i18n="result.kpi.low">下限</span></div><div class="b"><b id="rCostM">·</b><span data-i18n="result.kpi.mid">中值</span></div><div class="b"><b id="rCostH">·</b><span data-i18n="result.kpi.high">上限</span></div></div></div>
     </div>
     <div class="chart-grid" id="chartGrid">
-      <div class="glass pad"><div class="card-title"><i aria-hidden="true" data-lucide="pie-chart"></i>功能点类型分布</div><div class="chart" id="c1"></div></div>
-      <div class="glass pad"><div class="card-title"><i aria-hidden="true" data-lucide="bar-chart-3"></i>重用度分布</div><div class="chart" id="c2"></div></div>
-      <div class="glass pad"><div class="card-title"><i aria-hidden="true" data-lucide="bar-chart-big"></i>一级模块工作量占比（US）</div><div class="chart" id="c3"></div></div>
-      <div class="glass pad"><div class="card-title"><i aria-hidden="true" data-lucide="trending-up"></i>工作量三值区间（人天）</div><div class="chart" id="c4"></div></div>
+      <div class="glass pad"><div class="card-title"><i aria-hidden="true" data-lucide="pie-chart"></i><span data-i18n="result.chart.type">功能点类型分布</span></div><div class="chart" id="c1"></div></div>
+      <div class="glass pad"><div class="card-title"><i aria-hidden="true" data-lucide="bar-chart-3"></i><span data-i18n="result.chart.reuse">重用度分布</span></div><div class="chart" id="c2"></div></div>
+      <div class="glass pad"><div class="card-title"><i aria-hidden="true" data-lucide="bar-chart-big"></i><span data-i18n="result.chart.module">一级模块工作量占比（US）</span></div><div class="chart" id="c3"></div></div>
+      <div class="glass pad"><div class="card-title"><i aria-hidden="true" data-lucide="trending-up"></i><span data-i18n="result.chart.pert">工作量三值区间（人天）</span></div><div class="chart" id="c4"></div></div>
     </div>
-    <button class="btn btn-ghost fold-btn" id="foldDetail" aria-expanded="true" aria-controls="rGridSec" onclick="foldToggle('detail')" title="折叠/展开明细区"><i aria-hidden="true" data-lucide="chevron-down" style="width:15px;height:15px"></i>明细</button>
+    <button class="btn btn-ghost fold-btn" id="foldDetail" aria-expanded="true" aria-controls="rGridSec" onclick="foldToggle('detail')" data-i18n="title=result.fold.detail_title" title="折叠/展开明细区"><i aria-hidden="true" data-lucide="chevron-down" style="width:15px;height:15px"></i><span data-i18n="result.fold.detail">明细</span></button>
     <div class="r-grid" id="rGridSec">
       <div class="glass pad">
-        <div class="card-title"><i aria-hidden="true" data-lucide="building-2"></i>分系统规模明细（US）</div>
+        <div class="card-title"><i aria-hidden="true" data-lucide="building-2"></i><span data-i18n="result.sys.title">分系统规模明细（US）</span></div>
         <div id="sysList"></div>
       </div>
       <div class="glass pad">
-        <div class="card-title"><i aria-hidden="true" data-lucide="list-checks"></i>校验报告</div>
-        <div class="card-title" style="margin-top:14px"><i aria-hidden="true" data-lucide="download"></i>导出
+        <div class="card-title"><i aria-hidden="true" data-lucide="list-checks"></i><span data-i18n="result.check.title">校验报告</span></div>
+        <div class="card-title" style="margin-top:14px"><i aria-hidden="true" data-lucide="download"></i><span data-i18n="result.export.title">导出</span>
           <span style="flex:1"></span>
           <span class="exp-wrap">
-            <button class="btn btn-ghost" onclick="storyGen()" title="按 INVEST 生成用户故事（FR-2.6）"><i data-lucide="book-user" style="width:15px;height:15px"></i>用户故事</button>
-            <button class="btn btn-ghost" onclick="expToggle(event)" title="导出报告与明细"><i aria-hidden="true" data-lucide="file-down" style="width:15px;height:15px"></i>导出 ▾</button>
+            <button class="btn btn-ghost" onclick="storyGen()" data-i18n="title=result.export.story_title" title="按 INVEST 生成用户故事（FR-2.6）"><i data-lucide="book-user" style="width:15px;height:15px"></i><span data-i18n="result.export.story">用户故事</span></button>
+            <button class="btn btn-ghost" onclick="expToggle(event)" data-i18n="title=result.export.menu_title" title="导出报告与明细"><i aria-hidden="true" data-lucide="file-down" style="width:15px;height:15px"></i><span data-i18n="result.export.menu">导出 ▾</span></button>
             <span id="expMenu" style="display:none;position:absolute;right:0;top:38px;z-index:40" class="glass pad">
-              <button class="btn btn-ghost" style="display:block;width:100%;text-align:left" onclick="expCsv()" title="全字段功能点明细（Excel 可直开）">功能点明细（CSV）</button>
-              <button class="btn btn-ghost" style="display:block;width:100%;text-align:left" onclick="expMd()" title="KPI+分布表格+Top10 明细">Markdown 摘要</button>
-              <button class="btn btn-ghost" style="display:block;width:100%;text-align:left" onclick="expPdf()" title="打印管线，目标选择另存为 PDF">评估报告（PDF/打印）</button>
+              <button class="btn btn-ghost" style="display:block;width:100%;text-align:left" onclick="expCsv()" data-i18n="title=result.export.csv_title" title="全字段功能点明细（Excel 可直开）"><span data-i18n="result.export.csv">功能点明细（CSV）</span></button>
+              <button class="btn btn-ghost" style="display:block;width:100%;text-align:left" onclick="expMd()" data-i18n="title=result.export.md_title" title="KPI+分布表格+Top10 明细"><span data-i18n="result.export.md">Markdown 摘要</span></button>
+              <button class="btn btn-ghost" style="display:block;width:100%;text-align:left" onclick="expPdf()" data-i18n="title=result.export.pdf_title" title="打印管线，目标选择另存为 PDF"><span data-i18n="result.export.pdf">评估报告（PDF/打印）</span></button>
             </span>
           </span>
         </div>
         <div class="alerts" id="alerts">
-          <div class="alert g"><i aria-hidden="true" data-lucide="circle-check"></i><div><b>识别完成</b>候选来自本地引擎，请在审核页完成复核后生成。</div></div>
+          <div class="alert g"><i aria-hidden="true" data-lucide="circle-check"></i><div><b data-i18n="result.alert.title">识别完成</b><span data-i18n="result.alert.desc">候选来自本地引擎，请在审核页完成复核后生成。</span></div></div>
         </div>
-        <button class="btn btn-ghost fold-btn" id="foldExport" aria-expanded="true" aria-controls="dlSec" onclick="foldToggle('export')" title="折叠/展开导出区"><i aria-hidden="true" data-lucide="chevron-down" style="width:15px;height:15px"></i>导出</button>
+        <button class="btn btn-ghost fold-btn" id="foldExport" aria-expanded="true" aria-controls="dlSec" onclick="foldToggle('export')" data-i18n="title=result.fold.export_title" title="折叠/展开导出区"><i aria-hidden="true" data-lucide="chevron-down" style="width:15px;height:15px"></i><span data-i18n="result.fold.export">导出</span></button>
         <div class="dl-zone" id="dlSec">
           <i aria-hidden="true" data-lucide="download" class="big"></i>
-          <b>成品工作量评估表已由引擎生成</b>
-          <p><span id="dlName">—</span> · 母版公式与样式完整保留</p>
+          <b data-i18n="result.dl.title">成品工作量评估表已由引擎生成</b>
+          <p><span id="dlName">—</span> · <span data-i18n="result.dl.keep">母版公式与样式完整保留</span></p>
           <div class="mark" id="recalcState" style="display:none;margin-top:4px"></div>
-          <div style="margin-bottom:8px;font-size:12px;color:var(--muted)">母版：<select id="tplSel" onchange="tplPick(this.value)" style="max-width:200px" aria-label="选择母版"></select>（配置中心可上传新母版）</div>
-          <button class="btn btn-primary" onclick="download()" title="一键下载成品表"><i aria-hidden="true" data-lucide="file-down"></i>一键下载成品表</button>
+          <div style="margin-bottom:8px;font-size:12px;color:var(--muted)"><span data-i18n="result.dl.tpl_label">母版：</span><select id="tplSel" onchange="tplPick(this.value)" style="max-width:200px" aria-label="选择母版"></select><span data-i18n="result.dl.tpl_hint">（配置中心可上传新母版）</span></div>
+          <button class="btn btn-primary" onclick="download()" data-i18n="title=result.dl.download_title" title="一键下载成品表"><i aria-hidden="true" data-lucide="file-down"></i><span data-i18n="result.dl.download">一键下载成品表</span></button>
           <button class="btn btn-ghost" style="margin-left:8px" onclick="window.open('data/candidates_aml.json')" title="导出审核清单" aria-label="导出审核清单"><i aria-hidden="true" data-lucide="file-down" style="width:15px;height:15px"></i></button>
         </div>
       </div>

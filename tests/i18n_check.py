@@ -43,6 +43,15 @@ for lang in SUPPORTED:
 
 zh, en = dicts["zh-CN"], dicts["en-US"]
 
+# 2) key 命名规范：只允许小写字母/数字/下划线/点，且不用驼峰。
+#    混用大小写会让「按前缀批量查某一模块」失效（本项目已踩过一次：
+#    review.side.ufpUnadj 与 review.side.ufp_unadj 并存）。
+if zh:
+    bad_case = sorted(k for k in zh if re.search(r'[A-Z]', k))
+    check("key 统一小写（无驼峰）", not bad_case, ", ".join(bad_case[:6]))
+    bad_chr = sorted(k for k in zh if not re.match(r'^[a-z0-9_]+(\.[a-z0-9_]+)*$', k))
+    check("key 字符集合法（小写字母/数字/下划线/点）", not bad_chr, ", ".join(bad_chr[:6]))
+
 # 2) 双向 key 对齐（防漏译 / 防误删）
 if zh and en:
     only_zh = sorted(set(zh) - set(en))
@@ -62,9 +71,8 @@ if HTML.exists():
     src = HTML.read_text(encoding="utf-8")
     used = set()
     for m in re.finditer(r'data-i18n(?:-ph)?="([^"]+)"', src):
-        # 形式："text" 或 "text=key" 或 "title=key|text=key"
+        # 形式："text" / "text=key" / "title=key|text=key"
         for part in m.group(1).split("|"):
-            # "title=key" 形态取= 后段；裸 key 本身即key
             key = part.split("=")[-1].strip()
             if key:
                 used.add(key)
