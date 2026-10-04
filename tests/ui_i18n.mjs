@@ -341,6 +341,87 @@ check('PERT 页英文态无中文残留', ptResidue === '[]', ptResidue);
 
 await ev(`setLang('zh-CN');goPage('work');goStep('upload');`); await sleep(400);
 
+// ---- 16) 配置中心（批次2）----
+await ev(`goPage('config');`); await sleep(600);
+const cfZh = JSON.parse(await ev(`JSON.stringify({
+  cards:[...document.querySelectorAll('#pg-config [data-i18n^="config.card."]')].map(x=>x.textContent.trim()),
+  enable:document.querySelector('[data-i18n="config.llm.enable"]').textContent.trim(),
+  save:document.querySelector('[data-i18n="title=config.llm.save_title"]').getAttribute('title'),
+  test:document.querySelector('[data-i18n="title=config.llm.test|aria-label=config.llm.test"]')?document.querySelector('[data-i18n="title=config.llm.test|aria-label=config.llm.test"]').getAttribute('title'):null,
+  rulesTh:[...document.querySelectorAll('#pg-config th[data-i18n^="config.rules."]')].map(x=>x.textContent.trim()),
+})`));
+check('配置中心中文态：卡片标题与设置项均为中文',
+  cfZh.cards.includes('大模型识别增强') && cfZh.enable === '启用大模型辅助识别'
+  && cfZh.save === '保存配置' && cfZh.test === '连接测试',
+  JSON.stringify({cards:cfZh.cards.length, enable:cfZh.enable, test:cfZh.test}));
+
+await ev(`setLang('en-US');`); await sleep(700);
+const cfEn = JSON.parse(await ev(`JSON.stringify({
+  cards:[...document.querySelectorAll('#pg-config [data-i18n^="config.card."]')].map(x=>x.textContent.trim()),
+  enable:document.querySelector('[data-i18n="config.llm.enable"]').textContent.trim(),
+  save:document.querySelector('[data-i18n="title=config.llm.save_title"]').getAttribute('title'),
+  test:document.querySelector('[data-i18n="title=config.llm.test|aria-label=config.llm.test"]')?document.querySelector('[data-i18n="title=config.llm.test|aria-label=config.llm.test"]').getAttribute('title'):null,
+  switchAria:document.getElementById('llmSwitch').getAttribute('aria-label'),
+  ctxPh:document.getElementById('ctxDir').getAttribute('placeholder'),
+  modes:[...document.querySelectorAll('[data-i18n^="config.recalc."]')].map(x=>x.textContent.trim()),
+  rulesTitle:document.querySelector('[data-i18n="config.rules.title"]').textContent.trim(),
+  loading:[...document.querySelectorAll('[data-i18n="common.loading"]')].map(x=>x.textContent.trim()),
+  // 开关与按钮图标未被摧毁
+  llmIconIntact:document.querySelector('[data-i18n="config.llm.enable"]').parentElement.children.length,
+})`));
+check('配置中心英文态：卡片标题与设置项已切英文',
+  cfEn.cards.includes('LLM-Assisted Recognition') && cfEn.enable === 'Enable LLM-assisted recognition'
+  && cfEn.save === 'Save settings' && cfEn.test === 'Test connection',
+  JSON.stringify({enable:cfEn.enable, save:cfEn.save, test:cfEn.test}));
+check('配置中心开关 aria-label 与目录输入 placeholder 已切英文',
+  /Enable LLM-assisted/.test(cfEn.switchAria || '') && /^e\.g\. D:/.test(cfEn.ctxPh || ''),
+  JSON.stringify({aria:cfEn.switchAria, ph:cfEn.ctxPh}));
+check('配置中心规则卡标题已切英文', cfEn.rulesTitle === 'Recognition Rules', cfEn.rulesTitle);
+// 排除 #langSeg：语言选择器按 i18n 惯例用各语言自身文字标注（简体中文/English），
+// 「简体中文」在英文界面下显示中文是正确的，不是漏译残留。
+const cfResidue = await ev(`(()=>{const bad=[];
+  document.querySelectorAll('#pg-config [data-i18n]').forEach(el=>{
+    if(el.closest('#langSeg'))return;
+    if(el.children.length===0&&/[一-龥]/.test(el.textContent)) bad.push(el.getAttribute('data-i18n'));});
+  return JSON.stringify(bad)})()`);
+check('配置中心英文态无中文残留（结构性节点）', cfResidue === '[]', cfResidue);
+
+// ---- 17) 帮助页（批次2，结构性部分）----
+await ev(`setLang('zh-CN');goPage('help');`); await sleep(700);
+const hpZh = JSON.parse(await ev(`JSON.stringify({
+  h3:[...document.querySelectorAll('#pg-help h3 [data-i18n^="help.h3."]')].map(x=>x.textContent.trim()),
+  h4:[...document.querySelectorAll('#pg-help h4[data-i18n]')].map(x=>x.textContent.trim()).slice(0,4),
+  kbdKey:document.querySelector('[data-i18n="help.kbd.key"]').textContent.trim(),
+  verTitle:document.querySelector('[data-i18n="help.ver.title"]').textContent.trim(),
+})`));
+check('帮助页中文态：章节标题/小节/快捷键表均为中文',
+  hpZh.h3.length === 4 && hpZh.h4.length === 4 && hpZh.kbdKey === '按键' && hpZh.verTitle === '版本与更新',
+  JSON.stringify({h3:hpZh.h3, kbd:hpZh.kbdKey}));
+
+await ev(`setLang('en-US');`); await sleep(700);
+const hpEn = JSON.parse(await ev(`JSON.stringify({
+  h3:[...document.querySelectorAll('#pg-help h3 [data-i18n^="help.h3."]')].map(x=>x.textContent.trim()),
+  h4:[...document.querySelectorAll('#pg-help h4[data-i18n]')].map(x=>x.textContent.trim()).slice(0,4),
+  kbdKey:document.querySelector('[data-i18n="help.kbd.key"]').textContent.trim(),
+  kbdMove:document.querySelector('[data-i18n="help.kbd.move"]').textContent.trim(),
+  verTitle:document.querySelector('[data-i18n="help.ver.title"]').textContent.trim(),
+  checkTitle:document.querySelector('[data-i18n="title=help.ver.check_title"]')?document.querySelector('[data-i18n="title=help.ver.check_title"]').getAttribute('title'):null,
+  guideTitle:document.querySelector('[data-i18n="title=help.guide.help"]')?document.querySelector('[data-i18n="title=help.guide.help"]').getAttribute('title'):null,
+  // 徽标未被 textContent 摧毁（h3 内的 IFPUG/PERT 徽标 span）
+  badgeIntact:[...document.querySelectorAll('#pg-help h3')].every(h=>h.children.length>=2),
+})`));
+check('帮助页英文态：章节与快捷键表已切英文',
+  hpEn.h3.length === 4 && hpEn.kbdKey === 'Key' && hpEn.verTitle === 'Version and Updates'
+  && /Methodology/.test(hpEn.h3[0]) && /Algorithms/.test(hpEn.h3[1]),
+  JSON.stringify({h3:hpEn.h3, kbd:hpEn.kbdKey, ver:hpEn.verTitle}));
+check('帮助页小节标题已切英文', /^1\. /.test(hpEn.h4[0]) && /Basis/.test(hpEn.h4[0]), JSON.stringify(hpEn.h4));
+check('帮助页按钮 title 已切英文（更新与引导）',
+  /Check for updates/.test(hpEn.checkTitle || '') && /Feature overview/.test(hpEn.guideTitle || ''),
+  JSON.stringify({chk:hpEn.checkTitle, guide:hpEn.guideTitle}));
+check('帮助页 h3 徽标未被摧毁（h3 子结构完好）', hpEn.badgeIntact === true, `badges=${hpEn.badgeIntact}`);
+
+await ev(`setLang('zh-CN');goPage('work');goStep('upload');`); await sleep(400);
+
 check('全程无页面异常', errors.length === 0, errors.slice(0, 2).join(' | '));
 const failed = res.filter(r => !r.ok);
 console.log(`\n==== 汇总 ==== 共 ${res.length} 项，通过 ${res.length - failed.length}，失败 ${failed.length}`);

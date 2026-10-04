@@ -620,7 +620,7 @@ tr.rowr.showb .basis{display:block}
         <div class="cfg-row">
           <span class="sw-label"><i aria-hidden="true" data-lucide="toggle-right" style="width:16px;height:16px;color:var(--muted)"></i><span data-i18n="config.llm.enable">启用大模型辅助识别</span>
           </span>
-          <span class="switch on" id="llmSwitch" data-on="1" role="switch" tabindex="0" aria-checked="true" aria-label="启用大模型辅助识别"></span>
+          <span class="switch on" id="llmSwitch" data-on="1" role="switch" tabindex="0" aria-checked="true" data-i18n="aria-label=config.llm.enable_aria" aria-label="启用大模型辅助识别"></span>
         </div>
         <div class="fields" style="margin-top:12px">
           <div class="fill"><div class="f-w"><span data-i18n="config.llm.provider">模型开发商（预设）</span></div><select id="providerSel" onchange="onProviderChange()"></select></div>
@@ -631,11 +631,11 @@ tr.rowr.showb .basis{display:block}
           <div class="fill"><div class="f-w"><span data-i18n="config.llm.key">API Key【必填】</span><label style="float:right;font-size:11px;font-weight:400;color:var(--muted);cursor:pointer;display:inline-flex;align-items:center;gap:3px"><input type="checkbox" id="rememberKey" style="margin:0"><span data-i18n="config.llm.remember">记住（存本机草稿）</span></label></div><input id="llmKey" type="password" placeholder="sk-..."></div>
         </div>
         <div class="cfg-actions">
-          <button class="btn btn-primary" onclick="saveCfg()" title="保存配置"><i aria-hidden="true" data-lucide="save"></i><span data-i18n="config.llm.save">保存配置</span></button>
-          <button class="btn btn-ghost" onclick="testCfg()" title="连接测试" aria-label="连接测试"><i aria-hidden="true" data-lucide="plug-zap" style="width:15px;height:15px"></i></button>
-          <button class="btn btn-ghost" onclick="fetchModels()" title="获取模型列表" aria-label="获取模型列表"><i aria-hidden="true" data-lucide="list" style="width:15px;height:15px"></i></button>
-          <button class="btn btn-ghost" onclick="openConsole()" title="跳转控制台" aria-label="跳转控制台"><i aria-hidden="true" data-lucide="external-link" style="width:15px;height:15px"></i></button>
-          <button class="btn btn-ghost" onclick="resetCfg()" title="恢复默认" aria-label="恢复默认"><i aria-hidden="true" data-lucide="rotate-ccw" style="width:15px;height:15px"></i></button>
+          <button class="btn btn-primary" onclick="saveCfg()" data-i18n="title=config.llm.save_title" title="保存配置"><i aria-hidden="true" data-lucide="save"></i><span data-i18n="config.llm.save">保存配置</span></button>
+          <button class="btn btn-ghost" onclick="testCfg()" data-i18n="title=config.llm.test|aria-label=config.llm.test" title="连接测试" aria-label="连接测试"><i aria-hidden="true" data-lucide="plug-zap" style="width:15px;height:15px"></i></button>
+          <button class="btn btn-ghost" onclick="fetchModels()" data-i18n="title=config.llm.models|aria-label=config.llm.models" title="获取模型列表" aria-label="获取模型列表"><i aria-hidden="true" data-lucide="list" style="width:15px;height:15px"></i></button>
+          <button class="btn btn-ghost" onclick="openConsole()" data-i18n="title=config.llm.console|aria-label=config.llm.console" title="跳转控制台" aria-label="跳转控制台"><i aria-hidden="true" data-lucide="external-link" style="width:15px;height:15px"></i></button>
+          <button class="btn btn-ghost" onclick="resetCfg()" data-i18n="title=config.llm.reset|aria-label=config.llm.reset" title="恢复默认" aria-label="恢复默认"><i aria-hidden="true" data-lucide="rotate-ccw" style="width:15px;height:15px"></i></button>
         </div>
         <div class="cfg-test" id="cfgTestBox"></div>
         <div class="cfg-note" id="cfgNote">
@@ -657,13 +657,13 @@ tr.rowr.showb .basis{display:block}
     <div class="glass pad" style="margin-top:20px">
       <div class="card-title"><i aria-hidden="true" data-lucide="folder-tree"></i><span data-i18n="config.card.ctx">项目上下文目录</span></div>
       <p style="font-size:12px;color:var(--muted);margin-bottom:12px;line-height:1.7">
-        配置一个项目代码目录，AI 估算工作量时会自动扫描该目录（技术栈 / 目录结构 / 依赖 / 规模），把「项目级上下文」注入提示词，使评估更贴合实际代码。
+        <span data-i18n="config.ctx.note">配置一个项目代码目录，AI 估算工作量时会自动扫描该目录（技术栈 / 目录结构 / 依赖 / 规模），把「项目级上下文」注入提示词，使评估更贴合实际代码。</span>
       </p>
       <div class="cfg-row">
-        <input id="ctxDir" type="text" placeholder="例如：D:\code\otherProjects\foo 或 /root/proj" style="flex:1;padding:10px 12px;border:1px solid var(--line-ctrl);border-radius:var(--r-md);font-family:var(--ff);font-size:13px;outline:none">
-        <button class="btn btn-ghost" onclick="openDirPicker()" title="浏览选择目录" aria-label="浏览选择目录"><i aria-hidden="true" data-lucide="folder-search" style="width:15px;height:15px"></i></button>
-        <button class="btn btn-primary" onclick="saveCtxDir()" title="保存" aria-label="保存"><i aria-hidden="true" data-lucide="save" style="width:15px;height:15px"></i></button>
-        <button class="btn btn-ghost" onclick="analyzeCtx()" title="扫描分析" aria-label="扫描分析"><i aria-hidden="true" data-lucide="scan-search" style="width:15px;height:15px"></i></button>
+        <input id="ctxDir" type="text" data-i18n-ph="config.ctx.ph" placeholder="例如：D:\code\otherProjects\foo 或 /root/proj" style="flex:1;padding:10px 12px;border:1px solid var(--line-ctrl);border-radius:var(--r-md);font-family:var(--ff);font-size:13px;outline:none">
+        <button class="btn btn-ghost" onclick="openDirPicker()" data-i18n="title=config.ctx.browse|aria-label=config.ctx.browse" title="浏览选择目录" aria-label="浏览选择目录"><i aria-hidden="true" data-lucide="folder-search" style="width:15px;height:15px"></i></button>
+        <button class="btn btn-primary" onclick="saveCtxDir()" data-i18n="title=config.ctx.save" data-i18n="title=config.upd.save" title="保存" aria-label="保存"><i aria-hidden="true" data-lucide="save" style="width:15px;height:15px"></i></button>
+        <button class="btn btn-ghost" onclick="analyzeCtx()" data-i18n="title=config.ctx.scan|aria-label=config.ctx.scan" title="扫描分析" aria-label="扫描分析"><i aria-hidden="true" data-lucide="scan-search" style="width:15px;height:15px"></i></button>
       </div>
       <div class="cfg-note">
         <i aria-hidden="true" data-lucide="info" style="width:14px;height:14px;vertical-align:-2px;color:var(--brand)"></i>
@@ -675,11 +675,11 @@ tr.rowr.showb .basis{display:block}
     <div class="glass pad" style="margin-top:20px">
       <div class="card-title"><i aria-hidden="true" data-lucide="refresh-cw"></i><span data-i18n="config.card.update">应用更新</span></div>
       <p style="font-size:12px;color:var(--muted);margin-bottom:12px;line-height:1.7">
-        配置更新源 JSON 地址（返回 <code>{version, url, notes}</code>）。应用启动与打开帮助页时自动检测；发现新版本后在帮助页提供一键下载安装。
+        <span data-i18n="config.upd.url_label">配置更新源 JSON 地址（返回</span> <code>{version, url, notes}</code><span data-i18n="config.upd.url_label2">）。应用启动与打开帮助页时自动检测；发现新版本后在帮助页提供一键下载安装。</span>
       </p>
       <div class="cfg-row">
-        <input id="updUrl" type="text" placeholder="例如：http://内网服务器/workload-eval/latest.json" style="flex:1;padding:10px 12px;border:1px solid var(--line-ctrl);border-radius:var(--r-md);font-family:var(--ff);font-size:13px;outline:none">
-        <button class="btn btn-primary" onclick="saveUpdateUrl()" title="保存" aria-label="保存"><i aria-hidden="true" data-lucide="save" style="width:15px;height:15px"></i></button>
+        <input id="updUrl" type="text" data-i18n-ph="config.upd.url_ph" placeholder="例如：http://内网服务器/workload-eval/latest.json" style="flex:1;padding:10px 12px;border:1px solid var(--line-ctrl);border-radius:var(--r-md);font-family:var(--ff);font-size:13px;outline:none">
+        <button class="btn btn-primary" onclick="saveUpdateUrl()" data-i18n="title=config.upd.save|aria-label=config.upd.save" title="保存" aria-label="保存"><i aria-hidden="true" data-lucide="save" style="width:15px;height:15px"></i></button>
       </div>
       <div class="cfg-note">
         <i aria-hidden="true" data-lucide="info" style="width:14px;height:14px;vertical-align:-2px;color:var(--brand)"></i>
@@ -689,7 +689,7 @@ tr.rowr.showb .basis{display:block}
     <div class="glass pad" style="margin-top:20px">
       <div class="card-title"><i aria-hidden="true" data-lucide="table-2"></i><span data-i18n="config.card.recalc">成品表公式缓存</span></div>
       <p style="font-size:12px;color:var(--muted);margin-bottom:12px;line-height:1.7">
-        生成成品表后，可选调用本机 Excel 把母版公式的计算结果写回文件（这样 WPS / 预览器等不重算的工具也能直接看到数值）。该步骤较慢（实测 5~20 秒），默认改为<b><span data-i18n="config.recalc.bg">后台补算</span></b><span data-i18n="config.recalc.note2">：生成后立即可下载，缓存写完后自动替换文件。</span>
+        <span data-i18n="config.recalc.note">生成成品表后，可选调用本机 Excel 把母版公式的计算结果写回文件（这样 WPS / 预览器等不重算的工具也能直接看到数值）。该步骤较慢（实测 5~20 秒），默认改为</span><b><span data-i18n="config.recalc.bg">后台补算</span></b><span data-i18n="config.recalc.note2">：生成后立即可下载，缓存写完后自动替换文件。</span>
       </p>
       <div class="fields" style="grid-template-columns:1.2fr .8fr">
         <div class="fill"><div class="f-w"><span data-i18n="config.recalc.mode">重算方式</span></div>
@@ -702,11 +702,11 @@ tr.rowr.showb .basis{display:block}
         <div class="fill"><div class="f-w"><span data-i18n="config.recalc.timeout">重算超时（秒 · 超时跳过）</span></div><input id="recalcTimeout" type="number" min="5" max="1800" step="1" placeholder="120"></div>
       </div>
       <div class="cfg-actions">
-        <button class="btn btn-primary" onclick="saveRecalcCfg()" title="保存公式缓存策略"><i aria-hidden="true" data-lucide="save" style="width:15px;height:15px"></i><span data-i18n="config.common.save">保存</span></button>
+        <button class="btn btn-primary" onclick="saveRecalcCfg()" data-i18n="title=config.recalc.save" title="保存公式缓存策略"><i aria-hidden="true" data-lucide="save" style="width:15px;height:15px"></i><span data-i18n="config.common.save">保存</span></button>
       </div>
       <div class="cfg-note">
         <i aria-hidden="true" data-lucide="shield-check" style="width:14px;height:14px;vertical-align:-2px;color:var(--ok)"></i>
-        优先级：本页设置 &gt; 环境变量（WE_RECALC_MODE / WE_RECALC_TIMEOUT）&gt; 默认值。重算卡死时引擎会按时跳过，并在宽限后只回收它自己启动的那个 Excel 实例，不影响你手动打开的工作簿。
+        <span data-i18n="config.recalc.priority">优先级：本页设置 &gt; 环境变量（WE_RECALC_MODE / WE_RECALC_TIMEOUT）&gt; 默</span><span data-i18n="config.recalc.note3">认值。重算卡死时引擎会按时跳过，并在宽限后只回收它自己启动的那个 Excel 实例，不影响你手动打开的工作簿。</span>
       </div>
     </div>
 
@@ -736,9 +736,9 @@ tr.rowr.showb .basis{display:block}
     <div class="glass pad" style="margin-top:16px">
       <div class="card-title"><i data-lucide="wrench"></i><span data-i18n="config.card.ops">运维（M8/FR-5.4、5.6）</span></div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
-        <button class="btn btn-ghost" onclick="diagExport()" title="日志+脱敏配置+版本信息打包下载"><i data-lucide="package" style="width:15px;height:15px"></i><span data-i18n="config.ops.diag">导出诊断包</span></button>
-        <button class="btn btn-ghost" onclick="dataExport()" title="pert.db+规则+费率+版本号打包"><i data-lucide="download" style="width:15px;height:15px"></i><span data-i18n="config.ops.export_all">导出全部数据</span></button>
-        <button class="btn btn-ghost" onclick="document.querySelector('#dataImportFile').click()" title="导入此前导出的数据包（导入前自动备份）"><i data-lucide="upload" style="width:15px;height:15px"></i><span data-i18n="config.ops.import_all">导入数据</span></button>
+        <button class="btn btn-ghost" onclick="diagExport()" data-i18n="title=config.ops.diag_title" title="日志+脱敏配置+版本信息打包下载"><i data-lucide="package" style="width:15px;height:15px"></i><span data-i18n="config.ops.diag">导出诊断包</span></button>
+        <button class="btn btn-ghost" onclick="dataExport()" data-i18n="title=config.ops.export_title" title="pert.db+规则+费率+版本号打包"><i data-lucide="download" style="width:15px;height:15px"></i><span data-i18n="config.ops.export_all">导出全部数据</span></button>
+        <button class="btn btn-ghost" onclick="document.querySelector('#dataImportFile').click()" data-i18n="title=config.ops.import_title" title="导入此前导出的数据包（导入前自动备份）"><i data-lucide="upload" style="width:15px;height:15px"></i><span data-i18n="config.ops.import_all">导入数据</span></button>
         <input type="file" id="dataImportFile" accept=".zip" style="display:none" onchange="dataImport(this)">
       </div>
       <p class="cfg-note" style="margin-top:10px"><span data-i18n="config.ops.note">诊断包含结构化日志、脱敏配置与版本信息（不含上传文档与生成产物）；数据导入前会自动备份当前数据。</span></p>
@@ -747,19 +747,19 @@ tr.rowr.showb .basis{display:block}
     <div class="glass pad" style="margin-top:16px">
       <div class="card-title"><i data-lucide="layout-template"></i><span data-i18n="config.card.tpl">母版管理（M9/FR-2.8）</span></div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;align-items:center">
-        <button class="btn btn-ghost" onclick="document.querySelector('#tplFile').click()" title="上传新母版并登记口径说明"><i data-lucide="plus" style="width:15px;height:15px"></i><span data-i18n="config.tpl.upload">上传母版</span></button>
+        <button class="btn btn-ghost" onclick="document.querySelector('#tplFile').click()" data-i18n="title=config.tpl.upload_title" title="上传新母版并登记口径说明"><i data-lucide="plus" style="width:15px;height:15px"></i><span data-i18n="config.tpl.upload">上传母版</span></button>
         <input type="file" id="tplFile" accept=".xlsx" style="display:none" onchange="tplUpload(this)">
         <span style="font-size:12px;color:var(--muted)"><span data-i18n="config.tpl.note">上传后请先用新母版生成一次首件，人工核对列对位（FR-2.8 AC）。</span></span>
       </div>
     </div>
 
     <div class="glass pad" style="margin-top:16px" id="ratesCard">
-      <div class="card-title"><i aria-hidden="true" data-lucide="coins"></i>费率与基准（M6/FR-2.3）
+      <div class="card-title"><i aria-hidden="true" data-lucide="coins"></i><span data-i18n="config.rates.title">费率与基准（M6/FR-2.3）</span>
         <span style="flex:1"></span><span class="tcount" id="ratesVer">—</span>
         <select id="ratesSel" onchange="ratesPick()" style="max-width:150px;font-size:12px"></select>
-        <button class="btn btn-ghost" onclick="ratesAdd()" title="新增年度版本"><span data-i18n="config.common.add_ver">+版本</span></button>
-        <button class="btn btn-ghost" onclick="ratesDel()" title="删除当前版本"><span data-i18n="config.common.delete">删除</span></button>
-        <button class="btn btn-primary" onclick="ratesSave()" title="保存当前版本（不发版更新）">保存</button>
+        <button class="btn btn-ghost" onclick="ratesAdd()" data-i18n="title=config.rates.add_title" title="新增年度版本"><span data-i18n="config.common.add_ver">+版本</span></button>
+        <button class="btn btn-ghost" onclick="ratesDel()" data-i18n="title=config.rates.del_title" title="删除当前版本"><span data-i18n="config.common.delete">删除</span></button>
+        <button class="btn btn-primary" onclick="ratesSave()" data-i18n="title=config.rates.save_title" title="保存当前版本（不发版更新）">保存</button>
       </div>
       <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:12px 0">
         <label style="font-size:12px;color:var(--muted)"><span data-i18n="config.rates.pdr">生产率 PDR（人时/FP）</span><input id="ratesPdr" type="number" step="0.01" style="width:100%;margin-top:4px"></label>
@@ -772,43 +772,43 @@ tr.rowr.showb .basis{display:block}
     </div>
 
     <div class="glass pad" style="margin-top:16px" id="rulesCard">
-      <div class="card-title"><i aria-hidden="true" data-lucide="git-merge"></i>识别规则（M3/FR-2.9）
+      <div class="card-title"><i aria-hidden="true" data-lucide="git-merge"></i><span data-i18n="config.rules.title">识别规则（M3/FR-2.9）</span>
         <span style="flex:1"></span>
         <span class="tcount" id="rulesMeta">—</span>
-        <button class="btn btn-primary" onclick="rulesSave()" title="保存全部规则修改（下次识别生效）"><span data-i18n="config.rules.save_all">保存全部</span></button>
+        <button class="btn btn-primary" onclick="rulesSave()" data-i18n="title=config.rules.save_title" title="保存全部规则修改（下次识别生效）"><span data-i18n="config.rules.save_all">保存全部</span></button>
       </div>
       <p style="font-size:12px;color:var(--muted);margin:-8px 0 12px"><span data-i18n="config.rules.note">规则按优先级从高到低匹配，命中即判定类型；正则语法，多个用 | 分隔。修改后保存，下次识别生效并记录规则版本。</span></p>
       <div style="overflow:auto"><table>
-        <thead><tr><th style="width:110px">ID</th><th><span data-i18n="config.rules.name">名称</span></th><th style="width:80px"><span data-i18n="config.rules.scope">范围</span></th><th style="width:70px"><span data-i18n="config.rules.type">类型</span></th><th style="width:64px"><span data-i18n="config.rules.priority">优先级</span></th><th style="width:56px"><span data-i18n="config.rules.enabled">启用</span></th><th>正则 patterns（每行一条；同一正则内的多分支用 | 分隔）</th><th style="width:120px">排除 exclude</th></tr></thead>
-        <tbody id="rulesRows"><tr><td colspan="8" style="color:var(--muted)">加载中…</td></tr></tbody>
+        <thead><tr><th style="width:110px">ID</th><th><span data-i18n="config.rules.name">名称</span></th><th style="width:80px"><span data-i18n="config.rules.scope">范围</span></th><th style="width:70px"><span data-i18n="config.rules.type">类型</span></th><th style="width:64px"><span data-i18n="config.rules.priority">优先级</span></th><th style="width:56px"><span data-i18n="config.rules.enabled">启用</span></th><th><span data-i18n="config.rules.patterns">正则 patterns（每行一条；同一正则内的多分支用 | 分隔）</span></th><th style="width:120px"><span data-i18n="config.rules.exclude">排除 exclude</span></th></tr></thead>
+        <tbody id="rulesRows"><tr><td colspan="8" style="color:var(--muted)" data-i18n="common.loading">加载中…</td></tr></tbody>
       </table></div>
-      <div style="margin-top:10px;text-align:right"><button class="btn btn-ghost" onclick="rulesAdd()" title="追加一条空白规则"><i aria-hidden="true" data-lucide="plus" style="width:15px;height:15px"></i><span data-i18n="config.rules.append">追加规则</span></button></div>
+      <div style="margin-top:10px;text-align:right"><button class="btn btn-ghost" onclick="rulesAdd()" data-i18n="title=config.rules.append_title" title="追加一条空白规则"><i aria-hidden="true" data-lucide="plus" style="width:15px;height:15px"></i><span data-i18n="config.rules.append">追加规则</span></button></div>
     </div>
   </main>
 
   <!-- ============ 页面三：帮助文档 ============ -->
   <main class="page" id="pg-help">
     <div class="glass pad" style="margin-bottom:16px">
-      <div class="card-title"><i aria-hidden="true" data-lucide="keyboard"></i>快捷键</div>
+      <div class="card-title"><i aria-hidden="true" data-lucide="keyboard"></i><span data-i18n="help.kbd.title">快捷键</span></div>
       <table>
-        <thead><tr><th style="width:180px">按键</th><th>作用</th><th>生效位置</th></tr></thead>
+        <thead><tr><th style="width:180px"><span data-i18n="help.kbd.key">按键</span></th><th><span data-i18n="help.kbd.action">作用</span></th><th><span data-i18n="help.kbd.scope">生效位置</span></th></tr></thead>
         <tbody>
-          <tr><td>↑ / ↓</td><td>移动焦点行</td><td>复核功能点列表</td></tr>
-          <tr><td>Enter</td><td>切换焦点行确认状态</td><td>复核功能点列表</td></tr>
-          <tr><td>Space</td><td>展开/收起焦点行判定依据</td><td>复核功能点列表</td></tr>
-          <tr><td>Ctrl+F</td><td>聚焦搜索框</td><td>复核功能点列表</td></tr>
-          <tr><td>Esc</td><td>关闭弹层 / 退出输入框</td><td>全局</td></tr>
+          <tr><td>↑ / ↓</td><td><span data-i18n="help.kbd.move">移动焦点行</span></td><td><span data-i18n="help.kbd.review">复核功能点列表</span></td></tr>
+          <tr><td>Enter</td><td><span data-i18n="help.kbd.toggle">切换焦点行确认状态</span></td><td><span data-i18n="help.kbd.review">复核功能点列表</span></td></tr>
+          <tr><td>Space</td><td><span data-i18n="help.kbd.basis">展开/收起焦点行判定依据</span></td><td><span data-i18n="help.kbd.review">复核功能点列表</span></td></tr>
+          <tr><td>Ctrl+F</td><td><span data-i18n="help.kbd.search">聚焦搜索框</span></td><td><span data-i18n="help.kbd.review">复核功能点列表</span></td></tr>
+          <tr><td>Esc</td><td><span data-i18n="help.kbd.esc">关闭弹层 / 退出输入框</span></td><td><span data-i18n="help.kbd.global">全局</span></td></tr>
         </tbody>
       </table>
     </div>
     <div class="glass pad" style="margin-bottom:20px">
-      <div class="card-title"><i aria-hidden="true" data-lucide="refresh-cw"></i>版本与更新</div>
+      <div class="card-title"><i aria-hidden="true" data-lucide="refresh-cw"></i><span data-i18n="help.ver.title">版本与更新</span></div>
       <div class="cfg-row" style="align-items:center;flex-wrap:wrap;gap:12px">
-        <span style="font-size:13px;color:var(--ink)">当前版本：<b id="verNow">…</b></span>
-        <span id="verState" style="font-size:12px;color:var(--muted)">尚未检测</span>
+        <span style="font-size:13px;color:var(--ink)"><span data-i18n="help.ver.current">当前版本：</span><b id="verNow">…</b></span>
+        <span id="verState" style="font-size:12px;color:var(--muted)"><span data-i18n="help.ver.unchecked">尚未检测</span></span>
         <span style="flex:1"></span>
-        <button class="btn btn-ghost" id="verChkBtn" onclick="checkUpdate(true)" title="检查更新"><i aria-hidden="true" data-lucide="search-check" style="width:15px;height:15px"></i>检查更新</button>
-        <button class="btn btn-primary" id="verUpdBtn" style="display:none" onclick="doUpdate()" title="一键下载更新包并安装"><i aria-hidden="true" data-lucide="download-cloud" style="width:15px;height:15px"></i>立即更新</button>
+        <button class="btn btn-ghost" id="verChkBtn" onclick="checkUpdate(true)" data-i18n="title=help.ver.check_title" title="检查更新"><i aria-hidden="true" data-lucide="search-check" style="width:15px;height:15px"></i><span data-i18n="help.ver.check">检查更新</span></button>
+        <button class="btn btn-primary" id="verUpdBtn" style="display:none" onclick="doUpdate()" data-i18n="title=help.ver.update_title" title="一键下载更新包并安装"><i aria-hidden="true" data-lucide="download-cloud" style="width:15px;height:15px"></i><span data-i18n="help.ver.update">立即更新</span></button>
       </div>
       <div id="verNotes" class="cfg-test" style="display:none;white-space:pre-wrap"></div>
       <div id="verProgWrap" style="display:none;margin-top:10px">
@@ -816,12 +816,12 @@ tr.rowr.showb .basis{display:block}
           <div id="verProgBar" style="height:100%;width:0%;background:var(--brand);border-radius:999px;transition:width .3s"></div>
         </div>
         <div style="display:flex;justify-content:space-between;margin-top:6px;font-size:12px;color:var(--muted)">
-          <span id="verProgTxt">准备下载…</span>
+          <span id="verProgTxt"><span data-i18n="help.ver.preparing">准备下载…</span></span>
           <span id="verProgPct">0%</span>
         </div>
         <div style="margin-top:8px;display:flex;gap:8px;justify-content:flex-end">
-          <button class="btn btn-ghost" id="verRetryBtn" style="display:none" onclick="doUpdate()" title="重新下载"><i aria-hidden="true" data-lucide="rotate-ccw" style="width:15px;height:15px"></i>重试</button>
-          <button class="btn btn-primary" id="verInstallBtn" style="display:none" onclick="installUpdate()"><i aria-hidden="true" data-lucide="package-check" style="width:15px;height:15px"></i>安装更新</button>
+          <button class="btn btn-ghost" id="verRetryBtn" style="display:none" onclick="doUpdate()" data-i18n="title=help.ver.retry_title" title="重新下载"><i aria-hidden="true" data-lucide="rotate-ccw" style="width:15px;height:15px"></i><span data-i18n="help.ver.retry">重试</span></button>
+          <button class="btn btn-primary" id="verInstallBtn" style="display:none" onclick="installUpdate()"><i aria-hidden="true" data-lucide="package-check" style="width:15px;height:15px"></i><span data-i18n="help.ver.install">安装更新</span></button>
         </div>
       </div>
       <div class="cfg-note">
@@ -836,23 +836,23 @@ tr.rowr.showb .basis{display:block}
         为避免干扰日常操作，引导浮动按钮仅在本页右下角显示；可点击下方按钮重温任意页面的操作引导。
       </div>
       <div style="display:flex;gap:8px;flex-wrap:wrap">
-        <button class="btn btn-ghost" onclick="WLGuide.startAndGo('work')" title="重温 IFPUG 估算三步流程引导"><i aria-hidden="true" data-lucide="calculator" style="width:15px;height:15px"></i>IFPUG 估算引导</button>
-        <button class="btn btn-ghost" onclick="WLGuide.startAndGo('pert')" title="重温 PERT 三点估算流程引导"><i aria-hidden="true" data-lucide="activity" style="width:15px;height:15px"></i>PERT 估算引导</button>
-        <button class="btn btn-ghost" onclick="WLGuide.startAndGo('config')" title="重温配置中心引导"><i aria-hidden="true" data-lucide="settings" style="width:15px;height:15px"></i>配置中心引导</button>
-        <button class="btn btn-ghost" onclick="WLGuide.startAndGo('help')" title="功能总览：介绍 4 大功能入口"><i aria-hidden="true" data-lucide="book-open" style="width:15px;height:15px"></i>功能总览引导</button>
+        <button class="btn btn-ghost" onclick="WLGuide.startAndGo('work')" data-i18n="title=help.guide.work" title="重温 IFPUG 估算三步流程引导"><i aria-hidden="true" data-lucide="calculator" style="width:15px;height:15px"></i>IFPUG 估算引导</button>
+        <button class="btn btn-ghost" onclick="WLGuide.startAndGo('pert')" data-i18n="title=help.guide.pert" title="重温 PERT 三点估算流程引导"><i aria-hidden="true" data-lucide="activity" style="width:15px;height:15px"></i>PERT 估算引导</button>
+        <button class="btn btn-ghost" onclick="WLGuide.startAndGo('config')" data-i18n="title=help.guide.config" title="重温配置中心引导"><i aria-hidden="true" data-lucide="settings" style="width:15px;height:15px"></i>配置中心引导</button>
+        <button class="btn btn-ghost" onclick="WLGuide.startAndGo('help')" data-i18n="title=help.guide.help" title="功能总览：介绍 4 大功能入口"><i aria-hidden="true" data-lucide="book-open" style="width:15px;height:15px"></i>功能总览引导</button>
       </div>
     </div>
     <div class="glass pad">
       <div class="card-title"><i aria-hidden="true" data-lucide="book-open"></i>帮助文档</div>
       <div class="doc-grid">
         <div class="doc-block">
-          <h3 style="font-size:15px;font-weight:700;color:var(--brand-ink);margin-bottom:10px"><span style="display:inline-block;background:var(--brand);color:var(--on-brand);font-size:11px;padding:2px 8px;border-radius:999px;margin-right:8px;vertical-align:2px">IFPUG</span>评估方法论</h3>
+          <h3 style="font-size:15px;font-weight:700;color:var(--brand-ink);margin-bottom:10px"><span style="display:inline-block;background:var(--brand);color:var(--on-brand);font-size:11px;padding:2px 8px;border-radius:999px;margin-right:8px;vertical-align:2px">IFPUG</span><span data-i18n="help.h3.ifpug">评估方法论</span></h3>
           <div class="doc-sec">
-            <h4>1. 方法依据</h4>
+            <h4 data-i18n="help.h4.m1">1. 方法依据</h4>
             <p>采用 <b>IFPUG 国际标准功能点估算方法</b>（Counting Practices Manual）对需求规模进行量化，再以基准数据换算工作量与费用。</p>
           </div>
           <div class="doc-sec">
-            <h4>2. 五类功能点</h4>
+            <h4 data-i18n="help.h4.m2">2. 五类功能点</h4>
             <ul>
               <li><b>ILF</b> - 内部逻辑文件：由系统维护的数据文件</li>
               <li><b>EIF</b> - 外部接口文件：被引用但非本系统维护的数据</li>
@@ -862,11 +862,11 @@ tr.rowr.showb .basis{display:block}
             </ul>
           </div>
           <div class="doc-sec">
-            <h4>3. 复杂度与权重</h4>
+            <h4 data-i18n="help.h4.m3">3. 复杂度与权重</h4>
             <p>每个功能点按「低 / 中 / 高」三级复杂度计权：ILF(7/10/15)、EIF(5/7/10)、EI(3/4/6)、EO(4/5/7)、EQ(3/4/6)。</p>
           </div>
           <div class="doc-sec">
-            <h4>4. 调整因子</h4>
+            <h4 data-i18n="help.h4.m4">4. 调整因子</h4>
             <ul>
               <li><b>重用程度</b>：高 1/3、中 2/3、低 1（复用的功能不计全额）</li>
               <li><b>修改类型</b>：新增 1.0、修改 0.8、删除 0.2</li>
@@ -875,40 +875,40 @@ tr.rowr.showb .basis{display:block}
           </div>
         </div>
         <div class="doc-block">
-          <h3 style="font-size:15px;font-weight:700;color:var(--brand-ink);margin-bottom:10px"><span style="display:inline-block;background:var(--brand);color:var(--on-brand);font-size:11px;padding:2px 8px;border-radius:999px;margin-right:8px;vertical-align:2px">IFPUG</span>算法说明</h3>
+          <h3 style="font-size:15px;font-weight:700;color:var(--brand-ink);margin-bottom:10px"><span style="display:inline-block;background:var(--brand);color:var(--on-brand);font-size:11px;padding:2px 8px;border-radius:999px;margin-right:8px;vertical-align:2px">IFPUG</span><span data-i18n="help.h3.algo">算法说明</span></h3>
           <div class="doc-sec">
-            <h4>1. UFP（未调整功能点）</h4>
+            <h4 data-i18n="help.h4.a1">1. UFP（未调整功能点）</h4>
             <p>单一功能点 UFP = 类别权重 × 复杂度权重</p>
           </div>
           <div class="doc-sec">
-            <h4>2. US（调整后规模）</h4>
+            <h4 data-i18n="help.h4.a2">2. US（调整后规模）</h4>
             <p><span class="formula">US = UFP × 重用系数 × 修改系数</span></p>
           </div>
           <div class="doc-sec">
-            <h4>3. 调整后功能点</h4>
+            <h4 data-i18n="help.h4.a3">3. 调整后功能点</h4>
             <p><span class="formula">调整后FP = ΣUS × 规模变更因子</span>（估算中期取 1.10）</p>
           </div>
           <div class="doc-sec">
-            <h4>4. 工作量（人天）</h4>
+            <h4 data-i18n="help.h4.a4">4. 工作量（人天）</h4>
             <p><span class="formula">工作量(人天) = 调整后FP × 生产率(人时/FP) ÷ 8</span></p>
           </div>
           <div class="doc-sec">
-            <h4>5. 费用（万元）</h4>
+            <h4 data-i18n="help.h4.a5">5. 费用（万元）</h4>
             <p><span class="formula">费用 = 工作量(人天) ÷ 22 × 人月单价(万元)</span></p>
           </div>
           <div class="doc-sec">
-            <h4>6. 上下限</h4>
+            <h4 data-i18n="help.h4.a6">6. 上下限</h4>
             <p>中值 ±20% 作为下限/上限，供谈判区间参考。</p>
           </div>
         </div>
         <div class="doc-block">
-          <h3 style="font-size:15px;font-weight:700;color:var(--brand-ink);margin-bottom:10px"><span style="display:inline-block;background:var(--brand);color:var(--on-brand);font-size:11px;padding:2px 8px;border-radius:999px;margin-right:8px;vertical-align:2px">PERT</span>三点估算</h3>
+          <h3 style="font-size:15px;font-weight:700;color:var(--brand-ink);margin-bottom:10px"><span style="display:inline-block;background:var(--brand);color:var(--on-brand);font-size:11px;padding:2px 8px;border-radius:999px;margin-right:8px;vertical-align:2px">PERT</span><span data-i18n="help.h3.pert">三点估算</span></h3>
           <div class="doc-sec">
-            <h4>1. 方法依据</h4>
+            <h4 data-i18n="help.h4.p1">1. 方法依据</h4>
             <p>PERT（Program Evaluation and Review Technique，计划评审技术）适用于需求不确定、功能点难以精确计数的变更/迭代型场景，依托专家经验直接对工作量做三点估计。</p>
           </div>
           <div class="doc-sec">
-            <h4>2. 三值定义（单位：人天）</h4>
+            <h4 data-i18n="help.h4.p2">2. 三值定义（单位：人天）</h4>
             <ul>
               <li><b>乐观值 O</b>：一切顺利的最短耗时（模板 F 列「最小」）</li>
               <li><b>最可能值 M</b>：正常情况的最可能耗时（模板 E 列「最可能」）</li>
@@ -916,12 +916,12 @@ tr.rowr.showb .basis{display:block}
             </ul>
           </div>
           <div class="doc-sec">
-            <h4>3. 预期工期与标准差</h4>
+            <h4 data-i18n="help.h4.p3">3. 预期工期与标准差</h4>
             <p><span class="formula">预期 = (O + 4M + P) ÷ 6</span></p>
             <p><span class="formula">标准差 σ = (P − O) ÷ 6</span></p>
           </div>
           <div class="doc-sec">
-            <h4>4. 汇总与调节</h4>
+            <h4 data-i18n="help.h4.p4">4. 汇总与调节</h4>
             <ul>
               <li>分阶段（需求/设计/开发/实施/公共及远程/现场维护）汇总预期人天</li>
               <li><span class="formula">最理想人月 = 总预期人天 ÷ 20.83</span></li>
@@ -929,22 +929,22 @@ tr.rowr.showb .basis{display:block}
             </ul>
           </div>
           <div class="doc-sec">
-            <h4>5. 输出映射</h4>
+            <h4 data-i18n="help.h4.p5">5. 输出映射</h4>
             <p>开发阶段明细写入成品表 R8 起（B/C 列合并，仅写 D 描述与 E/F/G 三值），其余阶段写入对应阶段行；H 列预期由模板公式自动重算。</p>
           </div>
         </div>
         <div class="doc-block">
-          <h3 style="font-size:15px;font-weight:700;color:var(--brand-ink);margin-bottom:10px"><span style="display:inline-block;background:var(--brand);color:var(--on-brand);font-size:11px;padding:2px 8px;border-radius:999px;margin-right:8px;vertical-align:2px">PERT</span>项目上下文与 AI 辅助</h3>
+          <h3 style="font-size:15px;font-weight:700;color:var(--brand-ink);margin-bottom:10px"><span style="display:inline-block;background:var(--brand);color:var(--on-brand);font-size:11px;padding:2px 8px;border-radius:999px;margin-right:8px;vertical-align:2px">PERT</span><span data-i18n="help.h3.pert_ctx">项目上下文与 AI 辅助</span></h3>
           <div class="doc-sec">
-            <h4>1. AI 拆分功能点</h4>
+            <h4 data-i18n="help.h4.p6">1. AI 拆分功能点</h4>
             <p>在「需求输入」上传需求说明书（Word/PDF）或粘贴文本后，点右侧「上传文档开始识别」按钮发起识别（未上传文件时按钮灰显）。系统按<b>配置中心「启用大模型辅助识别」</b>开关自动分流：开启则由 AI 拆分功能/工作项并对每项给出乐观/最可能/悲观工作量评估，关闭则走本地离线分析；勾选确认后进入估算录入。</p>
           </div>
           <div class="doc-sec">
-            <h4>2. 项目上下文目录</h4>
+            <h4 data-i18n="help.h4.p7">2. 项目上下文目录</h4>
             <p>在<b>配置中心 → 项目上下文目录</b>配置一个代码目录，AI 估算时会扫描其技术栈、目录结构、依赖与规模，把「项目级上下文」注入提示词，使工作量评估更贴合实际代码。</p>
           </div>
           <div class="doc-sec">
-            <h4>3. 使用前提</h4>
+            <h4 data-i18n="help.h4.p8">3. 使用前提</h4>
             <ul>
               <li>AI 拆分/评估需在<b>配置中心</b>启用大模型并填好 API 地址与 Key</li>
               <li>未能启用大模型时，docx 需求可回退本地识别（仅描述、三值手工补填）</li>
