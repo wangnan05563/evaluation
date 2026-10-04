@@ -616,22 +616,22 @@ tr.rowr.showb .basis{display:block}
   <main class="page" id="pg-config">
     <div class="cfg-grid">
       <div class="glass pad">
-        <div class="card-title"><i aria-hidden="true" data-lucide="sparkles"></i>大模型识别增强</div>
+        <div class="card-title"><i aria-hidden="true" data-lucide="sparkles"></i><span data-i18n="config.card.llm">大模型识别增强</span></div>
         <div class="cfg-row">
-          <span class="sw-label"><i aria-hidden="true" data-lucide="toggle-right" style="width:16px;height:16px;color:var(--muted)"></i>启用大模型辅助识别
+          <span class="sw-label"><i aria-hidden="true" data-lucide="toggle-right" style="width:16px;height:16px;color:var(--muted)"></i><span data-i18n="config.llm.enable">启用大模型辅助识别</span>
           </span>
           <span class="switch on" id="llmSwitch" data-on="1" role="switch" tabindex="0" aria-checked="true" aria-label="启用大模型辅助识别"></span>
         </div>
         <div class="fields" style="margin-top:12px">
-          <div class="fill"><div class="f-w">模型开发商（预设）</div><select id="providerSel" onchange="onProviderChange()"></select></div>
-          <div class="fill"><div class="f-w">API 地址(Base)【必填】</div><input id="llmApi" type="text" placeholder="https://api.openai.com/v1"></div>
+          <div class="fill"><div class="f-w"><span data-i18n="config.llm.provider">模型开发商（预设）</span></div><select id="providerSel" onchange="onProviderChange()"></select></div>
+          <div class="fill"><div class="f-w"><span data-i18n="config.llm.base_url">API 地址(Base)【必填】</span></div><input id="llmApi" type="text" placeholder="https://api.openai.com/v1"></div>
         </div>
         <div class="fields" style="margin-top:12px">
-          <div class="fill"><div class="f-w">模型名</div><input id="llmModel" type="text" placeholder="gpt-4o-mini"></div>
-          <div class="fill"><div class="f-w">API Key【必填】<label style="float:right;font-size:11px;font-weight:400;color:var(--muted);cursor:pointer;display:inline-flex;align-items:center;gap:3px"><input type="checkbox" id="rememberKey" style="margin:0">记住（存本机草稿）</label></div><input id="llmKey" type="password" placeholder="sk-..."></div>
+          <div class="fill"><div class="f-w"><span data-i18n="config.llm.model">模型名</span></div><input id="llmModel" type="text" placeholder="gpt-4o-mini"></div>
+          <div class="fill"><div class="f-w"><span data-i18n="config.llm.key">API Key【必填】</span><label style="float:right;font-size:11px;font-weight:400;color:var(--muted);cursor:pointer;display:inline-flex;align-items:center;gap:3px"><input type="checkbox" id="rememberKey" style="margin:0"><span data-i18n="config.llm.remember">记住（存本机草稿）</span></label></div><input id="llmKey" type="password" placeholder="sk-..."></div>
         </div>
         <div class="cfg-actions">
-          <button class="btn btn-primary" onclick="saveCfg()" title="保存配置"><i aria-hidden="true" data-lucide="save"></i>保存配置</button>
+          <button class="btn btn-primary" onclick="saveCfg()" title="保存配置"><i aria-hidden="true" data-lucide="save"></i><span data-i18n="config.llm.save">保存配置</span></button>
           <button class="btn btn-ghost" onclick="testCfg()" title="连接测试" aria-label="连接测试"><i aria-hidden="true" data-lucide="plug-zap" style="width:15px;height:15px"></i></button>
           <button class="btn btn-ghost" onclick="fetchModels()" title="获取模型列表" aria-label="获取模型列表"><i aria-hidden="true" data-lucide="list" style="width:15px;height:15px"></i></button>
           <button class="btn btn-ghost" onclick="openConsole()" title="跳转控制台" aria-label="跳转控制台"><i aria-hidden="true" data-lucide="external-link" style="width:15px;height:15px"></i></button>
@@ -640,22 +640,22 @@ tr.rowr.showb .basis{display:block}
         <div class="cfg-test" id="cfgTestBox"></div>
         <div class="cfg-note" id="cfgNote">
           <i aria-hidden="true" data-lucide="info" style="width:14px;height:14px;vertical-align:-2px;color:var(--brand)"></i>
-          大模型仅在启用时参与识别，用于核对 / 补全功能点类别；连接异常或超时会自动回退至本地规则，不影响主流程。
+          <span data-i18n="config.llm.note">大模型仅在启用时参与识别，用于核对 / 补全功能点类别；连接异常或超时会自动回退至本地规则，不影响主流程。</span>
         </div>
       </div>
       <div class="glass pad">
-        <div class="card-title"><i aria-hidden="true" data-lucide="boxes"></i>可用模型</div>
+        <div class="card-title"><i aria-hidden="true" data-lucide="boxes"></i><span data-i18n="config.card.models">可用模型</span></div>
         <div class="model-list" id="modelList">
-          <span style="font-size:12px;color:var(--muted)">尚未加载，点击「获取模型列表」拉取当前 API 可用模型。</span>
+          <span style="font-size:12px;color:var(--muted)"><span data-i18n="config.llm.models_empty">尚未加载，点击「获取模型列表」拉取当前 API 可用模型。</span></span>
         </div>
         <div class="cfg-note" style="margin-top:18px">
           <i aria-hidden="true" data-lucide="shield-check" style="width:14px;height:14px;vertical-align:-2px;color:var(--ok)"></i>
-          API Key 仅保存在本机 <code>data/config.json</code>，不会被上传到任何第三方服务器。
+          <span data-i18n="config.llm.key_local">API Key 仅保存在本机</span> <code>data/config.json</code><span data-i18n="config.llm.key_local2">，不会被上传到任何第三方服务器。</span>
         </div>
       </div>
     </div>
     <div class="glass pad" style="margin-top:20px">
-      <div class="card-title"><i aria-hidden="true" data-lucide="folder-tree"></i>项目上下文目录</div>
+      <div class="card-title"><i aria-hidden="true" data-lucide="folder-tree"></i><span data-i18n="config.card.ctx">项目上下文目录</span></div>
       <p style="font-size:12px;color:var(--muted);margin-bottom:12px;line-height:1.7">
         配置一个项目代码目录，AI 估算工作量时会自动扫描该目录（技术栈 / 目录结构 / 依赖 / 规模），把「项目级上下文」注入提示词，使评估更贴合实际代码。
       </p>
@@ -667,13 +667,13 @@ tr.rowr.showb .basis{display:block}
       </div>
       <div class="cfg-note">
         <i aria-hidden="true" data-lucide="info" style="width:14px;height:14px;vertical-align:-2px;color:var(--brand)"></i>
-        仅扫描技术栈/结构/依赖等元信息，不读取业务源码内容；目录不存在或未配置时 AI 自动跳过该上下文。
+        <span data-i18n="config.ctx.note2">仅扫描技术栈/结构/依赖等元信息，不读取业务源码内容；目录不存在或未配置时 AI 自动跳过该上下文。</span>
       </div>
       <div id="ctxOut" class="cfg-test" style="white-space:pre-wrap;font-family:ui-monospace,Consolas,monospace;font-size:12px"></div>
       <input id="dirPicker" type="file" webkitdirectory directory multiple style="display:none">
     </div>
     <div class="glass pad" style="margin-top:20px">
-      <div class="card-title"><i aria-hidden="true" data-lucide="refresh-cw"></i>应用更新</div>
+      <div class="card-title"><i aria-hidden="true" data-lucide="refresh-cw"></i><span data-i18n="config.card.update">应用更新</span></div>
       <p style="font-size:12px;color:var(--muted);margin-bottom:12px;line-height:1.7">
         配置更新源 JSON 地址（返回 <code>{version, url, notes}</code>）。应用启动与打开帮助页时自动检测；发现新版本后在帮助页提供一键下载安装。
       </p>
@@ -683,26 +683,26 @@ tr.rowr.showb .basis{display:block}
       </div>
       <div class="cfg-note">
         <i aria-hidden="true" data-lucide="info" style="width:14px;height:14px;vertical-align:-2px;color:var(--brand)"></i>
-        留空表示不启用版本检测；更新包安装过程自动保留本机配置（配置中心/AI 配置/历史项目）。
+        <span data-i18n="config.upd.note">留空表示不启用版本检测；更新包安装过程自动保留本机配置（配置中心/AI 配置/历史项目）。</span>
       </div>
     </div>
     <div class="glass pad" style="margin-top:20px">
-      <div class="card-title"><i aria-hidden="true" data-lucide="table-2"></i>成品表公式缓存</div>
+      <div class="card-title"><i aria-hidden="true" data-lucide="table-2"></i><span data-i18n="config.card.recalc">成品表公式缓存</span></div>
       <p style="font-size:12px;color:var(--muted);margin-bottom:12px;line-height:1.7">
-        生成成品表后，可选调用本机 Excel 把母版公式的计算结果写回文件（这样 WPS / 预览器等不重算的工具也能直接看到数值）。该步骤较慢（实测 5~20 秒），默认改为<b>后台补算</b>：生成后立即可下载，缓存写完后自动替换文件。
+        生成成品表后，可选调用本机 Excel 把母版公式的计算结果写回文件（这样 WPS / 预览器等不重算的工具也能直接看到数值）。该步骤较慢（实测 5~20 秒），默认改为<b><span data-i18n="config.recalc.bg">后台补算</span></b><span data-i18n="config.recalc.note2">：生成后立即可下载，缓存写完后自动替换文件。</span>
       </p>
       <div class="fields" style="grid-template-columns:1.2fr .8fr">
-        <div class="fill"><div class="f-w">重算方式</div>
+        <div class="fill"><div class="f-w"><span data-i18n="config.recalc.mode">重算方式</span></div>
           <select id="recalcMode">
-            <option value="async">后台补算（推荐 · 生成后立即可下载）</option>
-            <option value="sync">生成时同步重算（等完成才返回）</option>
-            <option value="off">不重算（交给 Excel 打开时自算）</option>
+            <option value="async"><span data-i18n="config.recalc.bg_opt">后台补算（推荐 · 生成后立即可下载）</span></option>
+            <option value="sync"><span data-i18n="config.recalc.sync_opt">生成时同步重算（等完成才返回）</span></option>
+            <option value="off"><span data-i18n="config.recalc.no_opt">不重算（交给 Excel 打开时自算）</span></option>
           </select>
         </div>
-        <div class="fill"><div class="f-w">重算超时（秒 · 超时跳过）</div><input id="recalcTimeout" type="number" min="5" max="1800" step="1" placeholder="120"></div>
+        <div class="fill"><div class="f-w"><span data-i18n="config.recalc.timeout">重算超时（秒 · 超时跳过）</span></div><input id="recalcTimeout" type="number" min="5" max="1800" step="1" placeholder="120"></div>
       </div>
       <div class="cfg-actions">
-        <button class="btn btn-primary" onclick="saveRecalcCfg()" title="保存公式缓存策略"><i aria-hidden="true" data-lucide="save" style="width:15px;height:15px"></i>保存</button>
+        <button class="btn btn-primary" onclick="saveRecalcCfg()" title="保存公式缓存策略"><i aria-hidden="true" data-lucide="save" style="width:15px;height:15px"></i><span data-i18n="config.common.save">保存</span></button>
       </div>
       <div class="cfg-note">
         <i aria-hidden="true" data-lucide="shield-check" style="width:14px;height:14px;vertical-align:-2px;color:var(--ok)"></i>
@@ -730,26 +730,26 @@ tr.rowr.showb .basis{display:block}
           <input id="brandCustom" placeholder="#RRGGBB" style="width:90px;font-family:monospace" onchange="setBrand(this.value)">
           <input type="color" id="brandPick" style="width:30px;height:30px;padding:0;border:0;background:none" onchange="setBrand(this.value)">
         </span></div>
-      <p class="cfg-note" style="margin-top:10px">切换即时生效并记忆（localStorage）；跟随系统模式实时响应系统深浅色变化。</p>
+      <p class="cfg-note" style="margin-top:10px"><span data-i18n="config.appearance.note">切换即时生效并记忆（localStorage）；跟随系统模式实时响应系统深浅色变化。</span></p>
     </div>
 
     <div class="glass pad" style="margin-top:16px">
-      <div class="card-title"><i data-lucide="wrench"></i>运维（M8/FR-5.4、5.6）</div>
+      <div class="card-title"><i data-lucide="wrench"></i><span data-i18n="config.card.ops">运维（M8/FR-5.4、5.6）</span></div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
-        <button class="btn btn-ghost" onclick="diagExport()" title="日志+脱敏配置+版本信息打包下载"><i data-lucide="package" style="width:15px;height:15px"></i>导出诊断包</button>
-        <button class="btn btn-ghost" onclick="dataExport()" title="pert.db+规则+费率+版本号打包"><i data-lucide="download" style="width:15px;height:15px"></i>导出全部数据</button>
-        <button class="btn btn-ghost" onclick="document.querySelector('#dataImportFile').click()" title="导入此前导出的数据包（导入前自动备份）"><i data-lucide="upload" style="width:15px;height:15px"></i>导入数据</button>
+        <button class="btn btn-ghost" onclick="diagExport()" title="日志+脱敏配置+版本信息打包下载"><i data-lucide="package" style="width:15px;height:15px"></i><span data-i18n="config.ops.diag">导出诊断包</span></button>
+        <button class="btn btn-ghost" onclick="dataExport()" title="pert.db+规则+费率+版本号打包"><i data-lucide="download" style="width:15px;height:15px"></i><span data-i18n="config.ops.export_all">导出全部数据</span></button>
+        <button class="btn btn-ghost" onclick="document.querySelector('#dataImportFile').click()" title="导入此前导出的数据包（导入前自动备份）"><i data-lucide="upload" style="width:15px;height:15px"></i><span data-i18n="config.ops.import_all">导入数据</span></button>
         <input type="file" id="dataImportFile" accept=".zip" style="display:none" onchange="dataImport(this)">
       </div>
-      <p class="cfg-note" style="margin-top:10px">诊断包含结构化日志、脱敏配置与版本信息（不含上传文档与生成产物）；数据导入前会自动备份当前数据。</p>
+      <p class="cfg-note" style="margin-top:10px"><span data-i18n="config.ops.note">诊断包含结构化日志、脱敏配置与版本信息（不含上传文档与生成产物）；数据导入前会自动备份当前数据。</span></p>
     </div>
 
     <div class="glass pad" style="margin-top:16px">
-      <div class="card-title"><i data-lucide="layout-template"></i>母版管理（M9/FR-2.8）</div>
+      <div class="card-title"><i data-lucide="layout-template"></i><span data-i18n="config.card.tpl">母版管理（M9/FR-2.8）</span></div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;align-items:center">
-        <button class="btn btn-ghost" onclick="document.querySelector('#tplFile').click()" title="上传新母版并登记口径说明"><i data-lucide="plus" style="width:15px;height:15px"></i>上传母版</button>
+        <button class="btn btn-ghost" onclick="document.querySelector('#tplFile').click()" title="上传新母版并登记口径说明"><i data-lucide="plus" style="width:15px;height:15px"></i><span data-i18n="config.tpl.upload">上传母版</span></button>
         <input type="file" id="tplFile" accept=".xlsx" style="display:none" onchange="tplUpload(this)">
-        <span style="font-size:12px;color:var(--muted)">上传后请先用新母版生成一次首件，人工核对列对位（FR-2.8 AC）。</span>
+        <span style="font-size:12px;color:var(--muted)"><span data-i18n="config.tpl.note">上传后请先用新母版生成一次首件，人工核对列对位（FR-2.8 AC）。</span></span>
       </div>
     </div>
 
@@ -757,32 +757,32 @@ tr.rowr.showb .basis{display:block}
       <div class="card-title"><i aria-hidden="true" data-lucide="coins"></i>费率与基准（M6/FR-2.3）
         <span style="flex:1"></span><span class="tcount" id="ratesVer">—</span>
         <select id="ratesSel" onchange="ratesPick()" style="max-width:150px;font-size:12px"></select>
-        <button class="btn btn-ghost" onclick="ratesAdd()" title="新增年度版本">+版本</button>
-        <button class="btn btn-ghost" onclick="ratesDel()" title="删除当前版本">删除</button>
+        <button class="btn btn-ghost" onclick="ratesAdd()" title="新增年度版本"><span data-i18n="config.common.add_ver">+版本</span></button>
+        <button class="btn btn-ghost" onclick="ratesDel()" title="删除当前版本"><span data-i18n="config.common.delete">删除</span></button>
         <button class="btn btn-primary" onclick="ratesSave()" title="保存当前版本（不发版更新）">保存</button>
       </div>
       <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:12px 0">
-        <label style="font-size:12px;color:var(--muted)">生产率 PDR（人时/FP）<input id="ratesPdr" type="number" step="0.01" style="width:100%;margin-top:4px"></label>
-        <label style="font-size:12px;color:var(--muted)">人月费率（元/人月）<input id="ratesRate" type="number" step="1" style="width:100%;margin-top:4px"></label>
-        <label style="font-size:12px;color:var(--muted)">功能点单价（元/FP）<input id="ratesPrice" type="number" step="1" style="width:100%;margin-top:4px"></label>
-        <label style="font-size:12px;color:var(--muted)">直接非人力成本 DNHC（元）<input id="ratesDnhc" type="number" step="1" style="width:100%;margin-top:4px"></label>
+        <label style="font-size:12px;color:var(--muted)"><span data-i18n="config.rates.pdr">生产率 PDR（人时/FP）</span><input id="ratesPdr" type="number" step="0.01" style="width:100%;margin-top:4px"></label>
+        <label style="font-size:12px;color:var(--muted)"><span data-i18n="config.rates.rate">人月费率（元/人月）</span><input id="ratesRate" type="number" step="1" style="width:100%;margin-top:4px"></label>
+        <label style="font-size:12px;color:var(--muted)"><span data-i18n="config.rates.unit_price">功能点单价（元/FP）</span><input id="ratesPrice" type="number" step="1" style="width:100%;margin-top:4px"></label>
+        <label style="font-size:12px;color:var(--muted)"><span data-i18n="config.rates.dnhc">直接非人力成本 DNHC（元）</span><input id="ratesDnhc" type="number" step="1" style="width:100%;margin-top:4px"></label>
       </div>
-      <label style="font-size:12px;color:var(--muted)">数据出处<input id="ratesSource" style="width:100%;margin-top:4px"></label>
-      <p class="cfg-note" style="margin-top:10px">多版本按年度保存（如 CSBMK-2023/2024），估算时在结果页选用并记录。负数/超界数值将被拒绝。</p>
+      <label style="font-size:12px;color:var(--muted)"><span data-i18n="config.rates.source">数据出处</span><input id="ratesSource" style="width:100%;margin-top:4px"></label>
+      <p class="cfg-note" style="margin-top:10px"><span data-i18n="config.rates.note">多版本按年度保存（如 CSBMK-2023/2024），估算时在结果页选用并记录。负数/超界数值将被拒绝。</span></p>
     </div>
 
     <div class="glass pad" style="margin-top:16px" id="rulesCard">
       <div class="card-title"><i aria-hidden="true" data-lucide="git-merge"></i>识别规则（M3/FR-2.9）
         <span style="flex:1"></span>
         <span class="tcount" id="rulesMeta">—</span>
-        <button class="btn btn-primary" onclick="rulesSave()" title="保存全部规则修改（下次识别生效）">保存全部</button>
+        <button class="btn btn-primary" onclick="rulesSave()" title="保存全部规则修改（下次识别生效）"><span data-i18n="config.rules.save_all">保存全部</span></button>
       </div>
-      <p style="font-size:12px;color:var(--muted);margin:-8px 0 12px">规则按优先级从高到低匹配，命中即判定类型；正则语法，多个用 | 分隔。修改后保存，下次识别生效并记录规则版本。</p>
+      <p style="font-size:12px;color:var(--muted);margin:-8px 0 12px"><span data-i18n="config.rules.note">规则按优先级从高到低匹配，命中即判定类型；正则语法，多个用 | 分隔。修改后保存，下次识别生效并记录规则版本。</span></p>
       <div style="overflow:auto"><table>
-        <thead><tr><th style="width:110px">ID</th><th>名称</th><th style="width:80px">范围</th><th style="width:70px">类型</th><th style="width:64px">优先级</th><th style="width:56px">启用</th><th>正则 patterns（每行一条；同一正则内的多分支用 | 分隔）</th><th style="width:120px">排除 exclude</th></tr></thead>
+        <thead><tr><th style="width:110px">ID</th><th><span data-i18n="config.rules.name">名称</span></th><th style="width:80px"><span data-i18n="config.rules.scope">范围</span></th><th style="width:70px"><span data-i18n="config.rules.type">类型</span></th><th style="width:64px"><span data-i18n="config.rules.priority">优先级</span></th><th style="width:56px"><span data-i18n="config.rules.enabled">启用</span></th><th>正则 patterns（每行一条；同一正则内的多分支用 | 分隔）</th><th style="width:120px">排除 exclude</th></tr></thead>
         <tbody id="rulesRows"><tr><td colspan="8" style="color:var(--muted)">加载中…</td></tr></tbody>
       </table></div>
-      <div style="margin-top:10px;text-align:right"><button class="btn btn-ghost" onclick="rulesAdd()" title="追加一条空白规则"><i aria-hidden="true" data-lucide="plus" style="width:15px;height:15px"></i>追加规则</button></div>
+      <div style="margin-top:10px;text-align:right"><button class="btn btn-ghost" onclick="rulesAdd()" title="追加一条空白规则"><i aria-hidden="true" data-lucide="plus" style="width:15px;height:15px"></i><span data-i18n="config.rules.append">追加规则</span></button></div>
     </div>
   </main>
 
