@@ -284,6 +284,63 @@ check('结果页英文态无中文残留', rsResidue === '[]', rsResidue);
 
 await ev(`setLang('zh-CN');items=[];goStep('upload');`); await sleep(400);
 
+// ---- 15) PERT 页（批次2）----
+await ev(`goPage('pert');`); await sleep(600);
+const ptZh = JSON.parse(await ev(`JSON.stringify({
+  title:document.querySelector('[data-i18n="pert.title"]').textContent.trim(),
+  steps:[...document.querySelectorAll('[data-i18n^="pert.step."]')].map(x=>x.textContent.trim()),
+  upload:document.querySelector('[data-i18n="pert.in.upload"]').textContent.trim(),
+  dropHint:document.querySelector('[data-i18n="pert.in.drop_hint"]').textContent.trim(),
+  curProject:document.querySelector('[data-i18n="pert.edit.cur_project"]').textContent.trim(),
+  oPh:document.getElementById('pertO').getAttribute('placeholder'),
+  mPh:document.getElementById('pertM').getAttribute('placeholder'),
+  total:document.querySelector('[data-i18n="pert.gen.total_days"]').textContent.trim(),
+  dropAria:document.getElementById('pertDrop').getAttribute('aria-label'),
+})`));
+check('PERT 页中文态：标题/步骤条/上传区/三值输入均为中文',
+  ptZh.title === 'PERT 三点估算' && ptZh.steps.length === 3 && ptZh.upload === '上传需求说明书'
+  && ptZh.oPh === '乐观' && ptZh.mPh === '最可能' && ptZh.total === '预期总人天',
+  JSON.stringify({title:ptZh.title, steps:ptZh.steps, o:ptZh.oPh}));
+
+await ev(`setLang('en-US');`); await sleep(700);
+const ptEn = JSON.parse(await ev(`JSON.stringify({
+  title:document.querySelector('[data-i18n="pert.title"]').textContent.trim(),
+  formula:document.querySelector('[data-i18n="pert.title_formula"]').textContent.trim(),
+  steps:[...document.querySelectorAll('[data-i18n^="pert.step."]')].map(x=>x.textContent.trim()),
+  upload:document.querySelector('[data-i18n="pert.in.upload"]').textContent.trim(),
+  dropHint:document.querySelector('[data-i18n="pert.in.drop_hint"]').textContent.trim(),
+  curProject:document.querySelector('[data-i18n="pert.edit.cur_project"]').textContent.trim(),
+  oPh:document.getElementById('pertO').getAttribute('placeholder'),
+  mPh:document.getElementById('pertM').getAttribute('placeholder'),
+  mTitle:document.getElementById('pertM').getAttribute('title'),
+  total:document.querySelector('[data-i18n="pert.gen.total_days"]').textContent.trim(),
+  ideal:document.querySelector('[data-i18n="pert.gen.ideal_month"]').textContent.trim(),
+  actual:document.querySelector('[data-i18n="pert.gen.actual_month"]').textContent.trim(),
+  dropAria:document.getElementById('pertDrop').getAttribute('aria-label'),
+  textPh:(document.getElementById('pertTextArea').getAttribute('placeholder')||'').slice(0,30),
+  // 步骤条与按钮图标未被摧毁
+  stepIconIntact:document.querySelector('#pst1').children.length,
+})`));
+check('PERT 页英文态：标题/步骤条/三值输入已切英文',
+  ptEn.title === 'PERT Three-Point Estimate' && ptEn.steps.length === 3
+  && ptEn.upload === 'Upload Requirements' && ptEn.oPh === 'Optimistic' && ptEn.mPh === 'Most likely',
+  JSON.stringify({title:ptEn.title, steps:ptEn.steps, o:ptEn.oPh}));
+check('PERT 三值输入 title 属性已切英文',
+  /Most likely value/.test(ptEn.mTitle || ''), ptEn.mTitle);
+check('PERT 步骤3 的 KPI 标签已切英文',
+  ptEn.total === 'Total expected days' && ptEn.ideal === 'Ideal person-months'
+  && ptEn.actual === 'Adjusted person-months',
+  JSON.stringify({total:ptEn.total, ideal:ptEn.ideal, actual:ptEn.actual}));
+check('PERT 拖放区 aria-label 与粘贴框placeholder 已切英文',
+  /Upload PERT requirements/.test(ptEn.dropAria || '') && /^Describe one or more/.test(ptEn.textPh),
+  JSON.stringify({aria:(ptEn.dropAria||'').slice(0,28), ph:ptEn.textPh}));
+check('PERT 步骤条子结构完好', ptEn.stepIconIntact >= 2, `children=${ptEn.stepIconIntact}`);
+const ptResidue = await ev(`(()=>{const bad=[];document.querySelectorAll('#pg-pert [data-i18n]').forEach(el=>{
+  if(el.children.length===0&&/[一-龥]/.test(el.textContent)) bad.push(el.getAttribute('data-i18n'));});return JSON.stringify(bad)})()`);
+check('PERT 页英文态无中文残留', ptResidue === '[]', ptResidue);
+
+await ev(`setLang('zh-CN');goPage('work');goStep('upload');`); await sleep(400);
+
 check('全程无页面异常', errors.length === 0, errors.slice(0, 2).join(' | '));
 const failed = res.filter(r => !r.ok);
 console.log(`\n==== 汇总 ==== 共 ${res.length} 项，通过 ${res.length - failed.length}，失败 ${failed.length}`);

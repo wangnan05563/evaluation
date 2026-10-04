@@ -444,7 +444,7 @@ tr.rowr.showb .basis{display:block}
   <section class="view" id="v-upload">
     <div class="up-grid">
       <div class="glass pad">
-        <div class="card-title"><i aria-hidden="true" data-lucide="folder-open"></i>上传需求说明书</div>
+        <div class="card-title"><i aria-hidden="true" data-lucide="folder-open"></i><span data-i18n="pert.in.upload">上传需求说明书</span></div>
         <div class="drop" id="drop" role="button" tabindex="0" aria-label="上传需求文档：可拖拽文件到此处，或按回车键选择文件">
           <i aria-hidden="true" data-lucide="cloud-upload" class="big"></i>
           <b>拖拽需求文档到这里，或点击选择</b>
@@ -979,11 +979,11 @@ tr.rowr.showb .basis{display:block}
   </main>
 
   <main class="page" id="pg-pert">
-      <div class="card-title"><i aria-hidden="true" data-lucide="activity"></i>PERT 三点估算 <span style="font-size:12px;color:var(--muted);font-weight:400">预期 = (O + 4M + P) ÷ 6　·　σ = (P − O) ÷ 6</span></div>
+      <div class="card-title"><i aria-hidden="true" data-lucide="activity"></i><span data-i18n="pert.title">PERT 三点估算</span> <span style="font-size:12px;color:var(--muted);font-weight:400" data-i18n="pert.title_formula">预期 = (O + 4M + P) ÷ 6　·　σ = (P − O) ÷ 6</span></div>
       <div class="steps" style="margin-bottom:18px">
-        <div class="step on" id="pst1" role="button" tabindex="0" onclick="pertStep('in')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();pertStep('in')}"><span class="n">1</span><span>需求输入</span></div><div class="sep"></div>
-        <div class="step" id="pst2" role="button" tabindex="0" onclick="pertStep('edit')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();pertStep('edit')}"><span class="n">2</span><span>估算录入</span></div><div class="sep"></div>
-        <div class="step" id="pst3" role="button" tabindex="0" onclick="pertStep('gen')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();pertStep('gen')}"><span class="n">3</span><span>结果与生成</span></div>
+        <div class="step on" id="pst1" role="button" tabindex="0" onclick="pertStep('in')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();pertStep('in')}"><span class="n">1</span><span data-i18n="pert.step.in">需求输入</span></div><div class="sep"></div>
+        <div class="step" id="pst2" role="button" tabindex="0" onclick="pertStep('edit')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();pertStep('edit')}"><span class="n">2</span><span data-i18n="pert.step.edit">估算录入</span></div><div class="sep"></div>
+        <div class="step" id="pst3" role="button" tabindex="0" onclick="pertStep('gen')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();pertStep('gen')}"><span class="n">3</span><span data-i18n="pert.step.gen">结果与生成</span></div>
       </div>
       <!-- 步骤1：需求输入（项目 + 上传/文本） -->
       <section class="view" id="pv-in">
@@ -991,15 +991,15 @@ tr.rowr.showb .basis{display:block}
         <!-- 左侧：上传需求说明书（Word/PDF），参照 IFPUG 卡片样式（card-title + 图标 + 投影） -->
         <div class="glass pad">
           <div class="card-title"><i aria-hidden="true" data-lucide="folder-open"></i>上传需求说明书</div>
-          <div id="pertDrop" role="button" tabindex="0" aria-label="上传 PERT 需求说明书：可拖拽文件到此处，或按回车键选择文件（支持 Word 与 PDF）" style="border:1.5px dashed var(--line-ctrl);border-radius:var(--r-md);background:var(--surface-2);padding:22px 14px;text-align:center;cursor:pointer;margin-top:10px;transition:.2s">
+          <div id="pertDrop" role="button" tabindex="0" data-i18n="aria-label=pert.in.drop_aria" aria-label="上传 PERT 需求说明书：可拖拽文件到此处，或按回车键选择文件（支持 Word 与 PDF）" style="border:1.5px dashed var(--line-ctrl);border-radius:var(--r-md);background:var(--surface-2);padding:22px 14px;text-align:center;cursor:pointer;margin-top:10px;transition:.2s">
             <i aria-hidden="true" data-lucide="cloud-upload" style="width:30px;height:30px;color:var(--brand)"></i>
-            <div style="font-size:12px;margin-top:6px;color:var(--ink-2)">点击选择或拖拽需求说明书（Word / PDF）；键盘可按回车选择</div>
+            <div style="font-size:12px;margin-top:6px;color:var(--ink-2)" data-i18n="pert.in.drop_hint">点击选择或拖拽需求说明书（Word / PDF）；键盘可按回车选择</div>
             <div id="pertUpName" style="font-size:11px;color:var(--muted);margin-top:6px"></div>
             <input id="pertUpFile" type="file" accept=".docx,.doc,.pdf" style="display:none">
           </div>
-          <div class="cfg-note" style="margin-top:12px">支持 Word（.docx / .doc）、PDF；AI 自动拆分功能点并评估工作量。</div>
-          <div class="f-w" style="margin-top:16px">或粘贴需求文本</div>
-          <textarea id="pertTextArea" placeholder="描述一个或多个功能需求（AI 将自动拆分功能点并用 PERT 评估工作量），例如：新增票据到期自动扣款功能，支持批量选择票据、调用人行接口逐张扣款，扣款成功后生成传票并支持逐张打印。&#10;&#10;结构化字段也可直接写：需求标题 / 描述 / 优先级" rows="5" style="width:100%;margin-top:8px;padding:10px 12px;border:1px solid var(--line-ctrl);border-radius:var(--r-md);font-family:var(--ff);font-size:12px;outline:none;resize:vertical;box-sizing:border-box;line-height:1.6"></textarea>
+          <div class="cfg-note" style="margin-top:12px" data-i18n="pert.in.note">支持 Word（.docx / .doc）、PDF；AI 自动拆分功能点并评估工作量。</div>
+          <div class="f-w" style="margin-top:16px" data-i18n="pert.in.or_text">或粘贴需求文本</div>
+          <textarea id="pertTextArea" data-i18n-ph="pert.in.text_ph" placeholder="描述一个或多个功能需求（AI 将自动拆分功能点并用 PERT 评估工作量），例如：新增票据到期自动扣款功能，支持批量选择票据、调用人行接口逐张扣款，扣款成功后生成传票并支持逐张打印。&#10;&#10;结构化字段也可直接写：需求标题 / 描述 / 优先级" rows="5" style="width:100%;margin-top:8px;padding:10px 12px;border:1px solid var(--line-ctrl);border-radius:var(--r-md);font-family:var(--ff);font-size:12px;outline:none;resize:vertical;box-sizing:border-box;line-height:1.6"></textarea>
           <div class="cfg-note" style="margin-top:14px">识别出的功能点将进入下一步「估算录入」供勾选确认。</div>
         </div>
         <!-- 右侧：项目参数配置，与上传栏同为独立卡片，视觉区隔清晰 -->
@@ -1029,16 +1029,16 @@ tr.rowr.showb .basis{display:block}
       <section class="view" id="pv-edit">
         <div class="glass pad">
         <div class="cfg-row">
-          <span style="font-size:13px;font-weight:600;color:var(--ink)"><i aria-hidden="true" data-lucide="folder" style="width:15px;height:15px;vertical-align:-2px;color:var(--brand)"></i> 当前项目：<b id="pertCur">—</b></span>
-          <span style="display:flex;gap:8px;align-items:center"><span class="tcount" id="pertCount">0 项</span><button class="btn btn-ghost" style="padding:4px 10px;font-size:12px" onclick="pertStep('in')" title="更换项目" aria-label="更换项目"><i aria-hidden="true" data-lucide="folder-open" style="width:15px;height:15px"></i></button></span>
+          <span style="font-size:13px;font-weight:600;color:var(--ink)"><i aria-hidden="true" data-lucide="folder" style="width:15px;height:15px;vertical-align:-2px;color:var(--brand)"></i> <span data-i18n="pert.edit.cur_project">当前项目：</span><b id="pertCur">—</b></span>
+          <span style="display:flex;gap:8px;align-items:center"><span class="tcount" id="pertCount">0 项</span><button class="btn btn-ghost" style="padding:4px 10px;font-size:12px" onclick="pertStep('in')" data-i18n="title=pert.edit.change_project|aria-label=pert.edit.change_project" title="更换项目" aria-label="更换项目"><i aria-hidden="true" data-lucide="folder-open" style="width:15px;height:15px"></i></button></span>
         </div>
         <div class="toolbar" style="margin-bottom:10px;flex-wrap:wrap">
           <select id="pertPhase" style="width:110px;padding:10px 12px;border:1px solid var(--line-ctrl);border-radius:var(--r-md);font-family:var(--ff);font-size:13px;outline:none;background:var(--card)"><option>开发</option></select>
-          <input id="pertD" type="text" placeholder="功能描述" style="flex:1;min-width:150px;padding:10px 12px;border:1px solid var(--line-ctrl);border-radius:var(--r-md);font-family:var(--ff);font-size:13px;outline:none">
-          <input id="pertO" type="number" min="0" step="0.1" placeholder="乐观" title="乐观值（人天）" style="width:70px;padding:10px 6px;border:1px solid var(--line-ctrl);border-radius:var(--r-md);font-family:var(--ff);font-size:13px;outline:none;text-align:center">
-          <input id="pertM" type="number" min="0" step="0.1" placeholder="最可能" title="最可能值（人天，必填）" style="width:70px;padding:10px 6px;border:1px solid var(--line-ctrl);border-radius:var(--r-md);font-family:var(--ff);font-size:13px;outline:none;text-align:center">
-          <input id="pertP" type="number" min="0" step="0.1" placeholder="悲观" title="悲观值（人天）" style="width:70px;padding:10px 6px;border:1px solid var(--line-ctrl);border-radius:var(--r-md);font-family:var(--ff);font-size:13px;outline:none;text-align:center">
-          <button class="btn btn-ghost" onclick="pertAdd()" title="添加" aria-label="添加"><i aria-hidden="true" data-lucide="plus" style="width:15px;height:15px"></i></button>
+          <input id="pertD" type="text" data-i18n-ph="pert.edit.desc_ph" placeholder="功能描述" style="flex:1;min-width:150px;padding:10px 12px;border:1px solid var(--line-ctrl);border-radius:var(--r-md);font-family:var(--ff);font-size:13px;outline:none">
+          <input id="pertO" type="number" min="0" step="0.1" data-i18n-ph="pert.edit.o_ph" data-i18n="title=pert.edit.o_title" placeholder="乐观" title="乐观值（人天）" style="width:70px;padding:10px 6px;border:1px solid var(--line-ctrl);border-radius:var(--r-md);font-family:var(--ff);font-size:13px;outline:none;text-align:center">
+          <input id="pertM" type="number" min="0" step="0.1" data-i18n-ph="pert.edit.m_ph" data-i18n="title=pert.edit.m_title" placeholder="最可能" title="最可能值（人天，必填）" style="width:70px;padding:10px 6px;border:1px solid var(--line-ctrl);border-radius:var(--r-md);font-family:var(--ff);font-size:13px;outline:none;text-align:center">
+          <input id="pertP" type="number" min="0" step="0.1" data-i18n-ph="pert.edit.p_ph" data-i18n="title=pert.edit.p_title" placeholder="悲观" title="悲观值（人天）" style="width:70px;padding:10px 6px;border:1px solid var(--line-ctrl);border-radius:var(--r-md);font-family:var(--ff);font-size:13px;outline:none;text-align:center">
+          <button class="btn btn-ghost" onclick="pertAdd()" data-i18n="title=pert.edit.add|aria-label=pert.edit.add" title="添加" aria-label="添加"><i aria-hidden="true" data-lucide="plus" style="width:15px;height:15px"></i></button>
         </div>
           <div style="overflow:auto">
           <table>
@@ -1072,17 +1072,17 @@ tr.rowr.showb .basis{display:block}
         <section class="view" id="pv-gen">
           <div class="glass pad">
           <div class="kpis" style="grid-template-columns:repeat(4,1fr);margin-top:4px">
-            <div class="kpi"><div class="k-top"><i aria-hidden="true" data-lucide="sigma"></i>预期总人天</div><b id="pTotal">0</b></div>
-            <div class="kpi"><div class="k-top"><i aria-hidden="true" data-lucide="users"></i>最理想人月</div><b id="pIdeal">0</b></div>
-            <div class="kpi"><div class="k-top"><i aria-hidden="true" data-lucide="settings-2"></i>调节系数</div><b id="pAdj">0</b></div>
-            <div class="kpi"><div class="k-top"><i aria-hidden="true" data-lucide="target"></i>实际预估人月</div><b id="pActual">0</b></div>
+            <div class="kpi"><div class="k-top"><i aria-hidden="true" data-lucide="sigma"></i><span data-i18n="pert.gen.total_days">预期总人天</span></div><b id="pTotal">0</b></div>
+            <div class="kpi"><div class="k-top"><i aria-hidden="true" data-lucide="users"></i><span data-i18n="pert.gen.ideal_month">最理想人月</span></div><b id="pIdeal">0</b></div>
+            <div class="kpi"><div class="k-top"><i aria-hidden="true" data-lucide="settings-2"></i><span data-i18n="pert.gen.adj_factor">调节系数</span></div><b id="pAdj">0</b></div>
+            <div class="kpi"><div class="k-top"><i aria-hidden="true" data-lucide="target"></i><span data-i18n="pert.gen.actual_month">实际预估人月</span></div><b id="pActual">0</b></div>
           </div>
           <div style="margin-top:16px;display:flex;gap:12px;align-items:center;flex-wrap:wrap">
-            <button class="btn btn-primary" onclick="pertGen()" title="生成成品表"><i aria-hidden="true" data-lucide="file-down"></i>生成成品表</button>
-            <span class="cfg-note" style="margin-top:0">开发阶段写入成品表 R8 起，其余阶段写入对应阶段行；未填三值的项会提示补全。</span>
+            <button class="btn btn-primary" onclick="pertGen()" data-i18n="title=pert.gen.make_title" title="生成成品表"><i aria-hidden="true" data-lucide="file-down"></i><span data-i18n="pert.gen.make">生成成品表</span></button>
+            <span class="cfg-note" style="margin-top:0" data-i18n="pert.gen.note">开发阶段写入成品表 R8 起，其余阶段写入对应阶段行；未填三值的项会提示补全。</span>
           </div>
           <div style="margin-top:14px">
-            <button class="btn btn-ghost" style="padding:8px 14px;font-size:12px" onclick="pertStep('edit')" title="返回估算录入" aria-label="返回估算录入"><i aria-hidden="true" data-lucide="arrow-left" style="width:15px;height:15px"></i></button>
+            <button class="btn btn-ghost" style="padding:8px 14px;font-size:12px" onclick="pertStep('edit')" data-i18n="title=pert.gen.back|aria-label=pert.gen.back" title="返回估算录入" aria-label="返回估算录入"><i aria-hidden="true" data-lucide="arrow-left" style="width:15px;height:15px"></i></button>
           </div>
           <div id="pertBox" class="cfg-test" style="margin-top:14px"></div>
           </div>
@@ -1400,7 +1400,7 @@ function pertEditCell(id,field,el){
 if(e.key==="Escape"){el.textContent=old||"—";}});
 }
 function renderPert(){
-  $("#pertCount").textContent=pertItems.length+" 项";
+  $("#pertCount").textContent=tf("pert.edit.count",{n:pertItems.length});
   $("#pertTbody").innerHTML=pertItems.map(it=>{
     const has=it.optimistic!=null&&it.most_likely!=null&&it.pessimistic!=null;
     const e=has?pertExp(it.optimistic,it.most_likely,it.pessimistic):null;
@@ -3121,6 +3121,8 @@ async function setLang(lang){
   if(typeof render === "function" && Array.isArray(items)) render();
   if(typeof refreshCharts === "function" && Object.keys(_charts || {}).length) refreshCharts();
   if(typeof rulesLoad === "function" && document.body.dataset.page === "config") rulesLoad();
+  // PERT 页的计数/汇总同理，需重算才能反映新语言
+  if(typeof pertSyncStart === "function" && document.body.dataset.page === "pert") pertSyncStart();
   toast(t("common.lang_switched"));
 }
 /* data-i18n 机制：把文案与结构解耦，避免为每种语言复制一份 DOM。

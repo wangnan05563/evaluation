@@ -306,7 +306,7 @@ function pertEditCell(id,field,el){
 if(e.key==="Escape"){el.textContent=old||"—";}});
 }
 function renderPert(){
-  $("#pertCount").textContent=pertItems.length+" 项";
+  $("#pertCount").textContent=tf("pert.edit.count",{n:pertItems.length});
   $("#pertTbody").innerHTML=pertItems.map(it=>{
     const has=it.optimistic!=null&&it.most_likely!=null&&it.pessimistic!=null;
     const e=has?pertExp(it.optimistic,it.most_likely,it.pessimistic):null;
