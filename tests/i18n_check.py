@@ -101,5 +101,28 @@ if HTML.exists():
         print(f"  INFO  字典中未被 data-i18n 使用的 key：{len(unused)} 个"
               + (f"（如 {', '.join(unused[:5])}）" if unused else ""))
 
+# 6) 术语跨字典一致（T01528，术语表见 docs/i18n_glossary.md）：
+#    zh 文案出现的固定术语，对应 en 必须使用术语表英文——同一术语在结果页、
+#    复核表、帮助页会各出现一次，各处独立机翻必然漂移，这里用断言兜住。
+#    豁免：短标签有意省略术语（如步骤条「复核功能点」→ "Review"）。
+GLOSSARY_TERMS = {
+    "功能点": ["function point", "fp"], "工作量": ["effort", "workload"],
+    "复杂度": ["complexity"], "重用": ["reuse"], "人天": ["person-day"],
+    "人月": ["person-month"], "生产率": ["productivity"], "配置中心": ["settings"],
+    "调整因子": ["adjustment factor"], "调节系数": ["adjustment coefficient"],
+    "乐观": ["optimistic"], "最可能": ["most likely"], "悲观": ["pessimistic"],
+    "基准数据": ["benchmark"], "规模变更": ["size changing"],
+    "未调整": ["unadjusted"], "调整后": ["adjusted"],
+}
+GLOSSARY_EXEMPT = {("steps.review", "功能点")}
+if zh and en:
+    drift = []
+    for k, v in zh.items():
+        for term, alts in GLOSSARY_TERMS.items():
+            if term in str(v) and (k, term) not in GLOSSARY_EXEMPT:
+                if not any(a in str(en.get(k, "")).lower() for a in alts):
+                    drift.append(f"{k}「{term}」")
+    check("术语表术语跨字典一致（en 固定译法无漂移）", not drift, ", ".join(drift[:6]))
+
 print(f"==== i18n 校验汇总 ==== 失败 {len(fails)}")
 sys.exit(1 if fails else 0)

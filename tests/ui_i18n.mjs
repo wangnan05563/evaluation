@@ -328,7 +328,7 @@ check('PERT 页英文态：标题/步骤条/三值输入已切英文',
 check('PERT 三值输入 title 属性已切英文',
   /Most likely value/.test(ptEn.mTitle || ''), ptEn.mTitle);
 check('PERT 步骤3 的 KPI 标签已切英文',
-  ptEn.total === 'Total expected days' && ptEn.ideal === 'Ideal person-months'
+  ptEn.total === 'Total expected person-days' && ptEn.ideal === 'Ideal person-months'
   && ptEn.actual === 'Adjusted person-months',
   JSON.stringify({total:ptEn.total, ideal:ptEn.ideal, actual:ptEn.actual}));
 check('PERT 拖放区 aria-label 与粘贴框placeholder 已切英文',
@@ -386,17 +386,24 @@ const cfResidue = await ev(`(()=>{const bad=[];
   return JSON.stringify(bad)})()`);
 check('配置中心英文态无中文残留（结构性节点）', cfResidue === '[]', cfResidue);
 
-// ---- 17) 帮助页（批次2，结构性部分）----
+// ---- 17) 帮助页（批次2 结构性 + 批次3 方法论正文）----
 await ev(`setLang('zh-CN');goPage('help');`); await sleep(700);
 const hpZh = JSON.parse(await ev(`JSON.stringify({
   h3:[...document.querySelectorAll('#pg-help h3 [data-i18n^="help.h3."]')].map(x=>x.textContent.trim()),
   h4:[...document.querySelectorAll('#pg-help h4[data-i18n]')].map(x=>x.textContent.trim()).slice(0,4),
   kbdKey:document.querySelector('[data-i18n="help.kbd.key"]').textContent.trim(),
   verTitle:document.querySelector('[data-i18n="help.ver.title"]').textContent.trim(),
+  // 批次3：正文段落（key 化后 zh 态应回填中文原文）
+  bodyM3:document.querySelector('[data-i18n="help.body.m3"]').textContent.trim(),
+  bodyA2f:document.querySelector('[data-i18n="help.body.a2f"]').textContent.trim(),
+  zhTextNodes:JSON.stringify((()=>{const w=document.createTreeWalker(document.querySelector('#pg-help'),NodeFilter.SHOW_TEXT);const a=[];let n;while(n=w.nextNode())if(/[一-龥]/.test(n.nodeValue))a.push(n.nodeValue.trim().slice(0,12));return a})()),
 })`));
 check('帮助页中文态：章节标题/小节/快捷键表均为中文',
   hpZh.h3.length === 4 && hpZh.h4.length === 4 && hpZh.kbdKey === '按键' && hpZh.verTitle === '版本与更新',
   JSON.stringify({h3:hpZh.h3, kbd:hpZh.kbdKey}));
+check('帮助页中文态：正文段落为中文原文（批次3 key 化后 zh 字典生效）',
+  /三级复杂度计权/.test(hpZh.bodyM3) && /重用系数/.test(hpZh.bodyA2f) && hpZh.zhTextNodes.includes('操作引导'),
+  JSON.stringify({m3:hpZh.bodyM3.slice(0, 20), a2f:hpZh.bodyA2f}));
 
 await ev(`setLang('en-US');`); await sleep(700);
 const hpEn = JSON.parse(await ev(`JSON.stringify({
@@ -409,6 +416,12 @@ const hpEn = JSON.parse(await ev(`JSON.stringify({
   guideTitle:document.querySelector('[data-i18n="title=help.guide.help"]')?document.querySelector('[data-i18n="title=help.guide.help"]').getAttribute('title'):null,
   // 徽标未被 textContent 摧毁（h3 内的 IFPUG/PERT 徽标 span）
   badgeIntact:[...document.querySelectorAll('#pg-help h3')].every(h=>h.children.length>=2),
+  // 批次3：正文与公式段落英文断言
+  bodyM3:document.querySelector('[data-i18n="help.body.m3"]').textContent.trim(),
+  bodyA2f:document.querySelector('[data-i18n="help.body.a2f"]').textContent.trim(),
+  bodyP4b:document.querySelector('[data-i18n="help.body.p4b"]').textContent.trim(),
+  bodyP5:document.querySelector('[data-i18n="help.body.p5"]').textContent.trim(),
+  guideBtn:document.querySelector('[data-i18n="help.guide.work.btn"]').textContent.trim(),
 })`));
 check('帮助页英文态：章节与快捷键表已切英文',
   hpEn.h3.length === 4 && hpEn.kbdKey === 'Key' && hpEn.verTitle === 'Version and Updates'
@@ -419,6 +432,25 @@ check('帮助页按钮 title 已切英文（更新与引导）',
   /Check for updates/.test(hpEn.checkTitle || '') && /Feature overview/.test(hpEn.guideTitle || ''),
   JSON.stringify({chk:hpEn.checkTitle, guide:hpEn.guideTitle}));
 check('帮助页 h3 徽标未被摧毁（h3 子结构完好）', hpEn.badgeIntact === true, `badges=${hpEn.badgeIntact}`);
+check('帮助页英文态：正文段落/公式/引导按钮已切英文（批次3）',
+  /complexity levels/.test(hpEn.bodyM3) && /US = UFP × Reuse Factor/.test(hpEn.bodyA2f)
+  && /Ideal Person-Months/.test(hpEn.bodyP4b) && /row R8/.test(hpEn.bodyP5)
+  && hpEn.guideBtn === 'IFPUG Walkthrough',
+  JSON.stringify({m3:hpEn.bodyM3.slice(0, 30), a2f:hpEn.bodyA2f, p4b:hpEn.bodyP4b, btn:hpEn.guideBtn}));
+// 全页文本节点扫描（不只 [data-i18n] 节点）：英文态下帮助页任何中文都算漏译。
+// 变量与符号（O/M/P、σ、UFP、FP）非中文不受影响；徽标 IFPUG/PERT 为拉丁字符。
+// 例外：#verState/#verNotes/#verProgWrap 是 JS 运行时 textContent 写入的动态状态文案
+// （「检测中…/已是最新版本/未配置更新源…」），不属批次3 正文范围——已建单 T01548
+// 「FR-ENG05 批次4：JS 动态文案 key 化」跟踪，落地后删除本例外。
+const hpResidue = await ev(`(()=>{const bad=[];
+  const w=document.createTreeWalker(document.querySelector('#pg-help'),NodeFilter.SHOW_TEXT,
+    {acceptNode(n){const el=n.parentElement;
+      if(el&&el.closest('#verState,#verNotes,#verProgWrap'))return NodeFilter.FILTER_REJECT;
+      return /[一-龥]/.test(n.nodeValue)?NodeFilter.FILTER_ACCEPT:NodeFilter.FILTER_SKIP;}});
+  let n;while(n=w.nextNode()){const el=n.parentElement;
+    bad.push(((el&&el.closest('[data-i18n]')?el.closest('[data-i18n]').getAttribute('data-i18n'):null)||('#'+(el?el.className||el.tagName:'root')))+':'+n.nodeValue.trim().slice(0,24));}
+  return JSON.stringify(bad)})()`);
+check('帮助页英文态全页扫描：方法论正文无中文残留（批次3 验收）', hpResidue === '[]', hpResidue);
 
 await ev(`setLang('zh-CN');goPage('work');goStep('upload');`); await sleep(400);
 
