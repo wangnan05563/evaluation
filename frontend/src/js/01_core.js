@@ -7,14 +7,29 @@ const REUSE={低:1,中:2/3,高:1/3}; const MODIFY={新增:1,修改:.8,删除:.2}
 const CATCOLOR={ILF:'c-ILF',EIF:'c-EIF',EI:'c-EI',EO:'c-EO',EQ:'c-EQ'};
 let items=[]; let gSummary=null; let gSid=null; let curFile=null;
 const $=s=>document.querySelector(s);
+/* T01555（批次5）：动态文案注册表——写入「驻留 DOM」的文案时记录 (元素, 组合函数)，
+   语言切换后 setLang 调 dynPaint() 按当前字典重算重绘。瞬时提示（toast/confirm/prompt）
+   不进表：弹出即定语言、消失即失效，调用点直接用 t()/tf() 即可。 */
+const __dyn=[];
+function dynBind(el,fn,mode){const ex=__dyn.find(d=>d.el===el);
+  if(ex){ex.fn=fn;ex.mode=mode;}else __dyn.push({el,fn,mode});
+  const v=fn();if(v!=null)(mode==="html"?el.innerHTML=v:el.textContent=v);}
+function dynText(sel,fn){const el=typeof sel==="string"?$(sel):sel;if(el)dynBind(el,fn,"text");return el;}
+function dynHtml(sel,fn){const el=typeof sel==="string"?$(sel):sel;if(el)dynBind(el,fn,"html");return el;}
+function dynClear(sel){const el=typeof sel==="string"?$(sel):sel;const i=__dyn.findIndex(d=>d.el===el);if(i>=0)__dyn.splice(i,1);}
+function dynPaint(){for(const d of __dyn){if(!document.body.contains(d.el))continue;
+  const v=d.fn();if(v!=null)(d.mode==="html"?d.el.innerHTML=v:d.el.textContent=v);}}
+// 数据域中文值（低/中/高、新增/修改/删除）是 WEIGHT/REUSE/MODIFY 的字典键，
+// 迁移的是「显示文本」：option 显式带 value=原中文值，label 走 t()，后端与计算不受影响。
+const LV={低:"low",中:"mid",高:"high",新增:"new",修改:"change",删除:"del"};
 // 属性转义：system 等字段可能含引号/尖括号，拼进 HTML 属性前必须转义
 const escAttr=s=>String(s??'').replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;").replaceAll('"',"&quot;").replaceAll("'","&#39;");
-function badge(it){return it.ok?'<span class="stat st-ok"><i aria-hidden="true" data-lucide="circle-check"></i>已确认</span>':'<span class="stat st-md"><i aria-hidden="true" data-lucide="clock-3"></i>待复核</span>';}
+function badge(it){return it.ok?'<span class="stat st-ok"><i aria-hidden="true" data-lucide="circle-check"></i>'+t("review.dock.ok")+'</span>':'<span class="stat st-md"><i aria-hidden="true" data-lucide="clock-3"></i>'+t("review.badge.pending")+'</span>';}
 function ufp(it){return WEIGHT[it.type][it.cx];}
 function us(it){return +(ufp(it)*REUSE[it.reuse]*MODIFY[it.modify]).toFixed(2);}
-function cxCellHTML(it){return `<select class="pick" data-k="cx" data-seq="${it.seq}">${['低','中','高'].map(c=>"<option "+(c===it.cx?" selected":"")+">"+c+"</option>").join('')}</select>`;}
-function reuseHTML(it){return `<select class="pick" data-k="reuse" data-seq="${it.seq}">${['低','中','高'].map(v=>"<option "+(v===it.reuse?" selected":"")+">"+v+"</option>").join('')}</select>`;}
-function modHTML(it){return `<select class="pick" data-k="modify" data-seq="${it.seq}">${['新增','修改','删除'].map(v=>"<option "+(v===it.modify?" selected":"")+">"+v+"</option>").join('')}</select>`;}
+function cxCellHTML(it){return `<select class="pick" data-k="cx" data-seq="${it.seq}">${['低','中','高'].map(c=>`<option value="${c}" ${c===it.cx?"selected":""}>${t("common.lv."+LV[c])}</option>`).join('')}</select>`;}
+function reuseHTML(it){return `<select class="pick" data-k="reuse" data-seq="${it.seq}">${['低','中','高'].map(v=>`<option value="${v}" ${v===it.reuse?"selected":""}>${t("common.lv."+LV[v])}</option>`).join('')}</select>`;}
+function modHTML(it){return `<select class="pick" data-k="modify" data-seq="${it.seq}">${['新增','修改','删除'].map(v=>`<option value="${v}" ${v===it.modify?"selected":""}>${t("common.mod."+LV[v])}</option>`).join('')}</select>`;}
 function typeCell(it){return `<select class="pick" data-k="type" data-seq="${it.seq}">${Object.keys(CATCOLOR).map(t=>"<option "+(t===it.type?" selected":"")+">"+t+"</option>").join('')}</select>`;}
 function refreshRow(it){const tr=document.querySelector(`tr[data-seq="${it.seq}"]`);if(!tr)return;
 tr.querySelector('[data-u]').textContent=ufp(it);tr.querySelector('[data-s]').textContent=us(it);const ct=tr.querySelector(".cat");ct.className="cat "+CATCOLOR[it.type];ct.textContent=it.type;}
@@ -33,7 +48,7 @@ function buildTree(){
   // 故 keydown 直接复用 onclick 的表达式文本（this 绑定同一元素，天然安全）。
   const tnode=(sysAttr,icon,label)=>`<div class="tnode"${sysAttr} role="button" tabindex="0" onclick="filterSys(this)" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();filterSys(this)}"><i aria-hidden="true" data-lucide="${icon}"></i>${label}</div>`;
   $("#tree").innerHTML=
-    tnode(' data-sys=""',"layers",`全部功能点 <span class="cnt">${items.length}</span>`)+
+    tnode(' data-sys=""',"layers",`${t("review.tree.all")} <span class="cnt">${items.length}</span>`)+
     Object.entries(sys).map(([k,n]) =>
     tnode(` data-sys="${escAttr(k)}"`,"folder",`${escAttr(k)} <span class="cnt">${n}</span>`)).join("");
   window.lucide&&lucide.createIcons();
@@ -59,7 +74,7 @@ function visibleItems(){  // 筛选（叠加 AND，仅隐藏不丢数据）+ 搜
 function syncSysFilter(){const sel=$("#fSys");if(!sel)return;
 const cur=sel.value;
   const sys=[...new Set(items.map(x=>x.system))];
-  sel.innerHTML='<option value="">全部模块</option>'+sys.map(s=>`<option ${s===cur?"selected":""}>${s}</option>`).join("");}
+  sel.innerHTML='<option value="">'+t("review.filter.sys")+'</option>'+sys.map(s=>`<option ${s===cur?"selected":""}>${s}</option>`).join("");}
 function sortBy(key){if(!sortState||sortState.key!==key)sortState={key,dir:1};
   else if(sortState.dir===1)sortState={key,dir:-1};else sortState=null;
 render();}
@@ -85,13 +100,13 @@ function updateSortInd(){
   });
 }
 function clearFilters(){$("#q").value="";["fSys","fType","fReuse"].forEach(id=>$("#"+id).value="");
-  $("#fTodo").checked=false;sortState=null;render();toast("已清除筛选与排序");}
+  $("#fTodo").checked=false;sortState=null;render();toast(t("review.filter.cleared"));}
 // FR-UI07：emptyState / errorBox 已迁至 22_fr_ui04_ui07_动效_空态插画.js（补插画与语义容器），
 // 本模块只保留列表渲染，避免两处定义互相覆盖（后定义者胜出会静默改行为）。
 function rowHTML(it){
   return `<tr class="rowr ${it.ok?'done':''}" data-seq="${it.seq}" data-sys="${escAttr(it.system)}">
       <td><input type="checkbox" class="ck" ${it.ok?'checked':''}></td>
-      <td><div class="desc">${it.desc||it.count_item}</div><br><button class="toggle" onclick="toggleBasis(${it.seq})" title="判定依据" aria-label="判定依据"><i aria-hidden="true" data-lucide="chevron-down" style="width:13px;height:13px;vertical-align:-2px"></i></button><div class="basis">${it.basis||''}</div></td>
+      <td><div class="desc">${it.desc||it.count_item}</div><br><button class="toggle" onclick="toggleBasis(${it.seq})" title="${t("review.basis.title")}" aria-label="${t("review.basis.title")}"><i aria-hidden="true" data-lucide="chevron-down" style="width:13px;height:13px;vertical-align:-2px"></i></button><div class="basis">${it.basis||''}</div></td>
       <td><div class="cat ${CATCOLOR[it.type]}">${it.type}</div><div style="font-size:11px;color:var(--muted);margin-top:4px">${it.count_item}</div></td>
       <td><div style="display:flex;gap:4px">${typeCell(it)}${cxCellHTML(it)}</div></td>
       <td class="num" data-u>${ufp(it)}</td><td>${reuseHTML(it)}</td><td>${modHTML(it)}</td><td class="num" data-s>${us(it)}</td>
@@ -104,10 +119,10 @@ function render(opts){   // FR-3.3：light 模式跳过树重建/筛选同步（
   $("#listCnt").textContent=tf("review.count",{n:arr.length});
   const bb=$("#batchBar");bb.style.display=arr.length?"flex":"none";$("#batchCnt").textContent=arr.length;
   if(!items.length){
-    $("#tbody").innerHTML=`<tr><td colspan="9">${emptyState("inbox","暂无候选功能项","上传需求文档并完成识别后，候选功能点将出现在这里","")}</td></tr>`;
+    $("#tbody").innerHTML=`<tr><td colspan="9">${emptyState("inbox",t("review.empty.title"),t("review.empty.body"),"")}</td></tr>`;
     refreshTotals();window.lucide&&lucide.createIcons();return;}
   if(!arr.length){
-    $("#tbody").innerHTML=`<tr><td colspan="9">${emptyState("search-x","没有匹配的功能项","调整搜索词或清除筛选后重试",'<button class="btn btn-ghost" onclick="clearFilters()">清除筛选</button>')}</td></tr>`;
+    $("#tbody").innerHTML=`<tr><td colspan="9">${emptyState("search-x",t("review.empty2.title"),t("review.empty2.body"),'<button class="btn btn-ghost" onclick="clearFilters()">'+t("review.empty2.btn")+'</button>')}</td></tr>`;
     refreshTotals();window.lucide&&lucide.createIcons();return;}
   if(!window.__showb)window.__showb=new Set();   // FR-3.3：展开状态改 Set 驱动（虚拟路径可还原）
   const ckBind=()=>document.querySelectorAll(".ck").forEach(c=>c.addEventListener("change",e=>{
@@ -150,7 +165,7 @@ function toggleAllCk(v){
   if(!items.length)return;
   items.forEach(it=>it.ok=!!v);
   render();
-  toast(v?"已全部确认":"已全部取消确认");
+  toast(t(v?"review.toast.all_ok":"review.toast.all_no"));
 }
 function goStep(s){document.body.dataset.step=s;
   const v=document.querySelector(`#v-${s}`);if(v){v.classList.remove("step-anim");void v.offsetWidth;v.classList.add("step-anim");}   // FR-3.4：步骤过渡（reduced-motion 下自动禁用）
@@ -161,7 +176,7 @@ function goStep(s){document.body.dataset.step=s;
 // 步骤条导航入口（与 PERT 步骤条点击行为一致）：未识别出功能点时禁止跳到审核/结果，避免空页
 function goStepNav(s){
   if((s==="review"||s==="result") && (!items || !items.length)){
-    toast("请先上传需求文档并完成识别");return;
+    toast(t("work.need_recog"));return;
   }
   goStep(s);
 }
@@ -200,7 +215,7 @@ function pertStep(s){
   window.lucide&&lucide.createIcons();
   saveFormState();
 }
-function pertMark(box,cls,txt){box.className="cfg-test "+cls;box.textContent=txt;}
+// T01555（批次5）：pertMark 已退役——生成态框改 dynText 状态驱动，切语言可重绘
 async function pertPost(path,payload){
   const r=await fetch(API+path,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload)});
   return r.json();
@@ -210,7 +225,7 @@ async function pertLoadProjects(){
   try{
     const r=await pertPost("/api/pert/projects",{});
     const sel=$("#pertProjSel");
-    sel.innerHTML='<option value="">— 请选择 —</option>'+
+    sel.innerHTML='<option value="">'+t("pert.ppl.select")+'</option>'+
       (r.projects||[]).map(p=>`<option value="${p.id}">${p.name}</option>`).join("");
     if(pertPid)sel.value=pertPid;
   }catch(e){/* 列表拉取失败不阻塞主流程 */}
@@ -221,23 +236,23 @@ function pertClearStaged(){
   const had=!!pertFile;
   pertFile=null;          // 先清文件，pertCandClear 才会把 #pertUpName 复位为空
   pertCandClear();        // 清候选区（其内的三值/勾选同样属于上一份文档）
-  $("#pertStartMsg").textContent="";
+  dynClear("#pertStartMsg");$("#pertStartMsg").textContent="";
   pertSyncStart();        // 触发按钮回到禁用态
   return had;
 }
 async function pertPickProj(){
   const id=+$("#pertProjSel").value;if(!id)return;
-  if(pertClearStaged())toast("已清空上一份待识别文档");
+  if(pertClearStaged())toast(t("pert.staged_cleared"));
   pertPid=id;await pertRefresh();
   pertStep('edit');           // 选中项目后进入估算录入
 }
 async function pertNew(){
-  const name=$("#pertName").value.trim();if(!name){toast("请填写项目名称");return;}
+  const name=$("#pertName").value.trim();if(!name){toast(t("pert.need_name"));return;}
   const r=await pertPost("/api/pert/project",{name,estimator:$("#pertEst").value.trim()});
-  if(!r.ok){toast(r.msg||"新建失败");return;}
+  if(!r.ok){toast(r.msg||t("pert.create_fail"));return;}
   const hadStaged=pertClearStaged();
   pertPid=r.project_id;
-  toast(hadStaged?"项目已创建，已清空上一份待识别文档":"项目已创建");
+  toast(t(hadStaged?"pert.created_staged":"pert.created"));
   $("#pertName").value="";
   await pertLoadProjects();   // 新建后刷新下拉，使新项目可见
   await pertRefresh();
@@ -254,24 +269,24 @@ async function pertRefresh(){
   applyPertSummary(r.summary);
 }
 async function pertAdd(){
-  if(!pertPid){toast("请先新建或选择项目");return;}
-  const d=$("#pertD").value.trim();if(!d){toast("请填写功能描述");return;}
+  if(!pertPid){toast(t("pert.need_project"));return;}
+  const d=$("#pertD").value.trim();if(!d){toast(t("pert.need_desc"));return;}
   const M=Number.parseFloat($("#pertM").value);
-  if(Number.isNaN(M)){toast("请填写最可能值");return;}
+  if(Number.isNaN(M)){toast(t("pert.need_m"));return;}
   // 乐观/悲观留空时默认取最可能值，降低录入门槛
   const O=$("#pertO").value===""?M:Number.parseFloat($("#pertO").value);
   const P=$("#pertP").value===""?M:Number.parseFloat($("#pertP").value);
-  if(Number.isNaN(O)||Number.isNaN(P)){toast("请输入有效数字");return;}
-  if(!(O<=M&&M<=P)){toast("需满足 乐观 ≤ 最可能 ≤ 悲观");return;}
+  if(Number.isNaN(O)||Number.isNaN(P)){toast(t("common.need_number"));return;}
+  if(!(O<=M&&M<=P)){toast(t("pert.order_hint"));return;}
   const r=await pertPost("/api/pert/item",{project_id:pertPid,phase:$("#pertPhase").value,
     desc:d,optimistic:O,most_likely:M,pessimistic:P});
-  if(!r.ok){toast(r.msg||"添加失败");return;}
+  if(!r.ok){toast(r.msg||t("pert.add_fail"));return;}
   // 清空录入行，阶段下拉保留便于连续录入同阶段
   $("#pertD").value="";$("#pertO").value="";$("#pertM").value="";$("#pertP").value="";
   await pertRefresh();
 }
 async function pertDel(id){
-  if(!confirm("删除该估算项？"))return;
+  if(!confirm(t("pert.confirm_del")))return;
   await pertPost("/api/pert/delete",{project_id:pertPid,id});
   await pertRefresh();
 }
@@ -287,19 +302,19 @@ function pertEditCell(id,field,el){
   const commit=async()=>{
     const v=inp.value;if(v===old){el.textContent=old||"—";return;}
     const num=v===""?null:Number.parseFloat(v);
-    if(v!==""&&Number.isNaN(num)){el.textContent=old||"—";toast("请输入有效数字");return;}
+    if(v!==""&&Number.isNaN(num)){el.textContent=old||"—";toast(t("common.need_number"));return;}
     const it=pertItems.find(x=>x.id===id);
     const tri={optimistic:it.optimistic,most_likely:it.most_likely,pessimistic:it.pessimistic};
     tri[field]=num;
     // 三值填齐才校验 O≤M≤P，允许逐步补填
     const full=tri.optimistic!=null&&tri.most_likely!=null&&tri.pessimistic!=null;
     if(full&&!(tri.optimistic<=tri.most_likely&&tri.most_likely<=tri.pessimistic)){
-      el.textContent=old||"—";toast("需满足 乐观 ≤ 最可能 ≤ 悲观");return;
+      el.textContent=old||"—";toast(t("pert.order_hint"));return;
     }
     el.dataset.v=num;el.textContent=num==null?"—":num;   // 先本地更新，避免等待期间闪烁
     const r=await pertPost("/api/pert/item",{project_id:pertPid,id,
       phase:it.phase,desc:it.desc,...tri});
-    if(r.ok){await pertRefresh();}else{el.dataset.v=old;el.textContent=old||"—";toast(r.msg||"更新失败");}
+    if(r.ok){await pertRefresh();}else{el.dataset.v=old;el.textContent=old||"—";toast(r.msg||t("pert.update_fail"));}
   };
   inp.addEventListener("blur",commit);
   inp.addEventListener("keydown",e=>{if(e.key==="Enter")inp.blur();
@@ -311,13 +326,13 @@ function renderPert(){
     const has=it.optimistic!=null&&it.most_likely!=null&&it.pessimistic!=null;
     const e=has?pertExp(it.optimistic,it.most_likely,it.pessimistic):null;
     const s=has?pertSig(it.optimistic,it.pessimistic):null;
-    const triCell=field=>`<td class="num" data-v="${it[field]??''}" style="cursor:pointer" title="${it[field]==null?'待填写，点击录入':'点击修改'}" onclick="pertEditCell(${it.id},'${field}',this)">${it[field]==null?'—':it[field]}</td>`;
+    const triCell=field=>`<td class="num" data-v="${it[field]??''}" style="cursor:pointer" title="${it[field]==null?t('pert.cell.todo'):t('pert.cell.edit')}" onclick="pertEditCell(${it.id},'${field}',this)">${it[field]==null?'—':it[field]}</td>`;
     return `<tr>
       <td><span class="cat" style="background:var(--brand-soft);color:var(--brand-ink)">${it.phase||'开发'}</span></td>
-      <td><div class="desc">${it.desc}${has?'':' <span style="color:var(--danger-ink);font-size:11px">待填</span>'}</div></td>
+      <td><div class="desc">${it.desc}${has?'':' <span style="color:var(--danger-ink);font-size:11px">'+t('pert.row.pending')+'</span>'}</div></td>
       ${triCell('optimistic')}${triCell('most_likely')}${triCell('pessimistic')}
       <td class="num">${has?e.toFixed(2):'—'}</td><td class="num">${has?s.toFixed(2):'—'}</td>
-      <td><button class="toggle" onclick="pertDel(${it.id})" title="删除估算项" aria-label="删除估算项"><i aria-hidden="true" data-lucide="trash-2" style="width:13px;height:13px;vertical-align:-2px"></i></button></td>
+      <td><button class="toggle" onclick="pertDel(${it.id})" title="${t('pert.del.title')}" aria-label="${t('pert.del.title')}"><i aria-hidden="true" data-lucide="trash-2" style="width:13px;height:13px;vertical-align:-2px"></i></button></td>
     </tr>`;
   }).join("");
   window.lucide&&lucide.createIcons();
@@ -331,15 +346,16 @@ function applyPertSummary(s){
   pertSummary=s;
 }
 async function pertGen(){
-  if(!pertPid){toast("请先新建或选择项目");return;}
-  if(!pertItems||!pertItems.length){toast("无估算项，请先录入");return;}
-  const box=$("#pertBox");pertMark(box,"wait","正在生成成品表…");
+  if(!pertPid){toast(t("pert.need_project"));return;}
+  if(!pertItems||!pertItems.length){toast(t("pert.no_items"));return;}
+  const box=$("#pertBox");box.className="cfg-test wait";dynText(box,()=>t("pert.gen.wait"));
   try{
     const r=await pertPost("/api/pert/generate",{project_id:pertPid,est_date:new Date().toISOString().slice(0,10)});
-    if(!r.ok){pertMark(box,"bad",r.msg);return;}
-    pertMark(box,"ok",`已生成：${r.sid}（预期 ${r.summary.total_days} 人天 / 实际 ${r.summary.actual_person_month} 人月）`);
+    if(!r.ok){box.className="cfg-test bad";dynText(box,()=>r.msg);return;}
+    box.className="cfg-test ok";
+    dynText(box,()=>tf("pert.gen.done",{sid:r.sid,d:r.summary.total_days,m:r.summary.actual_person_month}));
     await downloadPert(r.sid);
-  }catch(e){pertMark(box,"bad",e.message);}
+  }catch(e){box.className="cfg-test bad";dynText(box,()=>e.message);}
 }
 async function downloadPert(sid){
   const url=API+"/api/download?s="+encodeURIComponent(sid);
@@ -378,11 +394,11 @@ function pertSyncStart(){
 }
 function pertSetFile(f){
   const ext=(f.name||"").toLowerCase().split(".").pop();
-  if(!["docx","doc","pdf"].includes(ext)){toast("请选择 Word(.docx/.doc) 或 PDF 文件");return;}
+  if(!["docx","doc","pdf"].includes(ext)){toast(t("pert.pick_doc"));return;}
   pertFile=f;
-  $("#pertUpName").textContent="已就绪："+f.name+"（点「上传文档开始识别」开始）";
+  dynText("#pertUpName",()=>pertFile?tf("pert.ready",{name:pertFile.name}):"");
   $("#pertDrop").style.borderColor="var(--brand)";
-  $("#pertStartMsg").textContent="";
+  dynClear("#pertStartMsg");$("#pertStartMsg").textContent="";
   pertSyncStart();
 }
 /* 配置中心「启用大模型辅助识别」开关状态：配置中心已加载时以开关当前状态为准，
@@ -393,14 +409,12 @@ function pertLlmEnabled(){
   return sw?sw.classList.contains("on"):!!(llmCfg.llm&&llmCfg.llm.enabled);
 }
 async function pertStart(){
-  if(!pertPid){toast("请先新建或选择项目");return;}
+  if(!pertPid){toast(t("pert.need_project"));return;}
   const btn=$("#pertStartBtn"),msg=$("#pertStartMsg"),text=($("#pertTextArea").value||"").trim();
-  if(!pertFile&&!text){toast("请先上传需求文档或粘贴需求文本");return;}
+  if(!pertFile&&!text){toast(t("pert.need_doc_text"));return;}
   const on=pertLlmEnabled();
   btn.disabled=true;
-  msg.textContent = on===false?"大模型辅助识别未启用，走离线分析…"
-                  : on===true ?"大模型辅助识别已启用，AI 分析中…"
-                  : "正在按已保存配置分析…";
+  dynText(msg,()=>t(on===false?"pert.an.off":on===true?"pert.an.on":"pert.an.cfg"));
   try{
     const payload={project_id:pertPid};
     if(on!==null)payload.llm_enabled=on;
@@ -409,17 +423,17 @@ async function pertStart(){
     const resp=await fetch(API+"/api/pert/import",{method:"POST",headers:{"Content-Type":"application/json"},
       body:JSON.stringify(payload)});
     const res=await resp.json();
-    if(!res.ok)throw new Error(res.msg||"分析失败");
+    if(!res.ok)throw new Error(res.msg||t("pert.an_fail"));
     pertCands=(res.candidates||[]).map((c,i)=>({...c,seq:i+1,checked:true}));
     pertImportSource=res.source||"local";
-    $("#pertUpName").textContent=(pertFile?pertFile.name:"需求文本")+" · "+pertCands.length+" 项";
-    $("#pertCandSrc").textContent=(res.source==="llm")?"AI 评估":"本地识别";
+    dynText("#pertUpName",()=>((pertFile?pertFile.name:t("pert.text"))+" · "+tf("pert.edit.count",{n:pertCands.length})));
+    dynText("#pertCandSrc",()=>res.source==="llm"?t("pert.src.llm"):t("pert.src.local"));
     pertRenderCands();
     pertStep('edit');           // 候选确认区位于步骤2，识别后自动切过去
-    toast(res.source==="llm"?`AI 已拆分并评估 ${pertCands.length} 个功能点，请勾选确认`
-                            :`已离线识别 ${pertCands.length} 个功能点，请补填三值`);
-    msg.textContent="";
-  }catch(e){msg.textContent="分析失败："+e.message;toast(e.message);}
+    toast(res.source==="llm"?tf("pert.cand.llm",{n:pertCands.length})
+                            :tf("pert.cand.local",{n:pertCands.length}));
+    dynText(msg,()=>"");
+  }catch(e){dynText(msg,()=>tf("pert.an.failed",{msg:e.message}));toast(e.message);}
   pertSyncStart();
 }
 function pertRenderCands(){
@@ -444,16 +458,16 @@ function pertCandAll(v){
 function pertCandClear(){
   pertCands=[];$("#pertCandBox").style.display="none";
   // 暂存文档保留，便于调整后再次触发；仅把提示文案还原为「已就绪」
-  $("#pertUpName").textContent=pertFile?"已就绪："+pertFile.name+"（点「上传文档开始识别」开始）":"";
+  dynText("#pertUpName",()=>pertFile?tf("pert.ready",{name:pertFile.name}):"");
   pertSyncStart();
 }
 async function pertCandConfirm(){
   const sel=pertCands.filter(c=>{const cb=document.querySelector(`#pertCandTbody input[data-cb="${c.seq}"]`);return cb&&cb.checked;});
-  if(!sel.length){toast("请勾选要导入的项");return;}
+  if(!sel.length){toast(t("pert.pick_import"));return;}
   // 启用大模型（source=llm）时，AI 拆分结果应为录入区唯一内容：替换而非追加，避免重复
   const replace = pertImportSource==="llm";
   if(replace && pertItems && pertItems.length &&
-     !confirm("启用大模型：导入将【清空当前估算明细】并替换为 AI 拆分结果。\n确认继续？")){
+     !confirm(t("pert.confirm_replace"))){
     return;
   }
   const items=sel.map(c=>{
@@ -463,8 +477,8 @@ async function pertCandConfirm(){
     return {desc:c.desc,phase,system:c.system,optimistic:num(g('optimistic')),most_likely:num(g('most_likely')),pessimistic:num(g('pessimistic'))};
   });
   const r=await pertPost("/api/pert/import/confirm",{project_id:pertPid,items,replace});
-  if(!r.ok){toast(r.msg||"导入失败");return;}
-  toast(replace?`已替换估算表为 AI 拆分结果（${r.added} 项）`:`已导入 ${r.added} 项，请补填/核对三值`);
+  if(!r.ok){toast(r.msg||t("pert.import_fail"));return;}
+  toast(replace?tf("pert.import.replaced",{n:r.added}):tf("pert.import.added",{n:r.added}));
   pertCandClear();
   await pertRefresh();
 }
@@ -506,7 +520,7 @@ async function bindConfig(){
     // 断点续录：无草稿时以后端已保存值为快照基线；有未提交草稿则按域覆盖恢复
     if(!cfgHasDraft())cfgWriteSnapAll();
     cfgRestoreDraft();
-  }catch(e){toast("配置加载失败："+e.message);}
+  }catch(e){toast(tf("config.load_failed",{msg:e.message}));}
 }
 /* ===== 配置中心断点续录与选项记忆恢复 =====
  * 草稿（wl_cfg_draft_v1）：表单变化防抖写入，白名单字段；
@@ -515,7 +529,7 @@ async function bindConfig(){
  */
 const CFG_DRAFT_KEY="wl_cfg_draft_v1",CFG_SNAP_KEY="wl_cfg_saved_v1";
 const CFG_DOMAINS={llm:["enabled","provider","api","model","key","rememberKey"],ctx:["ctxDir"],upd:["updUrl"],rc:["recalcMode","recalcTimeout"]};
-const CFG_DOM_NAMES={llm:"大模型配置",ctx:"上下文目录",upd:"更新源",rc:"公式缓存策略"};
+const CFG_DOM_KEYS={llm:"config.dom.llm",ctx:"config.dom.ctx",upd:"config.dom.upd",rc:"config.dom.rc"};
 function cfgCollect(){
   return {enabled:$("#llmSwitch").classList.contains("on"),provider:$("#providerSel").value,
     api:$("#llmApi").value.trim(),model:$("#llmModel").value.trim(),
@@ -582,7 +596,7 @@ function cfgRestoreDraft(){
       }
     });
     if(dirty.length){
-      toast("已恢复未保存草稿："+dirty.map(x=>CFG_DOM_NAMES[x]).join("、")+"，确认后请点保存");
+      toast(tf("config.draft.restored",{list:dirty.map(x=>t(CFG_DOM_KEYS[x])).join(t("common.list_sep"))}));
     }else{
       localStorage.removeItem(CFG_DRAFT_KEY);
     }
@@ -608,7 +622,7 @@ function onProviderChange(){
   if(meta.api)$("#llmApi").value=meta.api;
   renderModels(PROVIDERS_DEFAULT_MODELS(key));
   if(meta.models&&meta.models.length)$("#llmModel").value=meta.models[0];
-  toast(`已自动填充 ${meta.label} 配置`);
+  toast(tf("config.autofilled",{label:meta.label}));
   cfgSaveDraft();   // JS 程序设值不触发 input 事件，手动记草稿
 }
 async function openDirPicker(){
@@ -619,7 +633,7 @@ async function openDirPicker(){
     const res=await r.json();
     if(res.ok&&res.path){
       $("#ctxDir").value=res.path;
-      toast(`已选择目录：${res.path}`);
+      toast(tf("config.dir.picked",{path:res.path}));
       return;
     }
     if(res.canceled)return;   // 用户在原生对话框取消，不改动输入框
@@ -630,7 +644,7 @@ async function openDirPicker(){
     if(f&&f.webkitRelativePath){
       const dir=f.webkitRelativePath.split("/")[0];
       $("#ctxDir").value=dir;
-      toast(`已选择目录：${dir}`);
+      toast(tf("config.dir.picked",{path:dir}));
     }
     picker.value="";
   };
@@ -641,22 +655,22 @@ async function saveCtxDir(){
   try{
     const r=await fetch(API+"/api/context/config",{method:"POST",headers:{'Content-Type':'application/json'},body:JSON.stringify({context_dir:dir})});
     const res=await r.json();
-    if(!res.ok)throw new Error(res.msg||"保存失败");
-    toast("上下文目录已保存，识别/估算时将注入项目级上下文");
+    if(!res.ok)throw new Error(res.msg||t("common.save_fail"));
+    toast(t("config.ctx.saved"));
     cfgWriteSnap("ctx");cfgRefreshDraft();   // 域快照更新：其余未提交域的草稿继续保留
     // 保存后立即尝试扫描，便于看到效果
     await analyzeCtx();
-  }catch(e){toast("保存失败:"+e.message);}
+  }catch(e){toast(tf("common.save_failed",{msg:e.message}));}
 }
 async function analyzeCtx(){
   const dir=$("#ctxDir").value.trim();
   const box=$("#ctxOut");
-  box.className="cfg-test wait";box.textContent="正在扫描项目上下文…";
-  if(!dir){box.className="cfg-test";box.textContent="";toast("请先填写并保存目录");return;}
+  box.className="cfg-test wait";box.textContent=t("config.ctx.scanning");
+  if(!dir){box.className="cfg-test";box.textContent="";toast(t("config.ctx.need_saved"));return;}
   try{
     const r=await fetch(API+"/api/context/analyze",{method:"POST",headers:{'Content-Type':'application/json'},body:JSON.stringify({context_dir:dir})});
     const res=await r.json();
-    if(!res.ok)throw new Error(res.msg||"扫描失败");
+    if(!res.ok)throw new Error(res.msg||t("config.ctx.scan_fail"));
     box.className="cfg-test ok";box.style.whiteSpace="pre-wrap";box.textContent=res.rendered;
   }catch(e){box.className="cfg-test bad";box.style.whiteSpace="pre-wrap";box.textContent=e.message;}
 }
@@ -819,62 +833,66 @@ function readCfgForm(){
 }
 async function saveCfg(){
   const cfg=readCfgForm();
-  if(cfg.llm.enabled&&(!cfg.llm.api||!cfg.llm.key)){toast("启用增强前请填写 API 地址与 Key");return;}
+  if(cfg.llm.enabled&&(!cfg.llm.api||!cfg.llm.key)){toast(t("config.need_api_key"));return;}
   try{
     const r=await fetch(API+"/api/config",{method:"POST",headers:{'Content-Type':'application/json'},body:JSON.stringify(cfg)});
     const res=await r.json();
-    if(!res.ok)throw new Error(res.msg||"保存失败");
-    toast("配置已保存，识别时将使用新配置");
+    if(!res.ok)throw new Error(res.msg||t("common.save_fail"));
+    toast(t("config.saved"));
     cfgWriteSnap("llm");cfgRefreshDraft();
-  }catch(e){toast("保存失败:"+e.message);}
+  }catch(e){toast(tf("common.save_failed",{msg:e.message}));}
 }
 async function saveRecalcCfg(){
   // T00962：成品表公式缓存策略（mode + timeout）单独保存，不与大模型配置混在一次提交
   const mode=$("#recalcMode").value,tv=Number.parseFloat($("#recalcTimeout").value);
-  if(!(tv>=5&&tv<=1800)){toast("重算超时需在 5~1800 秒之间");return;}
+  if(!(tv>=5&&tv<=1800)){toast(t("config.recalc.timeout_range"));return;}
   try{
     const r=await fetch(API+"/api/config",{method:"POST",headers:{'Content-Type':'application/json'},body:JSON.stringify({recalc:{mode,timeout:tv}})});
     const res=await r.json();
-    if(!res.ok)throw new Error(res.msg||"保存失败");
-    toast("公式缓存策略已保存："+(mode==="async"?"后台补算":mode==="sync"?"同步重算":"不重算"));
+    if(!res.ok)throw new Error(res.msg||t("common.save_fail"));
+    toast(tf("config.recalc.saved",{mode:t(mode==="async"?"config.recalc.bg":mode==="sync"?"config.recalc.sync_short":"config.recalc.none_short")}));
     cfgWriteSnap("rc");cfgRefreshDraft();
-  }catch(e){toast("保存失败:"+e.message);}
+  }catch(e){toast(tf("common.save_failed",{msg:e.message}));}
 }
 async function testCfg(){
   const cfg=readCfgForm();
   const box=$("#cfgTestBox");
-  box.className="cfg-test wait";box.textContent="正在连接…";
+  box.className="cfg-test wait";dynText(box,()=>t("config.test.connecting"));
   try{
     const r=await fetch(API+"/api/config/test",{method:"POST",headers:{'Content-Type':'application/json'},body:JSON.stringify(cfg)});
-    let res; try{res=await r.json()}catch(_){throw new Error(`后端返回非 JSON（HTTP ${r.status}），地址 ${API}`)}
+    let res; try{res=await r.json()}catch(_){throw new Error(tf("config.test.non_json",{code:r.status,api:API}))}
     if(res.ok){
-      box.className="cfg-test ok";box.textContent=`连接成功（${res.elapsed_s}s）模型 ${res.model} 回复：${res.reply||"(空)"}`;
+      box.className="cfg-test ok";
+      dynText(box,()=>tf("config.test.ok",{s:res.elapsed_s,m:res.model,r:res.reply||t("config.test.empty")}));
     }else{
-      box.className="cfg-test bad";box.textContent="连接失败："+res.msg;
+      box.className="cfg-test bad";
+      dynText(box,()=>tf("config.test.failed",{msg:res.msg}));
     }
   }catch(e){
     box.className="cfg-test bad";
-    box.textContent=`连接失败：${e.message}｜后端地址 ${API}，请确认引擎已启动（scripts/启动服务.bat，端口 8020）`;
+    dynText(box,()=>tf("config.test.failed_hint",{msg:e.message,api:API}));
   }
 }
 async function fetchModels(){
   // readCfgForm 的结果由 saveCfg 内部自行读取，此处不再暂存
   await saveCfg();  // 先落盘，后端 /models 用已存 key
   const box=$("#cfgTestBox");
-  box.className="cfg-test wait";box.textContent="正在获取模型…";
+  box.className="cfg-test wait";dynText(box,()=>t("config.models.fetching"));
   try{
     const r=await fetch(API+"/api/config/models",{method:"GET"});
     const res=await r.json();
-    if(!res.ok)throw new Error(res.msg||"获取失败");
+    if(!res.ok)throw new Error(res.msg||t("config.models.fail"));
     renderModels(res.models);
-    box.className="cfg-test ok";box.textContent=`共 ${res.models.length} 个可用模型（${llmCfg.provider}）`;
-  }catch(e){box.className="cfg-test bad";box.textContent="获取失败："+e.message;}
+    box.className="cfg-test ok";
+    dynText(box,()=>tf("config.models.count",{n:res.models.length,p:llmCfg.provider}));
+  }catch(e){box.className="cfg-test bad";dynText(box,()=>tf("config.models.failed_detail",{msg:e.message}));}
 }
 function renderModels(list){
   const box=$("#modelList");
-  if(!list||!list.length){box.innerHTML='<span style="font-size:12px;color:var(--muted)">无可用模型。</span>';return;}
+  if(!list||!list.length){dynHtml(box,()=>'<span style="font-size:12px;color:var(--muted)">'+t("config.models.none")+'</span>');return;}
   // FR-UI05：模型芯片是可点选控件，补 role=button + tabindex=0 + Enter/Space 键效
-  box.innerHTML=list.map(m=>`<span class="model-chip" role="button" tabindex="0" data-m="${escAttr(m)}" onclick="pickModel(this.dataset.m)" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();pickModel(this.dataset.m)}">${escAttr(m)}</span>`).join("")+"";
+  // T01555：芯片本身是数据（模型名），重绘只重建同一 HTML，语言切换无副作用
+  dynHtml(box,()=>{const cur=$("#llmModel").value;return list.map(m=>`<span class="model-chip${m===cur?' sel':''}" role="button" tabindex="0" data-m="${escAttr(m)}" onclick="pickModel(this.dataset.m)" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();pickModel(this.dataset.m)}">${escAttr(m)}</span>`).join("")+"";});
 }
 function pickModel(m){$("#llmModel").value=m;
   document.querySelectorAll(".model-chip").forEach(c=>c.classList.toggle("sel",c.dataset.m===m));
@@ -882,13 +900,13 @@ function pickModel(m){$("#llmModel").value=m;
 function openConsole(){
   const key=$("#providerSel").value;
   const url=(providers[key]&&providers[key].console)||"";
-  if(url)window.open(url,"_blank");else toast("当前开发商未提供控制台链接");
+  if(url)window.open(url,"_blank");else toast(t("config.console.none"));
 }
 function resetCfg(){
   $("#llmSwitch").classList.remove("on");
   $("#llmApi").value=LLM_DEFAULTS.api;$("#llmModel").value=LLM_DEFAULTS.model;$("#llmKey").value="";
-  const box=$("#cfgTestBox");box.className="cfg-test";box.textContent="";
-  toast("已恢复默认配置");
+  const box=$("#cfgTestBox");box.className="cfg-test";box.textContent="";dynClear(box);
+  toast(t("config.reset.done"));
   cfgSaveDraft();   // 默认值尚未提交，同样纳入草稿续录
 }
 
@@ -902,12 +920,12 @@ drop.addEventListener("keydown",e=>{if(e.key==="Enter"||e.key===" "){e.preventDe
 // 改用 bindDropZone：dragenter/leave 计数防子元素抖动，且 drop 后才取文件。
 bindDropZone(drop,setFile);
 file.addEventListener("change",()=>{if(file.files[0])setFile(file.files[0]);});
-function setFile(f){curFile=f;histClearCtx();if(f.name.endsWith(".docx")){$("#fname").textContent=f.name;drop.classList.add("has");$("#startBtn").disabled=false;}else{toast("请选择 .docx 文件");}}
+function setFile(f){curFile=f;histClearCtx();if(f.name.endsWith(".docx")){$("#fname").textContent=f.name;drop.classList.add("has");$("#startBtn").disabled=false;}else{toast(t("work.pick_docx"));}}
 function rstFile(){curFile=null;histClearCtx();drop.classList.remove("has");file.value="";$("#startBtn").disabled=true;}
 
 // T01079：必须监听 onerror——文件失效（被移动/删除/无权限）时 onload 永不触发，
 // 无 reject 的 Promise 会让识别流程无限挂起、按钮永久灰显。
-function toB64(f){return new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(r.result.split(",")[1]);r.onerror=()=>rej(new Error("文件读取失败（可能已被移动、删除或无访问权限）"));r.readAsDataURL(f);});}
+function toB64(f){return new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(r.result.split(",")[1]);r.onerror=()=>rej(new Error(t("work.read_fail")));r.readAsDataURL(f);});}
 
 // 开关（质量特性 / 大模型启用）点击切换 on 态
 // FR-UI05：switch 原为 span+click，键盘不可达、读屏不播报状态。
@@ -919,7 +937,7 @@ document.querySelectorAll(".switch").forEach(s=>{
 });
 $("#startBtn").addEventListener("click",async ()=>{
   if(!curFile)return;
-  const b=$("#startBtn");b.disabled=true;const mk=$("#progressMark");mk.textContent="正在上传并识别…";
+  const b=$("#startBtn");b.disabled=true;const mk=$("#progressMark");dynText(mk,()=>t("work.uploading"));
   try{
     // 大模型配置来源：配置中心已保存配置（llmCfg 为 null 时后端回退读 data/config.json）
     let params={};
@@ -931,12 +949,11 @@ $("#startBtn").addEventListener("click",async ()=>{
     const resp=await fetch(API+"/api/recognize",{method:"POST",headers:{"Content-Type":"application/json"},
       body:JSON.stringify({name:curFile.name,b64:await toB64(curFile),params})});
     const res=await resp.json();
-    if(!res.ok)throw new Error(res.msg||"识别失败");
+    if(!res.ok)throw new Error(res.msg||t("work.recog_fail"));
     items=res.items.map((it,i)=>({...it,seq:i+1,cx:it.cx||"中",ok:false,_ai:{type:it.type,reuse:it.reuse||"中",modify:it.modify||"修改"}}));
-    const llmOn=res.meta&&res.meta.llm_enabled_effective?"（大模型增强已启用）":"";
-    mk.textContent="识别完成，共 "+items.length+" 条候选"+llmOn;
+    dynText(mk,()=>tf("work.recog.done",{n:items.length})+(res.meta&&res.meta.llm_enabled_effective?t("work.recog.llm_on"):""));
     render();goStep("review");
-  }catch(err){mk.textContent="识别失败："+err.message;toast(err.message);}
-  b.disabled=false;b.innerHTML='<i aria-hidden="true" data-lucide="sparkles" style="width:15px;height:15px"></i>上传文档开始识别';window.lucide&&lucide.createIcons();
+  }catch(err){dynText(mk,()=>tf("work.recog.failed",{msg:err.message}));toast(err.message);}
+  b.disabled=false;b.innerHTML='<i aria-hidden="true" data-lucide="sparkles" style="width:15px;height:15px"></i><span data-i18n="work.start_btn">'+t("work.start_btn")+'</span>';window.lucide&&lucide.createIcons();
 });
 

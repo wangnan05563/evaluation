@@ -106,6 +106,10 @@ async function setLang(lang){
   if(typeof rulesLoad === "function" && document.body.dataset.page === "config") rulesLoad();
   // PERT 页的计数/汇总同理，需重算才能反映新语言
   if(typeof pertSyncStart === "function" && document.body.dataset.page === "pert") pertSyncStart();
+  // T01555（批次5）：PERT 估算明细行的 title/待填徽标按新语言重绘
+  if(typeof renderPert === "function" && document.body.dataset.page === "pert" && Array.isArray(pertItems) && pertItems.length) renderPert();
+  // T01555：驻留 DOM 的动态文案（进度条/状态框/文件提示…）按注册的状态函数重算重绘
+  if(typeof dynPaint === "function") dynPaint();
   // 帮助页更新区的动态状态（检测中/发现新版本/下载进度…）按保存的状态重绘（T01548 批次4a）
   if(typeof verPaint === "function") verPaint();
   toast(t("common.lang_switched"));

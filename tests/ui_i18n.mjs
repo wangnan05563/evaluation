@@ -216,6 +216,53 @@ check('表头 title 属性同步（按描述排序 → Sort by description）',
 const rvResidue = await ev(`(()=>{const bad=[];document.querySelectorAll('#v-review [data-i18n]').forEach(el=>{
   if(el.children.length===0&&/[一-龥]/.test(el.textContent)) bad.push(el.getAttribute('data-i18n'));});return JSON.stringify(bad)})()`);
 check('复核表英文态无中文残留', rvResidue === '[]', rvResidue);
+
+// ---- 13b) 复核表动态文案（批次5 T01555）：badge/下拉/空态 key 化 + dynPaint 驻留重绘 ----
+await ev(`setLang('zh-CN');render();`); await sleep(500);
+const rvZh2 = JSON.parse(await ev(`JSON.stringify({
+  badges:[...document.querySelectorAll('#tbody .rowst .stat')].map(x=>x.textContent.trim()),
+  cxOpts:[...document.querySelectorAll('#tbody select[data-k="cx"]')][0].options,
+  startBtn:document.getElementById('startBtn').textContent.trim(),
+})`));
+check('复核表中文态：badge/选项/按钮为中文原文（zh 字典生效）',
+  rvZh2.badges[0] === '已确认' && rvZh2.badges[1] === '待复核'
+  && [...rvZh2.cxOpts].map(o=>o.text).join('|') === '低|中|高'
+  && rvZh2.startBtn === '上传文档开始识别',
+  JSON.stringify({badges:rvZh2.badges, start:rvZh2.startBtn}));
+const dynReg = await ev(`__dyn.length`);
+check('dyn 注册表已建立（驻留 DOM 文案可随语言重绘）', dynReg >= 2, `__dyn=${dynReg}`);
+
+await ev(`setLang('en-US');`); await sleep(700);
+const rvEn2 = JSON.parse(await ev(`JSON.stringify({
+  badges:[...document.querySelectorAll('#tbody .rowst .stat')].map(x=>x.textContent.trim()),
+  cxOpts:[...document.querySelectorAll('#tbody select[data-k="cx"]')][0].options,
+  cxVal:document.querySelector('#tbody select[data-k="cx"]').value,
+  modOpts:[...document.querySelectorAll('#tbody select[data-k="modify"]')][0].options,
+  startBtn:document.getElementById('startBtn').textContent.trim(),
+  treeAll:[...document.querySelectorAll('#tree .tnode')].map(x=>x.textContent).filter(s=>/function points/i.test(s))[0],
+})`));
+check('复核表英文态：badge 与选项 label 已切英文',
+  rvEn2.badges[0] === 'Confirmed' && rvEn2.badges[1] === 'Pending review'
+  && [...rvEn2.cxOpts].map(o=>o.text).join('|') === 'Low|Medium|High'
+  && [...rvEn2.modOpts].map(o=>o.text).join('|') === 'New|Modify|Delete',
+  JSON.stringify({badges:rvEn2.badges, mods:[...rvEn2.modOpts].map(o=>o.text)}));
+check('数据域中文值保持不变（option value 与选中值仍是 低/中/高，后端与计算不受影响）',
+  [...rvEn2.cxOpts].map(o=>o.value).join('|') === '低|中|高' && rvEn2.cxVal === '中',
+  JSON.stringify({vals:[...rvEn2.cxOpts].map(o=>o.value), sel:rvEn2.cxVal}));
+check('startBtn 内部 span 随 setLang 重绘（静态标注+动态重建同源 key）',
+  rvEn2.startBtn === 'Upload and recognize', rvEn2.startBtn);
+check('功能树首节点英文态（review.tree.all + 计数 span 完好）',
+  /All function points\s*2/.test((rvEn2.treeAll||'').trim()), rvEn2.treeAll);
+await ev(`items=[];render();`); await sleep(400);
+const rvEn3 = JSON.parse(await ev(`JSON.stringify({
+  empty:document.querySelector('#tbody').textContent.replace(/\s+/g,' ').trim(),
+  emptyBtn:document.querySelector('#tbody .btn')?document.querySelector('#tbody .btn').textContent.trim():null,
+})`));
+check('空态英文态：标题/正文/按钮已切英文且无中文残留',
+  /No candidate function points yet/.test(rvEn3.empty) && /Clear filters/.test(rvEn3.emptyBtn||'')
+  && !/[一-龥]/.test(rvEn3.empty), JSON.stringify(rvEn3));
+await ev(`setLang('zh-CN');`); await sleep(400);
+
 // 切回中文并复原数据
 await ev(`setLang('zh-CN');items=[];render();`); await sleep(500);
 
