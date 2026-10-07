@@ -91,9 +91,22 @@ if errorlevel 1 (
     set "EXE_EXISTS=0"
 ) else (
     if not exist "%ZIP_DIR%\exe" mkdir "%ZIP_DIR%\exe"
-    "%PY_EXE%" -m PyInstaller "工作量评估工具.spec" --distpath "%ZIP_DIR%\exe" --workpath "build" --noconfirm >nul 2>&1
+    REM spec 必须位于项目根：PyInstaller 以 spec 所在目录为基准解析 ['scripts/server.py']
+    REM 等相对路径，而 spec 里的路径是相对项目根写的。docs\ 下那份仅作归档。
+    if not exist "工作量评估工具.spec" (
+        echo   [ERROR] 缺少 spec 文件: %CD%\工作量评估工具.spec
+        echo          源文件应位于 docs\工作量评估工具.spec
+        pause
+        exit /b 1
+    )
+    if not exist "build" mkdir "build"
+    REM 不再 >nul 2>&1：失败时输出是唯一排查线索，必须留痕
+    "%PY_EXE%" -m PyInstaller "工作量评估工具.spec" --distpath "%ZIP_DIR%\exe" --workpath "build" --noconfirm > "build\pyinstaller.log" 2>&1
     if errorlevel 1 (
-        echo   [ERROR] exe 打包失败，请查看 PyInstaller 输出
+        echo   [ERROR] exe 打包失败，详见 build\pyinstaller.log
+        echo   ------ PyInstaller 输出末尾 20 行 ------
+        powershell -NoProfile -Command "Get-Content -Encoding UTF8 'build\pyinstaller.log' -Tail 20"
+        echo   ------------------------------------------
         pause
         exit /b 1
     )
