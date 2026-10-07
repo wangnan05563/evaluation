@@ -437,20 +437,38 @@ check('帮助页英文态：正文段落/公式/引导按钮已切英文（批�
   && /Ideal Person-Months/.test(hpEn.bodyP4b) && /row R8/.test(hpEn.bodyP5)
   && hpEn.guideBtn === 'IFPUG Walkthrough',
   JSON.stringify({m3:hpEn.bodyM3.slice(0, 30), a2f:hpEn.bodyA2f, p4b:hpEn.bodyP4b, btn:hpEn.guideBtn}));
+// ---- 批次4a：更新区 JS 动态文案（T01548 验收：英文态点「检查更新」全流程无中文）----
+await ev(`checkUpdate(true)`); await sleep(1200);
+const verEn = JSON.parse(await ev(`JSON.stringify({
+  state:document.querySelector('#verState').textContent.trim(),
+  toast:document.querySelector('#toast').textContent.trim(),
+})`));
+check('更新区英文态：手动检查结果与 toast 均为英文（批次4a，无排除条款）',
+  !/[一-龥]/.test(verEn.state) && !/[一-龥]/.test(verEn.toast) && verEn.state !== ''
+  && /Check failed|Already up to date|New version/i.test(verEn.state),
+  JSON.stringify(verEn));
+// 「立即更新」入口：测试实例未配置更新源，doUpdate 走守卫分支，toast 须为英文
+await ev(`doUpdate()`); await sleep(200);
+const updEn = await ev(`document.querySelector('#toast').textContent.trim()`);
+check('更新区英文态：点「立即更新」守卫提示为英文（批次4a 更新流程）',
+  updEn !== '' && !/[一-龥]/.test(updEn), `toast=${updEn}`);
+// 语言切换后按保存状态重绘：切回中文态，动态状态应同步为中文
+await ev(`setLang('zh-CN')`); await sleep(700);
+const verZh = await ev(`document.querySelector('#verState').textContent.trim()`);
+check('更新区中文态：切换语言后动态状态随之重绘（verPaint 钩子生效）',
+  verZh === '检测失败：未配置更新源' || /[一-龥]/.test(verZh), `state=${verZh}`);
+await ev(`setLang('en-US')`); await sleep(700);
 // 全页文本节点扫描（不只 [data-i18n] 节点）：英文态下帮助页任何中文都算漏译。
 // 变量与符号（O/M/P、σ、UFP、FP）非中文不受影响；徽标 IFPUG/PERT 为拉丁字符。
-// 例外：#verState/#verNotes/#verProgWrap 是 JS 运行时 textContent 写入的动态状态文案
-// （「检测中…/已是最新版本/未配置更新源…」），不属批次3 正文范围——已建单 T01548
-// 「FR-ENG05 批次4：JS 动态文案 key 化」跟踪，落地后删除本例外。
+// 批次4a（T01548）落地后已删除 #verState/#verNotes/#verProgWrap 排除条款——
+// 更新区动态状态文案已全部 key 化，由 verPaint() 按当前语言重绘。
 const hpResidue = await ev(`(()=>{const bad=[];
   const w=document.createTreeWalker(document.querySelector('#pg-help'),NodeFilter.SHOW_TEXT,
-    {acceptNode(n){const el=n.parentElement;
-      if(el&&el.closest('#verState,#verNotes,#verProgWrap'))return NodeFilter.FILTER_REJECT;
-      return /[一-龥]/.test(n.nodeValue)?NodeFilter.FILTER_ACCEPT:NodeFilter.FILTER_SKIP;}});
+    {acceptNode(n){return /[一-龥]/.test(n.nodeValue)?NodeFilter.FILTER_ACCEPT:NodeFilter.FILTER_SKIP;}});
   let n;while(n=w.nextNode()){const el=n.parentElement;
     bad.push(((el&&el.closest('[data-i18n]')?el.closest('[data-i18n]').getAttribute('data-i18n'):null)||('#'+(el?el.className||el.tagName:'root')))+':'+n.nodeValue.trim().slice(0,24));}
   return JSON.stringify(bad)})()`);
-check('帮助页英文态全页扫描：方法论正文无中文残留（批次3 验收）', hpResidue === '[]', hpResidue);
+check('帮助页英文态全页扫描：正文与更新区动态文案均无中文残留（批次3+4a 验收）', hpResidue === '[]', hpResidue);
 
 await ev(`setLang('zh-CN');goPage('work');goStep('upload');`); await sleep(400);
 

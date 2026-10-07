@@ -106,6 +106,8 @@ async function setLang(lang){
   if(typeof rulesLoad === "function" && document.body.dataset.page === "config") rulesLoad();
   // PERT 页的计数/汇总同理，需重算才能反映新语言
   if(typeof pertSyncStart === "function" && document.body.dataset.page === "pert") pertSyncStart();
+  // 帮助页更新区的动态状态（检测中/发现新版本/下载进度…）按保存的状态重绘（T01548 批次4a）
+  if(typeof verPaint === "function") verPaint();
   toast(t("common.lang_switched"));
 }
 /* data-i18n 机制：把文案与结构解耦，避免为每种语言复制一份 DOM。

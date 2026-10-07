@@ -1755,8 +1755,53 @@ async function analyzeCtx(){
   }catch(e){box.className="cfg-test bad";box.style.whiteSpace="pre-wrap";box.textContent=e.message;}
 }
 function PROVIDERS_DEFAULT_MODELS(key){return (providers[key]&&providers[key].models)||[];}
-/* ============ 版本检测与一键更新（T00880） ============ */
+/* ============ 版本检测与一键更新（T00880；T01548 批次4a：动态文案 i18n 化） ============ */
 let verLatest=null;   // 最近一次检测结果 {latest,url,notes,hasUpdate}
+// T01548：更新区状态文案不再直接写中文，而是记录「状态」到 __ver/__dl，
+// 由 verPaint() 按当前语言从字典组合后重绘；切换语言时 setLang() 会再调 verPaint()。
+let __ver={kind:'unchecked'};  // unchecked|checking|failed|netfail|found|uptodate
+let __dl=null;                 // null|start|downloading|done|failed|error|lost|installer
+// 服务端中文 msg → i18n key（后端 i18n 未迁移前的前端已知消息映射，见 T01548）
+const LM_SERVER_MSGS={
+  "未配置更新源":"help.upd.msg_unconfigured",
+  "已在下载中":"help.upd.msg_downloading",
+  "开始下载":"help.upd.msg_dl_started",
+  "更新包不存在，请先下载":"help.upd.msg_no_pkg",
+  "安装器已启动，应用将关闭并开始更新":"help.upd.msg_installer"
+};
+function lm(msg){return LM_SERVER_MSGS[msg]?t(LM_SERVER_MSGS[msg]):msg;}
+function verStateText(){
+  const v=__ver;
+  if(v.kind==='checking')return t("help.upd.checking");
+  if(v.kind==='failed')return v.manual?tf("help.upd.failed_detail",{msg:lm(v.msg)})
+    :(v.msg==="未配置更新源"?t("help.upd.unconfigured"):t("help.upd.auto_failed"));
+  if(v.kind==='netfail')return tf("help.upd.failed_detail",{msg:v.msg});
+  if(v.kind==='found')return tf("help.upd.found",{v:v.latest});
+  if(v.kind==='uptodate')return t("help.upd.uptodate");
+  return t("help.ver.unchecked");
+}
+function dlText(){
+  const d=__dl;
+  if(!d)return t("help.ver.preparing");
+  if(d.kind==='start')return t("help.upd.dl_start");
+  if(d.kind==='downloading')return t("help.upd.downloading");
+  if(d.kind==='done')return t("help.upd.dl_done");
+  if(d.kind==='failed'||d.kind==='error')return tf("help.upd.dl_failed",{msg:lm(d.msg||t("help.upd.unknown_err"))});
+  if(d.kind==='lost')return t("help.upd.progress_lost");
+  if(d.kind==='installer')return t("help.upd.installer_started");
+  return t("help.ver.preparing");
+}
+function verPaint(){
+  const st=$("#verState");
+  if(st&&__ver.kind!=='unchecked'){        // 未检测态保留原 data-i18n 节点，交给 applyI18n
+    st.textContent=verStateText();
+    if(__ver.color)st.style.color=__ver.color;
+  }
+  const nt=$("#verNotes");
+  if(nt&&__ver.kind==='found'&&__ver.notes)nt.textContent=t("help.upd.notes")+"\n"+__ver.notes;
+  const pt=$("#verProgTxt");
+  if(pt&&__dl)pt.textContent=dlText();
+}
 async function loadAppInfo(){
   try{
     const r=await fetch(API+"/api/app-info");
@@ -1770,27 +1815,27 @@ async function loadAppInfo(){
 // 全塞在 try 里，与请求、异常处理交织。拆为三个渲染函数后主流程只做「取数 → 分派」，
 // 各分支的文案与显隐规则集中可查，改文案不必读控制流。
 function renderUpdateFailed(st,msg,manual){
-  st.textContent=manual?("检测失败："+msg):(msg==="未配置更新源"?"未配置更新源（配置中心 → 应用更新）":"自动检测失败");
+  __ver={kind:'failed',msg,manual};verPaint();
   $("#verUpdBtn").style.display="none";
-  if(manual)toast(msg);
+  if(manual)toast(lm(msg));
 }
 function renderUpdateFound(st,res,manual){
   verLatest=res;
-  st.textContent=`发现新版本 ${res.latest}`;st.style.color="var(--ok)";
+  __ver={kind:'found',latest:res.latest,notes:res.notes||"",color:"var(--ok)"};verPaint();
   $("#verUpdBtn").style.display="";
   const nt=$("#verNotes");
-  if(res.notes){nt.style.display="";nt.className="cfg-test ok";nt.textContent="更新日志：\n"+res.notes;}
-  if(manual)toast(`发现新版本 ${res.latest}，可一键更新`);
+  if(res.notes){nt.style.display="";nt.className="cfg-test ok";}
+  if(manual)toast(tf("help.upd.found_toast",{v:res.latest}));
 }
 function renderUpToDate(st,manual){
-  st.textContent="已是最新版本";st.style.color="var(--ok)";
+  __ver={kind:'uptodate',color:"var(--ok)"};verPaint();
   $("#verUpdBtn").style.display="none";
   $("#verNotes").style.display="none";
-  if(manual)toast("已是最新版本");
+  if(manual)toast(t("help.upd.uptodate"));
 }
 async function checkUpdate(manual){
   const st=$("#verState");if(!st)return;
-  st.textContent="检测中…";st.style.color="var(--muted)";
+  __ver={kind:'checking',color:"var(--muted)"};verPaint();
   try{
     const r=await fetch(API+"/api/update/check");
     const res=await r.json();
@@ -1798,24 +1843,24 @@ async function checkUpdate(manual){
     if(res.hasUpdate)renderUpdateFound(st,res,manual);
     else renderUpToDate(st,manual);
   }catch(e){
-    st.textContent="检测失败："+e.message;
-    if(manual)toast("检测失败："+e.message);
+    __ver={kind:'netfail',msg:e.message};verPaint();
+    if(manual)toast(tf("help.upd.failed_detail",{msg:e.message}));
   }
 }
 async function doUpdate(){
-  if(!verLatest||!verLatest.url){toast("未获取到更新包地址，请先检查更新");return;}
+  if(!verLatest||!verLatest.url){toast(t("help.upd.no_pkg"));return;}
   const wrap=$("#verProgWrap");
   wrap.style.display="";
   $("#verRetryBtn").style.display="none";
   $("#verInstallBtn").style.display="none";
-  $("#verProgTxt").textContent="开始下载…";
+  __dl={kind:'start'};verPaint();
   try{
     const r=await fetch(API+"/api/update/download",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({url:verLatest.url})});
     const res=await r.json();
-    if(!res.ok)throw new Error(res.msg||"下载启动失败");
+    if(!res.ok)throw new Error(res.msg||t("help.upd.dl_start_fail"));
     pollUpdateProgress();
   }catch(e){
-    $("#verProgTxt").textContent="下载失败："+e.message;
+    __dl={kind:'failed',msg:e.message};verPaint();
     $("#verRetryBtn").style.display="";
   }
 }
@@ -1828,38 +1873,38 @@ async function pollUpdateProgress(){
     const pct=res.total>0?Math.floor(res.received*100/res.total):0;
     $("#verProgBar").style.width=pct+"%";
     $("#verProgPct").textContent=res.total>0?(pct+"%（"+(res.received/1048576).toFixed(1)+" / "+(res.total/1048576).toFixed(1)+" MB）"):((res.received/1048576).toFixed(1)+" MB");
-    if(res.state==="downloading"){$("#verProgTxt").textContent="正在下载更新包…";}
+    if(res.state==="downloading"){__dl={kind:'downloading'};verPaint();}
     else if(res.state==="done"){
-      $("#verProgTxt").textContent="下载完成，可安装更新";
+      __dl={kind:'done'};verPaint();
       $("#verInstallBtn").style.display="";
-      toast("更新包下载完成，点击「安装更新」开始安装");
+      toast(t("help.upd.dl_done_toast"));
       return;
     }else if(res.state==="error"){
-      $("#verProgTxt").textContent="下载失败："+(res.error||"未知错误");
+      __dl={kind:'error',msg:res.error||t("help.upd.unknown_err")};verPaint();
       $("#verRetryBtn").style.display="";
       return;
     }
-  }catch(e){$("#verProgTxt").textContent="进度查询失败，仍在下载…";}
+  }catch(e){__dl={kind:'lost'};verPaint();}
   verPollTimer=setTimeout(pollUpdateProgress,800);
 }
 async function installUpdate(){
-  if(!confirm("安装更新将关闭应用并自动完成安装（本机配置会保留），确定继续？"))return;
+  if(!confirm(t("help.upd.confirm_install")))return;
   try{
     const r=await fetch(API+"/api/update/install",{method:"POST",headers:{"Content-Type":"application/json"},body:"{}"});
     const res=await r.json();
-    if(!res.ok)throw new Error(res.msg||"启动安装器失败");
-    $("#verProgTxt").textContent="安装器已启动，应用即将关闭…";
-  }catch(e){toast("安装失败："+e.message);}
+    if(!res.ok)throw new Error(res.msg||t("help.upd.installer_fail"));
+    __dl={kind:'installer'};verPaint();
+  }catch(e){toast(tf("help.upd.install_failed",{msg:lm(e.message)}));}
 }
 async function saveUpdateUrl(){
   const url=$("#updUrl").value.trim();
   try{
     const r=await fetch(API+"/api/update/config",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({update_url:url})});
     const res=await r.json();
-    if(!res.ok)throw new Error(res.msg||"保存失败");
-    toast(url?"更新源已保存，打开帮助页即可检测新版本":"已停用版本检测");
+    if(!res.ok)throw new Error(res.msg||t("help.upd.save_fail"));
+    toast(url?t("help.upd.save_ok"):t("help.upd.save_off"));
     cfgWriteSnap("upd");cfgRefreshDraft();
-  }catch(e){toast("保存失败："+e.message);}
+  }catch(e){toast(tf("help.upd.save_failed_detail",{msg:lm(e.message)}));}
 }
 function readCfgForm(){
   const enabled=$("#llmSwitch").classList.contains("on");
@@ -3123,6 +3168,8 @@ async function setLang(lang){
   if(typeof rulesLoad === "function" && document.body.dataset.page === "config") rulesLoad();
   // PERT 页的计数/汇总同理，需重算才能反映新语言
   if(typeof pertSyncStart === "function" && document.body.dataset.page === "pert") pertSyncStart();
+  // 帮助页更新区的动态状态（检测中/发现新版本/下载进度…）按保存的状态重绘（T01548 批次4a）
+  if(typeof verPaint === "function") verPaint();
   toast(t("common.lang_switched"));
 }
 /* data-i18n 机制：把文案与结构解耦，避免为每种语言复制一份 DOM。
