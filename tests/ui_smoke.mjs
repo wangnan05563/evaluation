@@ -80,6 +80,17 @@ check('printToPDF 产出报告 PDF', buf.length > 20000, `${(buf.length / 1024).
 const pdfText = buf.toString('latin1');
 check('PDF 含数据内容（非空白）', /未调整|工作量|US|FP/.test(pdfText), '');
 
+// T01571 回归守卫：每个导航页 goPage 后必须真正可见——
+// 快算页曾因 CSS 缺 body[data-page=fast] 显示规则而整页白屏（.page{display:none} 断链）
+await ev(`goPage('work')`); await sleep(300);
+const navVis = await ev(`(()=>{const bad=[];['work','fast','config','pert','help'].forEach(p=>{
+  goPage(p);const el=document.getElementById('pg-'+p);
+  if(!el){bad.push(p+':missing');return;}
+  const cs=getComputedStyle(el);
+  if(cs.display==='none'||el.clientHeight<=0)bad.push(p+':'+cs.display+'/h'+el.clientHeight);});
+  goPage('work');return JSON.stringify(bad)})()`);
+check('五个导航页 goPage 后可见（显示规则不断链）', navVis === '[]', navVis);
+
 // 截图留档
 const shot = await send('Page.captureScreenshot', { format: 'png' }, S);
 fs.writeFileSync('logs/_w006_charts.png', Buffer.from(shot.data, 'base64'));
