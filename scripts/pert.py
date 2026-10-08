@@ -37,7 +37,9 @@ class PertDB:
           id INTEGER PRIMARY KEY AUTOINCREMENT,
           name TEXT NOT NULL,
           estimator TEXT DEFAULT '',
-          created_at TEXT DEFAULT (datetime('now','localtime'))
+          created_at TEXT DEFAULT (datetime('now','localtime')),
+          doc_name TEXT DEFAULT '',
+          gen_count INTEGER DEFAULT 0
         );
         CREATE TABLE IF NOT EXISTS pert_items(
           id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -195,6 +197,22 @@ def rows_for_generate(con, pid):
     rows = [{"phase": i[0], "system": i[1], "module": i[2], "desc": i[3],
              "optimistic": i[4], "most_likely": i[5], "pessimistic": i[6]} for i in items]
     return name, est, rows
+
+
+# ---------------- 成品表命名（T01573）----------------
+def set_doc_name(con, pid, doc_name):
+    """记住本次需求导入的文档基名（不含扩展名），供成品表文件名取用。"""
+    con.execute("UPDATE projects SET doc_name=? WHERE id=?", ((doc_name or "").strip(), pid))
+    con.commit()
+
+
+def next_gen_version(con, pid):
+    """返回该项目本次生成的自增版本号并落库（1、2、3…→ 展示为 V1、V2…）。"""
+    cur = con.execute("SELECT gen_count FROM projects WHERE id=?", (pid,)).fetchone()
+    n = (int(cur[0]) if cur and cur[0] is not None else 0) + 1
+    con.execute("UPDATE projects SET gen_count=? WHERE id=?", (n, pid))
+    con.commit()
+    return n
 
 
 def db_for(app_data):

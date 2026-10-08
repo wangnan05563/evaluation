@@ -1926,6 +1926,11 @@ class Handler(BaseHTTPRequestHandler):
                     else:
                         msg = "未能拆分出候选功能点。若为自由文本/PDF，请先在配置中心启用大模型；docx 已回退本地识别。"
                     return self._json(400, {"ok": False, "msg": msg})
+                # T01573：由文档导入成功时，记住需求文档基名（去扩展名），供成品表命名
+                if src_path:
+                    _c = _pert_connect()
+                    pert.set_doc_name(_c, pid, os.path.splitext(os.path.basename(str(fname)))[0])
+                    _c.close()
                 return self._json(200, {"ok": True, "candidates": candidates, "source": source,
                                         "llm_enabled_effective": llm_on})
 
@@ -1981,7 +1986,13 @@ class Handler(BaseHTTPRequestHandler):
                     shown = "、".join(missing[:3])
                     return self._json(400, {"ok": False,
                                             "msg": f"存在 {len(missing)} 项未填三值，请先补全：{shown}{'…' if len(missing) > 3 else ''}"})
-                sid = f"pert_{int(time.time())}.xlsx"
+                # T01573：成品表文件名 = 需求文档基名（缺则项目名）+ "-PERT估算-V{自增版本}.xlsx"
+                _dn = con.execute("SELECT doc_name FROM projects WHERE id=?", (pid,)).fetchone()
+                base = (_dn[0] if _dn and _dn[0] else "") or name
+                base = re.sub(r"\.(docx|doc|pdf|xlsx|xls)\s*$", "", str(base).strip(), flags=re.I)
+                base_clean = re.sub(r'[\\/:*?"<>|]', "", base)      # 净化 Windows 非法字符（与 IFPUG 同口径）
+                ver_no = pert.next_gen_version(con, pid)            # 自增并落库：V1、V2…
+                sid = f"{base_clean}-PERT估算-V{ver_no}.xlsx"
                 out = OUTDIR / sid
                 pert.generate(name, rows, str(out),
                               est_date=payload.get("est_date"), estimator=estimator,

@@ -3,10 +3,11 @@
 import json
 import os
 import shutil
+import sqlite3
 import time
 import zipfile
 
-SCHEMA_VER = 1            # 数据结构版本号（首版；后续迁移在此登记）
+SCHEMA_VER = 2            # 数据结构版本号（首版；后续迁移在此登记）
 KEEP_BACKUPS = 7          # FR-5.6：备份保留 N 份
 
 # T01501（python:S1192）：备份/导出/导入三处反复出现的数据文件名，提取为常量。
@@ -22,7 +23,26 @@ DATA_FILES = (F_PERT_DB, F_ESTIMATION_DB, F_RECOGNITION_RULES, F_RATES_VERSIONS)
 EXPORT_FILES = DATA_FILES + (F_SCHEMA_VER,)
 
 # 迁移登记表：{from_ver: 升级函数(data_dir)->None}，逐级幂等执行
-MIGRATIONS = {}
+def _m_pert_gen_naming(data_dir):
+    """v1→v2（T01573）：pert.db projects 增加 doc_name / gen_count。
+    成品表命名需记住需求导入的文档基名并按项目自增版本（V1、V2…）。
+    幂等：先查 PRAGMA table_info，缺列才 ALTER；老库无 pert.db 时跳过。"""
+    db = os.path.join(data_dir, F_PERT_DB)
+    if not os.path.exists(db):
+        return
+    con = sqlite3.connect(db, timeout=15)
+    try:
+        cols = {r[1] for r in con.execute("PRAGMA table_info(projects)")}
+        if "doc_name" not in cols:
+            con.execute("ALTER TABLE projects ADD COLUMN doc_name TEXT DEFAULT ''")
+        if "gen_count" not in cols:
+            con.execute("ALTER TABLE projects ADD COLUMN gen_count INTEGER DEFAULT 0")
+        con.commit()
+    finally:
+        con.close()
+
+
+MIGRATIONS = {1: _m_pert_gen_naming}
 
 
 def _migrate(data_dir):
