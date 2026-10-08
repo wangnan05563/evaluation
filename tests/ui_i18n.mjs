@@ -619,6 +619,30 @@ for (const mid of ['work', 'pert', 'config', 'help']) {
   }
 }
 check('引导各步骤英文态全页扫描均无中文残留', gdStepsBad.length === 0, gdStepsBad.slice(0, 3).join(' | '));
+
+// ---- 19) 间接映射表目标 key 双字典齐备（T01556 批次6）----
+// 迁移采用「中文原文/数据值 → 字典 key」的过渡层（服务端 msg、生成阶段、PERT 阶段、
+// GB 阶段、diff 字段、主题色名、引导条目）。这类 key 不经 data-i18n 静态扫描，
+// i18n_check 也查不到，缺译时界面直接露出 key 原样——故在运行时逐表校验两语齐备。
+const mapKeys = JSON.parse(await ev(`(()=>{const ks=new Set();
+  const add=v=>{if(typeof v==='string'&&/\\./.test(v))ks.add(v);};
+  try{Object.values(LM_SERVER_MSGS).forEach(add);}catch(e){}
+  try{LM_SERVER_TPL.forEach(x=>add(x[1]));}catch(e){}
+  try{Object.values(PERT_PHASE_KEYS).forEach(add);}catch(e){}
+  try{Object.values(GB_STAGE_KEYS).forEach(add);}catch(e){}
+  try{DIFF_FIELDS.forEach(x=>add(x[1]));Object.values(DIFF_KIND_KEYS).forEach(add);}catch(e){}
+  try{BRAND_PRESETS.forEach(x=>add(x[2]));}catch(e){}
+  try{Object.values(GEN_STAGE_KEYS).forEach(add);}catch(e){}
+  try{WLGuide.steps.forEach(s=>{const g='guide.'+s.id.replace(/-/g,'_');add(g+'.t');add(g+'.d');});}catch(e){}
+  return JSON.stringify([...ks].sort());})()`));
+const zhDict = await getJson('/api/i18n?lang=zh-CN');
+const enDict = await getJson('/api/i18n?lang=en-US');
+const missZh = mapKeys.filter(k => !(k in zhDict.strings));
+const missEn = mapKeys.filter(k => !(k in enDict.strings));
+check('过渡映射表引用的 key 数量符合预期（非空且成规模）', mapKeys.length >= 90, `keys=${mapKeys.length}`);
+check('过渡映射表 key 在 zh-CN 字典全部有译文', missZh.length === 0, missZh.slice(0, 6).join(', '));
+check('过渡映射表 key 在 en-US 字典全部有译文', missEn.length === 0, missEn.slice(0, 6).join(', '));
+
 await ev(`WLGuide.stop();setLang('zh-CN');goPage('work');goStep('upload');`); await sleep(400);
 
 check('全程无页面异常', errors.length === 0, errors.slice(0, 2).join(' | '));
