@@ -537,7 +537,89 @@ const hpResidue = await ev(`(()=>{const bad=[];
   return JSON.stringify(bad)})()`);
 check('帮助页英文态全页扫描：正文与更新区动态文案均无中文残留（批次3+4a 验收）', hpResidue === '[]', hpResidue);
 
-await ev(`setLang('zh-CN');goPage('work');goStep('upload');`); await sleep(400);
+// ---- 18) 批次6（T01556）：快算页 / 历史页 / 配置中心 / 引导弹层 英文态全页扫描 ----
+// 口径与验收标准「排除 #langSeg 与数据域 select value」一致：
+//  · 跳过 #langSeg（语言名按各语言自身标注）与 select/option/textarea/input（数据域选项）；
+//  · 再剔除数据枚举值——GB 阶段名、费率版本名与其领域/应用/语言/团队/出处、母版名
+//    （这些是费率表与国标口径里的数据项，保持原文不是漏译）；
+//  · 其余任何中文都属界面文案漏译，逐条报出所在 key 或宿主元素。
+const scanPage = (sel) => `(()=>{
+  const data=new Set(['']);
+  try{Object.keys(GB_CF||{}).forEach(k=>data.add(k));}catch(e){}
+  try{Object.keys(__rates&&__rates.versions||{}).forEach(n=>data.add(n));}catch(e){}
+  try{const r=(typeof ratesCur==='function')?ratesCur():null;
+    if(r){data.add(r.name);data.add(r.source||'');
+      Object.keys(r.swf||{}).forEach(d=>{data.add(d);Object.keys(r.swf[d]||{}).forEach(a=>data.add(a));});
+      Object.keys(r.rdf||{}).forEach(l=>{data.add(l);Object.keys(r.rdf[l]||{}).forEach(t=>data.add(t));});}}catch(e){}
+  try{Object.values((__rates||{}).versions||{}).forEach(v=>{
+      data.add(v.source||'');
+      Object.keys(v.swf||{}).forEach(d=>{data.add(d);Object.keys(v.swf[d]||{}).forEach(a=>data.add(a));});
+      Object.keys(v.rdf||{}).forEach(l=>{data.add(l);Object.keys(v.rdf[l]||{}).forEach(t=>data.add(t));});});}catch(e){}
+  const root=document.querySelector(${JSON.stringify(sel)});
+  if(!root)return JSON.stringify(['<root missing>']);
+  const bad=[];const w=document.createTreeWalker(root,NodeFilter.SHOW_TEXT);let n;
+  while(n=w.nextNode()){
+    const el=n.parentElement;if(!el)continue;
+    if(el.closest('#langSeg,select,option,textarea,input,style,script'))continue;
+    let rest=n.nodeValue;
+    // 长值优先剔除：版本名「CSBMK-2023」是其出处串「CSBMK-2023 行业基准数据…」的前缀，
+    // 若先剔短串会把剩余中文误报为漏译。
+    [...data].sort((a,b)=>b.length-a.length).forEach(d=>{if(d)rest=rest.split(d).join('');});
+    if(!/[一-龥]/.test(rest))continue;
+    const a=el.closest('[data-i18n]');
+    bad.push(((a?a.getAttribute('data-i18n'):null)||('#'+(el.className||el.tagName)))+':'+rest.trim().slice(0,120));
+  }
+  return JSON.stringify(bad);})()`;
+
+await ev(`goPage('fast');`); await sleep(800);
+const ftResidue = await ev(scanPage('#pg-fast'));
+check('快算页英文态全页扫描无中文残留（批次6：ne/gb 动态文案）', ftResidue === '[]', ftResidue);
+const ftEn = JSON.parse(await ev(`JSON.stringify({
+  formula:(document.getElementById('fastFormula')||{}).textContent||'',
+  result:(document.getElementById('fastResult')||{}).textContent||'',
+  labels:[...document.querySelectorAll('#fastCounts label')].map(l=>l.textContent.trim()),
+})`));
+check('快算页英文态：公式提示与计数标签已切英文',
+  !/[一-龥]/.test(ftEn.formula) && ftEn.labels.length > 0 && ftEn.labels.every(l => !/[一-龥]/.test(l)),
+  JSON.stringify({ f: ftEn.formula.slice(0, 32), l: ftEn.labels[0] }));
+check('快算页英文态：结果区提示已切英文（动态文案走字典）',
+  /Results compute|UFP = /.test(ftEn.result) && /Estimate|Preliminary/.test(ftEn.formula),
+  JSON.stringify({ r: ftEn.result.slice(0, 40) }));
+
+await ev(`goPage('work');histOpen();`); await sleep(900);
+const hiResidue = await ev(scanPage('#v-history'));
+check('历史估算页英文态全页扫描无中文残留（批次6：history 动态文案）', hiResidue === '[]', hiResidue);
+const hiEn = JSON.parse(await ev(`JSON.stringify({
+  btn:(document.getElementById('hdifBtn')||{}).textContent||'',
+  title:(document.querySelector('#v-history .card-title')||{}).textContent||'',
+})`));
+check('历史页英文态：对比按钮与标题已切英文',
+  !/[一-龥]/.test(hiEn.btn) && !/[一-龥]/.test(hiEn.title), JSON.stringify({ b: hiEn.btn.trim().slice(0, 24) }));
+await ev(`histClose();goPage('config');`); await sleep(800);
+const cfResidue2 = await ev(scanPage('#pg-config'));
+check('配置中心英文态全页扫描无中文残留（批次6：主题/母版/费率动态文案）', cfResidue2 === '[]', cfResidue2);
+const brandEn = JSON.parse(await ev(`JSON.stringify([...document.querySelectorAll('#brandPresets button')].map(b=>b.getAttribute('title')||''))`));
+check('主题预置色名英文态已切英文（BRAND_PRESETS key 化，色名为按钮 title）',
+  brandEn.length >= 6 && brandEn.every(x => x && !/[一-龥]/.test(x)), JSON.stringify(brandEn.slice(0, 6)));
+
+await ev(`WLGuide.start('help');`); await sleep(500);
+const gdResidue = await ev(scanPage('.guide-card'));
+const gdTxt = await ev(`(document.querySelector('.guide-card')||{}).textContent||''`);
+check('引导弹层英文态全页扫描无中文残留（批次6：guide.* 字典）', gdResidue === '[]', gdResidue);
+check('引导弹层英文态：标题与按钮为英文', /Walkthrough|Overview|Next|Done|Settings|IFPUG|PERT|Help/.test(gdTxt)
+  && !/[一-龥]/.test(gdTxt), gdTxt.slice(0, 40));
+// 逐页遍历其余引导步骤（每条 title/desc 都走字典）
+let gdStepsBad = [];
+for (const mid of ['work', 'pert', 'config', 'help']) {
+  const list = JSON.parse(await ev(`JSON.stringify(WLGuide.steps.filter(s=>s.menuId==='${mid}').map(s=>s.id))`));
+  for (let i = 0; i < list.length; i++) {
+    await ev(`WLGuide.start('${mid}');WLGuide.step(${i});`); await sleep(250);
+    const one = await ev(scanPage('.guide-card'));
+    if (one !== '[]') gdStepsBad.push(mid + '#' + i + one);
+  }
+}
+check('引导各步骤英文态全页扫描均无中文残留', gdStepsBad.length === 0, gdStepsBad.slice(0, 3).join(' | '));
+await ev(`WLGuide.stop();setLang('zh-CN');goPage('work');goStep('upload');`); await sleep(400);
 
 check('全程无页面异常', errors.length === 0, errors.slice(0, 2).join(' | '));
 const failed = res.filter(r => !r.ok);

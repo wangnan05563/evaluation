@@ -6,12 +6,15 @@ function cocomo_ii(kloc, eaf, sfSum){  // FR-2.4：与 gb_engine.cocomo_ii 同�
   return {e:+E.toFixed(4),pm:+pm.toFixed(2),tdev:+tdev.toFixed(2),staff:+(pm/tdev).toFixed(2)};
 }
 /* FR-2.6：用户故事生成（INVEST 模板化，非 LLM 依赖）+ 可编辑 + MD/CSV 导出 + GitHub 推送 */
+/* T01556（批次6）：故事「模板骨架」随界面语言生成（数据字段 system/desc 等保持原文）；
+   默认中文态产物与此前逐字一致，英文态由字典承接（产品决策落地）。 */
 function storyGen(){
   const src=items.filter(x=>x.ok);
-  if(!src.length){toast("请先确认功能点");return;}
+  if(!src.length){toast(t("eco.story_need_ok"));return;}
   const stories=src.map((it,i)=>({
-    title:`[${it.type}] 作为${it.system}用户，我需要${it.desc||it.count_item}`,
-    body:`## 用户故事\n作为${it.system}用户，我需要「${it.desc||it.count_item}」，以便完成${it.m1||"相关业务"}。\n\n## 验收标准\n- Given ${it.count_item} 功能已实现，When 用户发起操作，Then 结果正确\n- 规模：${it.type} · 重用${it.reuse} · ${it.modify}\n- 估算：${ufp({...it,cx:it.reuse}).toFixed(2)} FP\n\n## INVEST 自检\nIndependent ✓ Negotiable ✓ Valuable ✓ Estimable ✓ Small ✓ Testable ✓`,
+    title:tf("eco.story_title",{type:it.type,sys:it.system,need:it.desc||it.count_item}),
+    body:tf("eco.story_body",{sys:it.system,need:it.desc||it.count_item,m1:it.m1||t("eco.story_biz_default"),ci:it.count_item,type:it.type,
+      reuse:t("common.lv."+LV[it.reuse]),modify:t("common.mod."+LV[it.modify]),fp:ufp({...it,cx:it.reuse}).toFixed(2)}),
     fp:ufp({...it,cx:it.reuse}).toFixed(2)
   }));
   window.__stories=stories;
@@ -25,7 +28,7 @@ function storyDl(kind){
   const b=new Blob([txt],{type:"text/plain;charset=utf-8"});
   const a=document.createElement("a");a.href=URL.createObjectURL(b);
   a.download=baseName()+(kind==="csv"?"-stories.csv":"-stories.md");a.click();URL.revokeObjectURL(a.href);
-  toast("用户故事已导出（可编辑后再推送）");
+  toast(t("eco.story_exported"));
 }
 async function storyPush(){
   const token=document.querySelector("#ghToken").value.trim(), repo=document.querySelector("#ghRepo").value.trim();
@@ -33,11 +36,11 @@ async function storyPush(){
   try{
     const r=await(await fetch(API+"/api/story/push",{method:"POST",headers:{"Content-Type":"application/json"},
       body:JSON.stringify({token,repo,stories:window.__stories||[]})})).json();
-    if(!r.ok){btn.disabled=false;toast("推送失败："+r.msg+"（可修正后重试）");return;}
+    if(!r.ok){btn.disabled=false;toast(tf("eco.push_fail",{msg:lm(r.msg)}));return;}
     btn.disabled=false;
-    const failMsg=(r.errors&&r.errors.length)?("（"+r.errors.length+" 条失败可重试）"):"";
-    toast(`已推送 ${r.pushed} 条用户故事到 GitHub Issues${failMsg}`);
-  }catch(e){btn.disabled=false;toast("推送失败："+e.message+"（可重试）");}
+    const failMsg=(r.errors&&r.errors.length)?tf("eco.push_partial",{n:r.errors.length}):"";
+    toast(tf("eco.pushed",{n:r.pushed})+failMsg);
+  }catch(e){btn.disabled=false;toast(tf("eco.push_retry_fail",{msg:e.message}));}
 }
 /* FR-2.8：母版多选（结果页选择 + 配置中心上传） */
 async function tplLoad(){
@@ -50,18 +53,18 @@ async function tplLoad(){
 
   }catch(e){/* 母版列表加载失败不阻塞 */}
 }
-function tplPick(name){localStorage.setItem("wl_tpl",name);toast(`已选用母版：${name}（生成时生效）`);}
+function tplPick(name){localStorage.setItem("wl_tpl",name);toast(tf("eco.tpl_picked",{name}));}
 function tplSelected(){const n=localStorage.getItem("wl_tpl")||"默认母版";
   const t=(window.__tpls||[]).find(x=>x.name===n);return t&&t.file&&t.name!=="默认母版"?t.file:undefined;}
 async function tplUpload(inp){const f=inp.files&&inp.files[0];if(!f)return;
   const name=f.name.replace(/\.xlsx$/i,"");
-  const note=prompt("母版口径说明（如：天津银行口径，明细列 B 起）：","");
+  const note=prompt(t("eco.tpl_note_prompt"),"");
   const b64=await new Promise(res=>{const fr=new FileReader();
     fr.onload=()=>res(fr.result.split(",")[1]);fr.readAsDataURL(f);});
   const r=await(await fetch(API+"/api/templates/save",{method:"POST",headers:{"Content-Type":"application/json"},
     body:JSON.stringify({name,b64,note:note||"",mapping:{}})})).json();
-  if(!r.ok){toast("上传失败："+r.msg);return;}
-  tplPick(name);await tplLoad();toast(`母版「${name}」已接入（列映射请对照口径说明人工核对首件）`);
+  if(!r.ok){toast(tf("eco.upload_fail",{msg:lm(r.msg)}));return;}
+  tplPick(name);await tplLoad();toast(tf("eco.tpl_uploaded",{name}));
   inp.value="";}
 /* FR-5.5：界面多语言。字典经 /api/i18n?lang= 读取（不走 /static/ ——该路由
    白名单只放行 .js/.css 且禁子路径，放行 .json 会扩大目录穿越面）。
@@ -80,6 +83,9 @@ async function i18nLoad(lang){
   return __I18N;
 }
 function t(key){ return (__I18N && __I18N[key]) || key; }
+/** T01556（批次6）：带中文兜底的取值——供外置脚本（guide.js 等）在「字典未就绪/缺键」时
+ *  回退原文而不露 key。函数声明在拼接后的单一 <script> 顶层，天然挂到 window 供外部分享。 */
+function tl(key, fallback){ return (__I18N && __I18N[key]) || fallback; }
 /** 带插值的取文案：tf("review.count", {n: 5}) → "5 条候选" / "5 candidates"。
  *  用于「数值由 JS 运行时填充」的场景——这类文案不能靠 applyI18n 写 textContent
  * （会覆盖 JS 刚写入的数字），也不宜把变量塞进字典。
@@ -97,6 +103,8 @@ async function setLang(lang){
   applyI18n();
   document.documentElement.lang = lang;
   if(typeof langSegPaint === "function") langSegPaint();
+  // T01556：品牌色预置名（title 属性）随语言重绘
+  if(typeof brandPaint === "function") brandPaint();
   // 动态生成的文案（计数、空态、徽章、图表标题）不在 data-i18n 标注范围内——
   // applyI18n 只处理静态节点，这些由渲染函数产出。故切换语言后必须重渲染，
   // 否则会停留在旧语言：实测「2 条候选」在英文界面下仍显示中文。
@@ -106,12 +114,16 @@ async function setLang(lang){
   if(typeof rulesLoad === "function" && document.body.dataset.page === "config") rulesLoad();
   // PERT 页的计数/汇总同理，需重算才能反映新语言
   if(typeof pertSyncStart === "function" && document.body.dataset.page === "pert") pertSyncStart();
+  // T01556：PERT 阶段下拉的标签按新语言重建（数据值不变）
+  if(typeof pertFillPhase === "function" && document.body.dataset.page === "pert") pertFillPhase();
   // T01555（批次5）：PERT 估算明细行的 title/待填徽标按新语言重绘
   if(typeof renderPert === "function" && document.body.dataset.page === "pert" && Array.isArray(pertItems) && pertItems.length) renderPert();
   // T01555：驻留 DOM 的动态文案（进度条/状态框/文件提示…）按注册的状态函数重算重绘
   if(typeof dynPaint === "function") dynPaint();
   // 帮助页更新区的动态状态（检测中/发现新版本/下载进度…）按保存的状态重绘（T01548 批次4a）
   if(typeof verPaint === "function") verPaint();
+  // T01556：外置引导脚本若正在演示，按新语言重绘当前卡片
+  if(window.WLGuide && window.WLGuide.refresh) window.WLGuide.refresh();
   toast(t("common.lang_switched"));
 }
 /* data-i18n 机制：把文案与结构解耦，避免为每种语言复制一份 DOM。
@@ -158,4 +170,9 @@ window.addEventListener("DOMContentLoaded",async ()=>{
   await i18nLoad();          // 字典就绪后再刷文案，避免首屏闪中文
   applyI18n();
   tplLoad();
+  if(typeof brandPaint==="function") brandPaint();   // 预置色名按新字典重绘（首绘在字典前，见 07）
+  // T01556（批次6）：断点续录恢复必须在字典就绪后执行（见 07 bootRestoreChain 注释），
+  // 否则恢复出来的表格/toast 会把 i18n key 当文案露在首屏。
+  if(typeof bootRestoreChain==="function") bootRestoreChain();
+  else{try{saveFormState();}catch(e){}}
 });

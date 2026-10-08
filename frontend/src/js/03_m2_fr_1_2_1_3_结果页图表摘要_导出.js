@@ -10,21 +10,23 @@ function refreshCharts(){
   const sys={};ok.forEach(x=>sys[x.system]=(sys[x.system]||0)+us(x));
   let sysArr=Object.entries(sys).map(([k,v])=>({name:k,us:+v.toFixed(2)})).sort((a,b)=>b.us-a.us);
   if(sysArr.length>15){const rest=+sysArr.slice(14).reduce((s,x)=>s+x.us,0).toFixed(2);
-    sysArr=sysArr.slice(0,14);sysArr.push({name:"其他",us:rest});}
+    sysArr=sysArr.slice(0,14);sysArr.push({name:t("result.chart_other"),us:rest});}
   const th=chartTheme();
+  // T01556：图表随 setLang→refreshCharts 重建，绘制期文案一律现取 t()；
+  // tooltip 的 {b}/{c}/{d} 是 ECharts 占位符，字典值原样保留（t 不插值）。
   const opts={
-    c1:{tooltip:{trigger:"item",formatter:"{b}: {c} 条（{d}%）",backgroundColor:th.tipBg,borderColor:th.grid,textStyle:{color:th.tipInk}},legend:{bottom:0,textStyle:{color:th.tipInk}},
+    c1:{tooltip:{trigger:"item",formatter:t("result.chart_tip_item"),backgroundColor:th.tipBg,borderColor:th.grid,textStyle:{color:th.tipInk}},legend:{bottom:0,textStyle:{color:th.tipInk}},
         series:[{type:"pie",radius:["35%","65%"],data:Object.entries(byType).map(([k,v])=>({name:k,value:v})),
                  label:{formatter:"{b}\n{c}"}}]},
     c2:{tooltip:{backgroundColor:th.tipBg,borderColor:th.grid,textStyle:{color:th.tipInk}},grid:{left:44,right:16,top:20,bottom:24},
-        xAxis:{type:"category",data:Object.keys(byReuse)},yAxis:{type:"value",minInterval:1},
+        xAxis:{type:"category",data:Object.keys(byReuse).map(k=>t("common.lv."+LV[k]))},yAxis:{type:"value",minInterval:1},
         series:[{type:"bar",barWidth:"45%",data:Object.values(byReuse),itemStyle:{color:th.brand}}]},
     c3:{tooltip:{backgroundColor:th.tipBg,borderColor:th.grid,textStyle:{color:th.tipInk}},grid:{left:90,right:30,top:10,bottom:24},
         xAxis:{type:"value"},yAxis:{type:"category",inverse:true,data:sysArr.map(x=>x.name)},
         series:[{type:"bar",barWidth:"55%",data:sysArr.map(x=>x.us),itemStyle:{color:th.brand},
                  label:{show:true,position:"right",formatter:"{c} US"}}]},
     c4:{tooltip:{backgroundColor:th.tipBg,borderColor:th.grid,textStyle:{color:th.tipInk}},grid:{left:60,right:30,top:24,bottom:24},
-        xAxis:{type:"category",data:["下限","中值","上限"]},yAxis:{type:"value"},
+        xAxis:{type:"category",data:[t("result.kpi.low"),t("result.kpi.mid"),t("result.kpi.high")]},yAxis:{type:"value"},
         series:[{type:"bar",barWidth:"40%",data:[gSummary?gSummary.work.low:0,gSummary?gSummary.work.mid:0,gSummary?gSummary.work.high:0],
                  itemStyle:{color:th.brand},label:{show:true,position:"top"}}]}};
   ["c1","c2","c3","c4"].forEach(id=>{
@@ -40,7 +42,7 @@ function refreshCharts(){
 }
 function chartsFallback(){  // echarts 缺失（离线极端场景）：数字表格降级
   ["c1","c2","c3","c4"].forEach(id=>{const el=document.getElementById(id);if(!el)return;
-    el.innerHTML='<small style="color:var(--muted)">图表组件未加载，请查看导出的 CSV/摘要获取数据。</small>';});
+    el.innerHTML=`<small style="color:var(--muted)">${t("result.chart_fallback")}</small>`;});
 }
 window.addEventListener("resize",()=>Object.values(_charts).forEach(c=>c.resize()));
 function baseName(){return (gSid||"工作量评估").replace("-工作量评估.xlsx","").replace(/\.xlsx$/,"");}
@@ -54,8 +56,8 @@ function expCsvStr(){  // FR-1.3：全字段 CSV（BOM 由调用方加）
     .map(v=>`"${String(v??"").replaceAll('"','""')}"`).join(","));
   return head+"\n"+rows.join("\n");
 }
-function expCsv(){if(!items.length){toast("暂无明细可导出");return;}
-  _dl(baseName()+"-功能点明细.csv","\uFEFF"+expCsvStr(),"text/csv;charset=utf-8");toast("功能点明细 CSV 已导出");}
+function expCsv(){if(!items.length){toast(t("result.export.no_items"));return;}
+  _dl(baseName()+"-功能点明细.csv","\uFEFF"+expCsvStr(),"text/csv;charset=utf-8");toast(t("result.export.csv_done"));}
 function expMdStr(){  // FR-1.3：Markdown 摘要
   if(!gSummary)return "";
   const s=gSummary,now=new Date().toLocaleString("zh-CN");
@@ -80,19 +82,19 @@ function expMdStr(){  // FR-1.3：Markdown 摘要
 `;}
 return md;
 }
-function expMd(){if(!gSummary){toast("暂无汇总可导出");return;}
+function expMd(){if(!gSummary){toast(t("result.export.no_summary"));return;}
   const md=expMdStr();
   _dl(baseName()+"-摘要.md",md,"text/markdown;charset=utf-8");
-  if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(md).then(()=>toast("摘要已导出并复制到剪贴板")).catch(()=>toast("摘要已导出"));}
-  else toast("摘要已导出");}
+  if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(md).then(()=>toast(t("result.export.md_clip"))).catch(()=>toast(t("result.export.md_done")));}
+  else toast(t("result.export.md_done"));}
 function expPdf(){  // FR-1.3：打印管线（用户在系统对话框选“另存为 PDF”）；canvas 打印可能空白，先转 <img>
-  if(!items.length){toast("暂无明细");return;}
+  if(!items.length){toast(t("result.export.no_items"));return;}
   const snaps=[];
   Object.entries(_charts).forEach(([id,ch])=>{const el=document.getElementById(id);if(!el)return;
     snaps.push([el,el.innerHTML]);
     el.innerHTML=`<img src="${ch.getDataURL({pixelRatio:2})}" style="width:100%">`;});
   const done=()=>{snaps.forEach(([el,h])=>{el.innerHTML=h;});window.removeEventListener("afterprint",done);};
   window.addEventListener("afterprint",done);
-  toast("打印对话框已打开：目标选择“另存为 PDF”");
+  toast(t("result.export.print_tip"));
   setTimeout(()=>window.print(),300);
 }

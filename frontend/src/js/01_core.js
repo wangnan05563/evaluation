@@ -17,8 +17,10 @@ function dynBind(el,fn,mode){const ex=__dyn.find(d=>d.el===el);
 function dynText(sel,fn){const el=typeof sel==="string"?$(sel):sel;if(el)dynBind(el,fn,"text");return el;}
 function dynHtml(sel,fn){const el=typeof sel==="string"?$(sel):sel;if(el)dynBind(el,fn,"html");return el;}
 function dynClear(sel){const el=typeof sel==="string"?$(sel):sel;const i=__dyn.findIndex(d=>d.el===el);if(i>=0)__dyn.splice(i,1);}
-function dynPaint(){for(const d of __dyn){if(!document.body.contains(d.el))continue;
-  const v=d.fn();if(v!=null)(d.mode==="html"?d.el.innerHTML=v:d.el.textContent=v);}}
+function dynPaint(){let htmlPainted=false;for(const d of __dyn){if(!document.body.contains(d.el))continue;
+  const v=d.fn();if(v!=null){if(d.mode==="html"){d.el.innerHTML=v;htmlPainted=true;}else d.el.textContent=v;}}
+  // T01556：html 模式重绘会重建 <i data-lucide> 占位，补一次图标化，避免切语言后图标消失
+  if(htmlPainted)window.lucide&&lucide.createIcons();}
 // 数据域中文值（低/中/高、新增/修改/删除）是 WEIGHT/REUSE/MODIFY 的字典键，
 // 迁移的是「显示文本」：option 显式带 value=原中文值，label 走 t()，后端与计算不受影响。
 const LV={低:"low",中:"mid",高:"high",新增:"new",修改:"change",删除:"del"};
@@ -185,6 +187,11 @@ function goStepNav(s){
 let llmCfg=null;  // 配置中心当前配置（含 provider 与 llm）
 let providers={};
 let PERT_PHASES=["需求分析","系统设计","开发","实施","公共及远程","现场维护"];
+/* T01556（批次6）：阶段名是数据域值（随项目落库），迁移口径与 GEN_STAGE_KEYS 相同——
+   value 保持中文原值，显示标签经映射表走 t()，未知值原样显示。 */
+const PERT_PHASE_KEYS={"需求分析":"pert.phase.req","系统设计":"pert.phase.design","开发":"pert.phase.dev","实施":"pert.phase.impl","公共及远程":"pert.phase.common_remote","现场维护":"pert.phase.on_site"};
+function pertPhaseLabel(p){const k=PERT_PHASE_KEYS[p];
+  return (k&&__I18N&&__I18N[k])?t(k):String(p??"");}   // 字典未就绪/缺键时回退中文原值（数据即文案）
 let pertPid=null, pertItems=[], pertSummary=null;
 function goPage(p){
   document.body.dataset.page=p;
@@ -202,9 +209,10 @@ function goPage(p){
 /* ============ PERT 三点估算 ============ */
 function pertFillPhase(){
   const sel=$("#pertPhase");
-  if(sel.options.length!==PERT_PHASES.length){
-    sel.innerHTML=PERT_PHASES.map(x=>`<option>${x}</option>`).join("");
-  }
+  // T01556：原按「option 数≠阶段数」才重建——语言切换后数量不变不会重绘，标签停在旧语言。
+  // 改为每次重建（value 显式钉住中文数据值），并保留当前选中项。
+  const cur=sel.value;
+  sel.innerHTML=PERT_PHASES.map(x=>`<option value="${x}" ${x===cur?"selected":""}>${pertPhaseLabel(x)}</option>`).join("");
 }
 function pertInit(){pertFillPhase();pertLoadProjects();pertSyncStart();window.lucide&&lucide.createIcons();}
 function pertStep(s){
@@ -249,7 +257,7 @@ async function pertPickProj(){
 async function pertNew(){
   const name=$("#pertName").value.trim();if(!name){toast(t("pert.need_name"));return;}
   const r=await pertPost("/api/pert/project",{name,estimator:$("#pertEst").value.trim()});
-  if(!r.ok){toast(r.msg||t("pert.create_fail"));return;}
+  if(!r.ok){toast(r.msg?lm(r.msg):t("pert.create_fail"));return;}
   const hadStaged=pertClearStaged();
   pertPid=r.project_id;
   toast(t(hadStaged?"pert.created_staged":"pert.created"));
@@ -261,7 +269,7 @@ async function pertNew(){
 async function pertRefresh(){
   if(!pertPid)return;
   const r=await pertPost("/api/pert/list",{project_id:pertPid});
-  if(!r.ok){toast(r.msg);return;}
+  if(!r.ok){toast(lm(r.msg));return;}
   $("#pertCur").textContent=r.project.name;
   $("#pertEst").value=r.project.estimator;
   pertItems=r.items;
@@ -280,7 +288,7 @@ async function pertAdd(){
   if(!(O<=M&&M<=P)){toast(t("pert.order_hint"));return;}
   const r=await pertPost("/api/pert/item",{project_id:pertPid,phase:$("#pertPhase").value,
     desc:d,optimistic:O,most_likely:M,pessimistic:P});
-  if(!r.ok){toast(r.msg||t("pert.add_fail"));return;}
+  if(!r.ok){toast(r.msg?lm(r.msg):t("pert.add_fail"));return;}
   // 清空录入行，阶段下拉保留便于连续录入同阶段
   $("#pertD").value="";$("#pertO").value="";$("#pertM").value="";$("#pertP").value="";
   await pertRefresh();
@@ -314,7 +322,7 @@ function pertEditCell(id,field,el){
     el.dataset.v=num;el.textContent=num==null?"—":num;   // 先本地更新，避免等待期间闪烁
     const r=await pertPost("/api/pert/item",{project_id:pertPid,id,
       phase:it.phase,desc:it.desc,...tri});
-    if(r.ok){await pertRefresh();}else{el.dataset.v=old;el.textContent=old||"—";toast(r.msg||t("pert.update_fail"));}
+    if(r.ok){await pertRefresh();}else{el.dataset.v=old;el.textContent=old||"—";toast(r.msg?lm(r.msg):t("pert.update_fail"));}
   };
   inp.addEventListener("blur",commit);
   inp.addEventListener("keydown",e=>{if(e.key==="Enter")inp.blur();
@@ -328,7 +336,7 @@ function renderPert(){
     const s=has?pertSig(it.optimistic,it.pessimistic):null;
     const triCell=field=>`<td class="num" data-v="${it[field]??''}" style="cursor:pointer" title="${it[field]==null?t('pert.cell.todo'):t('pert.cell.edit')}" onclick="pertEditCell(${it.id},'${field}',this)">${it[field]==null?'—':it[field]}</td>`;
     return `<tr>
-      <td><span class="cat" style="background:var(--brand-soft);color:var(--brand-ink)">${it.phase||'开发'}</span></td>
+      <td><span class="cat" style="background:var(--brand-soft);color:var(--brand-ink)">${pertPhaseLabel(it.phase||'开发')}</span></td>
       <td><div class="desc">${it.desc}${has?'':' <span style="color:var(--danger-ink);font-size:11px">'+t('pert.row.pending')+'</span>'}</div></td>
       ${triCell('optimistic')}${triCell('most_likely')}${triCell('pessimistic')}
       <td class="num">${has?e.toFixed(2):'—'}</td><td class="num">${has?s.toFixed(2):'—'}</td>
@@ -351,7 +359,7 @@ async function pertGen(){
   const box=$("#pertBox");box.className="cfg-test wait";dynText(box,()=>t("pert.gen.wait"));
   try{
     const r=await pertPost("/api/pert/generate",{project_id:pertPid,est_date:new Date().toISOString().slice(0,10)});
-    if(!r.ok){box.className="cfg-test bad";dynText(box,()=>r.msg);return;}
+    if(!r.ok){box.className="cfg-test bad";dynText(box,()=>lm(r.msg));return;}
     box.className="cfg-test ok";
     dynText(box,()=>tf("pert.gen.done",{sid:r.sid,d:r.summary.total_days,m:r.summary.actual_person_month}));
     await downloadPert(r.sid);
@@ -423,7 +431,7 @@ async function pertStart(){
     const resp=await fetch(API+"/api/pert/import",{method:"POST",headers:{"Content-Type":"application/json"},
       body:JSON.stringify(payload)});
     const res=await resp.json();
-    if(!res.ok)throw new Error(res.msg||t("pert.an_fail"));
+    if(!res.ok)throw new Error(res.msg?lm(res.msg):t("pert.an_fail"));
     pertCands=(res.candidates||[]).map((c,i)=>({...c,seq:i+1,checked:true}));
     pertImportSource=res.source||"local";
     dynText("#pertUpName",()=>((pertFile?pertFile.name:t("pert.text"))+" · "+tf("pert.edit.count",{n:pertCands.length})));
@@ -443,7 +451,7 @@ function pertRenderCands(){
   $("#pertCandTbody").innerHTML=pertCands.map(c=>`
     <tr>
       <td style="text-align:center"><input type="checkbox" data-cb="${c.seq}" ${c.checked?'checked':''} onchange="pertCandToggle(${c.seq},this.checked)"></td>
-      <td><select data-cand-phase="${c.seq}" style="padding:4px 2px;border:1px solid var(--line);border-radius:6px;font-size:12px;background:var(--card)">${PERT_PHASES.map(ph=>`<option ${ph===c.phase?'selected':''}>${ph}</option>`).join("")}</select></td>
+      <td><select data-cand-phase="${c.seq}" style="padding:4px 2px;border:1px solid var(--line);border-radius:6px;font-size:12px;background:var(--card)">${PERT_PHASES.map(ph=>`<option value="${ph}" ${ph===c.phase?'selected':''}>${pertPhaseLabel(ph)}</option>`).join("")}</select></td>
       <td><div class="desc">${c.desc}</div></td>
       <td>${inp(c,'optimistic')}</td><td>${inp(c,'most_likely')}</td><td>${inp(c,'pessimistic')}</td>
     </tr>`).join("");
@@ -477,7 +485,7 @@ async function pertCandConfirm(){
     return {desc:c.desc,phase,system:c.system,optimistic:num(g('optimistic')),most_likely:num(g('most_likely')),pessimistic:num(g('pessimistic'))};
   });
   const r=await pertPost("/api/pert/import/confirm",{project_id:pertPid,items,replace});
-  if(!r.ok){toast(r.msg||t("pert.import_fail"));return;}
+  if(!r.ok){toast(r.msg?lm(r.msg):t("pert.import_fail"));return;}
   toast(replace?tf("pert.import.replaced",{n:r.added}):tf("pert.import.added",{n:r.added}));
   pertCandClear();
   await pertRefresh();
@@ -655,7 +663,7 @@ async function saveCtxDir(){
   try{
     const r=await fetch(API+"/api/context/config",{method:"POST",headers:{'Content-Type':'application/json'},body:JSON.stringify({context_dir:dir})});
     const res=await r.json();
-    if(!res.ok)throw new Error(res.msg||t("common.save_fail"));
+    if(!res.ok)throw new Error(res.msg?lm(res.msg):t("common.save_fail"));
     toast(t("config.ctx.saved"));
     cfgWriteSnap("ctx");cfgRefreshDraft();   // 域快照更新：其余未提交域的草稿继续保留
     // 保存后立即尝试扫描，便于看到效果
@@ -670,7 +678,7 @@ async function analyzeCtx(){
   try{
     const r=await fetch(API+"/api/context/analyze",{method:"POST",headers:{'Content-Type':'application/json'},body:JSON.stringify({context_dir:dir})});
     const res=await r.json();
-    if(!res.ok)throw new Error(res.msg||t("config.ctx.scan_fail"));
+    if(!res.ok)throw new Error(res.msg?lm(res.msg):t("config.ctx.scan_fail"));
     box.className="cfg-test ok";box.style.whiteSpace="pre-wrap";box.textContent=res.rendered;
   }catch(e){box.className="cfg-test bad";box.style.whiteSpace="pre-wrap";box.textContent=e.message;}
 }
@@ -681,20 +689,67 @@ let verLatest=null;   // 最近一次检测结果 {latest,url,notes,hasUpdate}
 // 由 verPaint() 按当前语言从字典组合后重绘；切换语言时 setLang() 会再调 verPaint()。
 let __ver={kind:'unchecked'};  // unchecked|checking|failed|netfail|found|uptodate
 let __dl=null;                 // null|start|downloading|done|failed|error|lost|installer
-// 服务端中文 msg → i18n key（后端 i18n 未迁移前的前端已知消息映射，见 T01548）
+// 服务端中文 msg → i18n key（后端 i18n 未迁移前的前端已知消息映射，T01548 建、T01556 批次6 补全）
+// 精确匹配表覆盖 scripts/server.py / scripts/history.py 的全部固定 msg；带运行时参数的
+// 模板消息走 LM_SERVER_TPL 正则（捕获组→插值），未知原文回退（渐进迁移不误伤）。
 const LM_SERVER_MSGS={
   "未配置更新源":"help.upd.msg_unconfigured",
   "已在下载中":"help.upd.msg_downloading",
   "开始下载":"help.upd.msg_dl_started",
   "更新包不存在，请先下载":"help.upd.msg_no_pkg",
-  "安装器已启动，应用将关闭并开始更新":"help.upd.msg_installer"
+  "安装器已启动，应用将关闭并开始更新":"help.upd.msg_installer",
+  "更新源数据不完整（需 version 与 url 字段）":"help.upd.msg_src_incomplete",
+  "缺少更新包地址":"help.upd.msg_no_url",
+  "历史功能不可用（存储初始化失败）":"history.srv_unavail",
+  "历史记录不存在或已被清理":"history.srv_gone",
+  "基准版本不存在或已被清理":"history.srv_base_gone",
+  "对比版本不存在或已被清理":"history.srv_cmp_gone",
+  "需提供 a 与 b 两个版本 id（/api/history/diff?a=<id>&b=<id>）":"history.srv_need_ab",
+  "规则表不可用（已回退内置识别链）":"rules.srv_unavail",
+  "rules 必须为数组":"rules.srv_not_array",
+  "费率版本表不可用":"rates.srv_unavail",
+  "文件不存在":"srv.file_missing",
+  "静态资源不存在":"srv.static_missing",
+  "未找到前端页面":"srv.page_missing",
+  "需要 token/repo/stories":"eco.srv_need_fields",
+  "母版名称非法":"eco.srv_bad_tpl_name",
+  "目录未配置或不可用":"config.srv_dir_unavail",
+  "未选择目录":"config.srv_dir_cancel",
+  "请先填写 API 地址与 Key":"config.srv_need_api",
+  "项目名称不能为空":"pert.srv_name_empty",
+  "项目名已存在":"pert.srv_name_dup",
+  "项目不存在":"pert.srv_no_proj",
+  "估算值不能为负":"pert.srv_neg",
+  "需满足 乐观 ≤ 最可能 ≤ 悲观":"pert.srv_order",
+  "乐观/最可能/悲观必须为数字":"pert.srv_numeric",
+  "功能描述不能为空":"pert.srv_desc_empty",
+  "请先新建或选择项目":"pert.srv_need_proj",
+  "请提供需求文本或上传 Word/PDF":"pert.srv_need_input",
+  "无估算项，请先录入":"pert.srv_no_items",
+  "配置中心已启用大模型辅助识别，但 API 地址 / Key 未填全，无法进行 AI 拆分；docx 已回退本地识别。":"work.srv_llm_not_configured",
+  "未能拆分出候选功能点。若为自由文本/PDF，请先在配置中心启用大模型；docx 已回退本地识别。":"work.srv_llm_no_cands"
 };
-function lm(msg){return LM_SERVER_MSGS[msg]?t(LM_SERVER_MSGS[msg]):msg;}
+// 带运行时参数的服务端消息：正则捕获 → 字典插值参数
+const LM_SERVER_TPL=[
+  [/^diff 计算失败：(.*)$/,"history.diff_calc_fail",m=>({err:m[1]})],
+  [/^存在 (\d+) 项未填三值，请先补全：(.*)$/,"pert.unfilled_triplets",m=>({n:m[1],shown:m[2]})],
+  [/^确认功能点 (\d+) 条超出合理范围（>2000），请核对后再生成。$/,"gen.over_range",m=>({n:m[1]})],
+  [/^规则校验失败：(.*)$/,"rules.validate_fail",m=>({err:m[1]})],
+  [/^费率数据非法：(.*)$/,"rates.invalid_data",m=>({err:m[1]})],
+  [/^更新源访问失败：(.*)$/,"help.upd.fetch_fail",m=>({err:m[1]})],
+  [/^打开目录选择失败[:：](.*)$/,"config.open_dir_fail",m=>({err:m[1]})],
+  [/^阶段须为[:：]/,"pert.srv_phase_invalid"]
+];
+function lm(msg){if(msg==null)return msg;
+  const k=LM_SERVER_MSGS[msg];if(k)return t(k);
+  for(const [re,kk,pick] of LM_SERVER_TPL){const m=msg.match(re);
+    if(m)return (kk==="pert.srv_phase_invalid")?t(kk):tf(kk,pick(m));}
+  return msg;}
 function verStateText(){
   const v=__ver;
   if(v.kind==='checking')return t("help.upd.checking");
   if(v.kind==='failed')return v.manual?tf("help.upd.failed_detail",{msg:lm(v.msg)})
-    :(v.msg==="未配置更新源"?t("help.upd.unconfigured"):t("help.upd.auto_failed"));
+    :(LM_SERVER_MSGS[v.msg]==="help.upd.msg_unconfigured"?t("help.upd.unconfigured"):t("help.upd.auto_failed"));
   if(v.kind==='netfail')return tf("help.upd.failed_detail",{msg:v.msg});
   if(v.kind==='found')return tf("help.upd.found",{v:v.latest});
   if(v.kind==='uptodate')return t("help.upd.uptodate");
@@ -777,7 +832,7 @@ async function doUpdate(){
   try{
     const r=await fetch(API+"/api/update/download",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({url:verLatest.url})});
     const res=await r.json();
-    if(!res.ok)throw new Error(res.msg||t("help.upd.dl_start_fail"));
+    if(!res.ok)throw new Error(res.msg?lm(res.msg):t("help.upd.dl_start_fail"));
     pollUpdateProgress();
   }catch(e){
     __dl={kind:'failed',msg:e.message};verPaint();
@@ -812,7 +867,7 @@ async function installUpdate(){
   try{
     const r=await fetch(API+"/api/update/install",{method:"POST",headers:{"Content-Type":"application/json"},body:"{}"});
     const res=await r.json();
-    if(!res.ok)throw new Error(res.msg||t("help.upd.installer_fail"));
+    if(!res.ok)throw new Error(res.msg?lm(res.msg):t("help.upd.installer_fail"));
     __dl={kind:'installer'};verPaint();
   }catch(e){toast(tf("help.upd.install_failed",{msg:lm(e.message)}));}
 }
@@ -821,7 +876,7 @@ async function saveUpdateUrl(){
   try{
     const r=await fetch(API+"/api/update/config",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({update_url:url})});
     const res=await r.json();
-    if(!res.ok)throw new Error(res.msg||t("help.upd.save_fail"));
+    if(!res.ok)throw new Error(res.msg?lm(res.msg):t("help.upd.save_fail"));
     toast(url?t("help.upd.save_ok"):t("help.upd.save_off"));
     cfgWriteSnap("upd");cfgRefreshDraft();
   }catch(e){toast(tf("help.upd.save_failed_detail",{msg:lm(e.message)}));}
@@ -837,7 +892,7 @@ async function saveCfg(){
   try{
     const r=await fetch(API+"/api/config",{method:"POST",headers:{'Content-Type':'application/json'},body:JSON.stringify(cfg)});
     const res=await r.json();
-    if(!res.ok)throw new Error(res.msg||t("common.save_fail"));
+    if(!res.ok)throw new Error(res.msg?lm(res.msg):t("common.save_fail"));
     toast(t("config.saved"));
     cfgWriteSnap("llm");cfgRefreshDraft();
   }catch(e){toast(tf("common.save_failed",{msg:e.message}));}
@@ -849,7 +904,7 @@ async function saveRecalcCfg(){
   try{
     const r=await fetch(API+"/api/config",{method:"POST",headers:{'Content-Type':'application/json'},body:JSON.stringify({recalc:{mode,timeout:tv}})});
     const res=await r.json();
-    if(!res.ok)throw new Error(res.msg||t("common.save_fail"));
+    if(!res.ok)throw new Error(res.msg?lm(res.msg):t("common.save_fail"));
     toast(tf("config.recalc.saved",{mode:t(mode==="async"?"config.recalc.bg":mode==="sync"?"config.recalc.sync_short":"config.recalc.none_short")}));
     cfgWriteSnap("rc");cfgRefreshDraft();
   }catch(e){toast(tf("common.save_failed",{msg:e.message}));}
@@ -866,7 +921,7 @@ async function testCfg(){
       dynText(box,()=>tf("config.test.ok",{s:res.elapsed_s,m:res.model,r:res.reply||t("config.test.empty")}));
     }else{
       box.className="cfg-test bad";
-      dynText(box,()=>tf("config.test.failed",{msg:res.msg}));
+      dynText(box,()=>tf("config.test.failed",{msg:lm(res.msg)}));
     }
   }catch(e){
     box.className="cfg-test bad";
@@ -881,7 +936,7 @@ async function fetchModels(){
   try{
     const r=await fetch(API+"/api/config/models",{method:"GET"});
     const res=await r.json();
-    if(!res.ok)throw new Error(res.msg||t("config.models.fail"));
+    if(!res.ok)throw new Error(res.msg?lm(res.msg):t("config.models.fail"));
     renderModels(res.models);
     box.className="cfg-test ok";
     dynText(box,()=>tf("config.models.count",{n:res.models.length,p:llmCfg.provider}));
@@ -949,7 +1004,7 @@ $("#startBtn").addEventListener("click",async ()=>{
     const resp=await fetch(API+"/api/recognize",{method:"POST",headers:{"Content-Type":"application/json"},
       body:JSON.stringify({name:curFile.name,b64:await toB64(curFile),params})});
     const res=await resp.json();
-    if(!res.ok)throw new Error(res.msg||t("work.recog_fail"));
+    if(!res.ok)throw new Error(res.msg?lm(res.msg):t("work.recog_fail"));
     items=res.items.map((it,i)=>({...it,seq:i+1,cx:it.cx||"中",ok:false,_ai:{type:it.type,reuse:it.reuse||"中",modify:it.modify||"修改"}}));
     dynText(mk,()=>tf("work.recog.done",{n:items.length})+(res.meta&&res.meta.llm_enabled_effective?t("work.recog.llm_on"):""));
     render();goStep("review");

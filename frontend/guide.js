@@ -77,6 +77,11 @@
 
   // ---------- 内部工具 ----------
   function $(s) { return document.querySelector(s); }
+  /* T01556（批次6）：引导文案 i18n。数据里的中文（title/desc/按钮）作为字典未就绪或缺键时的
+     兜底原文；绘制期通过主包暴露的全局 tl(key, fallback) 现取当前语言译文（guide.* 键）。 */
+  // 字典 key 字符集只允许小写字母/数字/下划线/点（i18n_check 拦截），而步骤 id 用连字符
+  // （work-upload），故取名时统一转下划线：guide.work_upload.t
+  function G(k, zh) { return (typeof window.tl === 'function') ? window.tl('guide.' + k.replace(/-/g, '_'), zh) : zh; }
   function add(node) { document.body.appendChild(node); }
   function stepList(menuId) {
     return GUIDE_STEPS.filter(function (s) { return s.menuId === menuId; })
@@ -153,8 +158,8 @@
     var btn = document.createElement('button');
     btn.id = 'guide-fab';
     btn.className = 'guide-fab';
-    btn.title = '操作引导';
-    btn.setAttribute('aria-label', '操作引导');   // FR-3.5：仅图标按钮 aria 补全
+    btn.title = G('fab.title', '操作引导');
+    btn.setAttribute('aria-label', G('fab.title', '操作引导'));   // FR-3.5：仅图标按钮 aria 补全
     btn.appendChild(helpIcon());
     btn.addEventListener('click', function () {
       // 帮助页常驻入口：唤起功能总览引导（介绍 4 大菜单入口）
@@ -236,16 +241,16 @@
     var s = list[idx];
     if (!s) return;
     cardEl.innerHTML =
-      '<h4>' + (s.title || '') + '</h4>' +
-      '<div class="g-desc">' + (s.desc || '') + '</div>' +
+      '<h4>' + G(s.id + '.t', s.title || '') + '</h4>' +
+      '<div class="g-desc">' + G(s.id + '.d', s.desc || '') + '</div>' +
       '<div class="g-ctrls">' +
       '<div class="g-dots">' + list.map(function (_, i) {
         return '<span class="g-dot' + (i === idx ? ' on' : '') + '"></span>';
       }).join('') + '</div>' +
-      '<button class="g-btn-ghost" data-act="auto">' + (demoAuto ? '暂停' : '自动播放') + '</button>' +
-      '<button class="g-btn-ghost" data-act="skip">跳过</button>' +
-      '<button class="g-btn-ghost" data-act="prev">后退</button>' +
-      '<button class="g-btn-primary" data-act="next">' + (idx === list.length - 1 ? '完成' : '下一步') + '</button>' +
+      '<button class="g-btn-ghost" data-act="auto">' + (demoAuto ? G('btn.pause', '暂停') : G('btn.auto', '自动播放')) + '</button>' +
+      '<button class="g-btn-ghost" data-act="skip">' + G('btn.skip', '跳过') + '</button>' +
+      '<button class="g-btn-ghost" data-act="prev">' + G('btn.back', '后退') + '</button>' +
+      '<button class="g-btn-primary" data-act="next">' + (idx === list.length - 1 ? G('btn.done', '完成') : G('btn.next', '下一步')) + '</button>' +
       '</div>';
     // 无目标元素说明文档自身未提供该选择器：仅显示文字，不高亮（不虚构目标）
     var target = s.target ? $(s.target) : null;
@@ -359,7 +364,9 @@
   // 暴露测试钩子（单元测试/联调用）
   window.WLGuide = { start: start, stop: stop, step: step, isDone: isDone,
                      steps: GUIDE_STEPS, markDone: markDone, menuOfPage: menuOfPage,
-                     startAndGo: startAndGo };
+                     startAndGo: startAndGo,
+                     // T01556：语言切换时若引导正在演示，按新语言重绘当前卡片
+                     refresh: function () { if (active) render(active.menuId, active.idx); } };
 
   hook();
 })();

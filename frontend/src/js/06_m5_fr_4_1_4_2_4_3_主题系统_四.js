@@ -1,5 +1,7 @@
 /* ===== M5/FR-4.1、4.2、4.3：主题系统（四态开关 + 主色定制） ===== */
-const BRAND_PRESETS=[["#2563EB","品牌蓝"],["#0EA5E9","青碧"],["#059669","翠绿"],["#D97706","琥珀"],["#DB2777","玫红"],["#475569","石墨"]];
+/* T01556（批次6）：预置色名加第三元 i18n key（brandPaint 绘制期取 t(key)，
+   字典未就绪时回退第二元中文，启动引导序列会二次 brandPaint 刷新） */
+const BRAND_PRESETS=[["#2563EB","品牌蓝","theme.brand.blue"],["#0EA5E9","青碧","theme.brand.cyan"],["#059669","翠绿","theme.brand.green"],["#D97706","琥珀","theme.brand.amber"],["#DB2777","玫红","theme.brand.pink"],["#475569","石墨","theme.brand.slate"]];
 function hexHSL(hex){const n=Number.parseInt(hex.slice(1),16),r=(n>>16&255)/255,g=(n>>8&255)/255,b=(n&255)/255;
   const mx=Math.max(r,g,b),mn=Math.min(r,g,b);let h=0,s=0,l=(mx+mn)/2;
   if(mx!==mn){const d=mx-mn;s=l>.5?d/(2-mx-mn):d/(mx+mn);
@@ -10,7 +12,7 @@ function hslHex(h,s,l){s/=100;l/=100;const k=n=>(n+h/30)%12,a=s*Math.min(l,1-l);
   const to=x=>Math.round(255*x).toString(16).padStart(2,'0');
   return '#'+to(f(0))+to(f(8))+to(f(4));}
 function applyBrand(hex){  // FR-4.2：主色定制（ink/soft 由 HSL 派生），一处生效
-  if(!/^#[0-9a-fA-F]{6}$/.test(hex)){toast("非法色值（需 #RRGGBB），已忽略");return false;}
+  if(!/^#[0-9a-fA-F]{6}$/.test(hex)){toast(t("theme.brand_bad_color"));return false;}
   const [h,s,l]=hexHSL(hex);
   const rs=document.documentElement.style;
   rs.setProperty('--brand',hex);

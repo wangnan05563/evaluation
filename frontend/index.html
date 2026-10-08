@@ -436,7 +436,7 @@ tr.rowr.showb .basis{display:block}
       </table>
       <div class="cfg-note" style="margin-top:12px">
         <i aria-hidden="true" data-lucide="info" style="width:14px;height:14px;vertical-align:-2px;color:var(--brand)"></i>
-        重开 = 载入该版本到「审核功能点」，修改后重新生成会自动记为下一版本；另存为 = 载入后换标题生成新记录。删除历史不影响已下载的成品表。勾选两个版本可对比差异（新增/删除/变更高亮）。
+        <span data-i18n="history.note">重开 = 载入该版本到「审核功能点」，修改后重新生成会自动记为下一版本；另存为 = 载入后换标题生成新记录。删除历史不影响已下载的成品表。勾选两个版本可对比差异（新增/删除/变更高亮）。</span>
       </div>
       <div id="histDiff" class="glass pad" style="margin-top:14px;display:none"></div>
     </div>
@@ -962,19 +962,19 @@ tr.rowr.showb .basis{display:block}
   <main class="page" id="pg-fast">
     <div class="cfg-grid">
       <div class="glass pad">
-        <div class="card-title"><i aria-hidden="true" data-lucide="zap"></i>NESMA 快速估算（FR-2.1）</div>
-        <div class="cfg-row"><span>算法</span>
+        <div class="card-title"><i aria-hidden="true" data-lucide="zap"></i><span data-i18n="ne.title">NESMA 快速估算（FR-2.1）</span></div>
+        <div class="cfg-row"><span data-i18n="ne.algorithm">算法</span>
           <span id="fastMode">
-            <button class="btn btn-ghost" data-m="est" onclick="fastMode('est')">估算法</button>
-            <button class="btn btn-ghost" data-m="pre" onclick="fastMode('pre')">预估法</button>
+            <button class="btn btn-ghost" data-m="est" onclick="fastMode('est')" data-i18n="ne.mode.est_btn">估算法</button>
+            <button class="btn btn-ghost" data-m="pre" onclick="fastMode('pre')" data-i18n="ne.mode.pre_btn">预估法</button>
           </span></div>
         <div id="fastCounts" style="display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin:12px 0"></div>
         <p class="cfg-note" id="fastFormula" style="margin-top:4px"></p>
-        <div style="margin-top:10px"><button class="btn btn-primary" onclick="fastToGb()" title="把 UFP 带入国标造价页签"><i aria-hidden="true" data-lucide="arrow-right-circle" style="width:15px;height:15px"></i>按此结果进国标造价</button></div>
+        <div style="margin-top:10px"><button class="btn btn-primary" onclick="fastToGb()" data-i18n="title=ne.togb_tip" title="把 UFP 带入国标造价页签"><i aria-hidden="true" data-lucide="arrow-right-circle" style="width:15px;height:15px"></i><span data-i18n="ne.togb_btn">按此结果进国标造价</span></button></div>
       </div>
       <div class="glass pad">
-        <div class="card-title"><i aria-hidden="true" data-lucide="landmark"></i>估算结果（国标造价口径）</div>
-        <div id="fastResult" style="font-size:13px;line-height:2">输入计数后即时计算。</div>
+        <div class="card-title"><i aria-hidden="true" data-lucide="landmark"></i><span data-i18n="ne.result_title">估算结果（国标造价口径）</span></div>
+        <div id="fastResult" style="font-size:13px;line-height:2" data-i18n="ne.input_hint">输入计数后即时计算。</div>
       </div>
     </div>
   </main>
@@ -1112,8 +1112,10 @@ function dynBind(el,fn,mode){const ex=__dyn.find(d=>d.el===el);
 function dynText(sel,fn){const el=typeof sel==="string"?$(sel):sel;if(el)dynBind(el,fn,"text");return el;}
 function dynHtml(sel,fn){const el=typeof sel==="string"?$(sel):sel;if(el)dynBind(el,fn,"html");return el;}
 function dynClear(sel){const el=typeof sel==="string"?$(sel):sel;const i=__dyn.findIndex(d=>d.el===el);if(i>=0)__dyn.splice(i,1);}
-function dynPaint(){for(const d of __dyn){if(!document.body.contains(d.el))continue;
-  const v=d.fn();if(v!=null)(d.mode==="html"?d.el.innerHTML=v:d.el.textContent=v);}}
+function dynPaint(){let htmlPainted=false;for(const d of __dyn){if(!document.body.contains(d.el))continue;
+  const v=d.fn();if(v!=null){if(d.mode==="html"){d.el.innerHTML=v;htmlPainted=true;}else d.el.textContent=v;}}
+  // T01556：html 模式重绘会重建 <i data-lucide> 占位，补一次图标化，避免切语言后图标消失
+  if(htmlPainted)window.lucide&&lucide.createIcons();}
 // 数据域中文值（低/中/高、新增/修改/删除）是 WEIGHT/REUSE/MODIFY 的字典键，
 // 迁移的是「显示文本」：option 显式带 value=原中文值，label 走 t()，后端与计算不受影响。
 const LV={低:"low",中:"mid",高:"high",新增:"new",修改:"change",删除:"del"};
@@ -1280,6 +1282,11 @@ function goStepNav(s){
 let llmCfg=null;  // 配置中心当前配置（含 provider 与 llm）
 let providers={};
 let PERT_PHASES=["需求分析","系统设计","开发","实施","公共及远程","现场维护"];
+/* T01556（批次6）：阶段名是数据域值（随项目落库），迁移口径与 GEN_STAGE_KEYS 相同——
+   value 保持中文原值，显示标签经映射表走 t()，未知值原样显示。 */
+const PERT_PHASE_KEYS={"需求分析":"pert.phase.req","系统设计":"pert.phase.design","开发":"pert.phase.dev","实施":"pert.phase.impl","公共及远程":"pert.phase.common_remote","现场维护":"pert.phase.on_site"};
+function pertPhaseLabel(p){const k=PERT_PHASE_KEYS[p];
+  return (k&&__I18N&&__I18N[k])?t(k):String(p??"");}   // 字典未就绪/缺键时回退中文原值（数据即文案）
 let pertPid=null, pertItems=[], pertSummary=null;
 function goPage(p){
   document.body.dataset.page=p;
@@ -1297,9 +1304,10 @@ function goPage(p){
 /* ============ PERT 三点估算 ============ */
 function pertFillPhase(){
   const sel=$("#pertPhase");
-  if(sel.options.length!==PERT_PHASES.length){
-    sel.innerHTML=PERT_PHASES.map(x=>`<option>${x}</option>`).join("");
-  }
+  // T01556：原按「option 数≠阶段数」才重建——语言切换后数量不变不会重绘，标签停在旧语言。
+  // 改为每次重建（value 显式钉住中文数据值），并保留当前选中项。
+  const cur=sel.value;
+  sel.innerHTML=PERT_PHASES.map(x=>`<option value="${x}" ${x===cur?"selected":""}>${pertPhaseLabel(x)}</option>`).join("");
 }
 function pertInit(){pertFillPhase();pertLoadProjects();pertSyncStart();window.lucide&&lucide.createIcons();}
 function pertStep(s){
@@ -1344,7 +1352,7 @@ async function pertPickProj(){
 async function pertNew(){
   const name=$("#pertName").value.trim();if(!name){toast(t("pert.need_name"));return;}
   const r=await pertPost("/api/pert/project",{name,estimator:$("#pertEst").value.trim()});
-  if(!r.ok){toast(r.msg||t("pert.create_fail"));return;}
+  if(!r.ok){toast(r.msg?lm(r.msg):t("pert.create_fail"));return;}
   const hadStaged=pertClearStaged();
   pertPid=r.project_id;
   toast(t(hadStaged?"pert.created_staged":"pert.created"));
@@ -1356,7 +1364,7 @@ async function pertNew(){
 async function pertRefresh(){
   if(!pertPid)return;
   const r=await pertPost("/api/pert/list",{project_id:pertPid});
-  if(!r.ok){toast(r.msg);return;}
+  if(!r.ok){toast(lm(r.msg));return;}
   $("#pertCur").textContent=r.project.name;
   $("#pertEst").value=r.project.estimator;
   pertItems=r.items;
@@ -1375,7 +1383,7 @@ async function pertAdd(){
   if(!(O<=M&&M<=P)){toast(t("pert.order_hint"));return;}
   const r=await pertPost("/api/pert/item",{project_id:pertPid,phase:$("#pertPhase").value,
     desc:d,optimistic:O,most_likely:M,pessimistic:P});
-  if(!r.ok){toast(r.msg||t("pert.add_fail"));return;}
+  if(!r.ok){toast(r.msg?lm(r.msg):t("pert.add_fail"));return;}
   // 清空录入行，阶段下拉保留便于连续录入同阶段
   $("#pertD").value="";$("#pertO").value="";$("#pertM").value="";$("#pertP").value="";
   await pertRefresh();
@@ -1409,7 +1417,7 @@ function pertEditCell(id,field,el){
     el.dataset.v=num;el.textContent=num==null?"—":num;   // 先本地更新，避免等待期间闪烁
     const r=await pertPost("/api/pert/item",{project_id:pertPid,id,
       phase:it.phase,desc:it.desc,...tri});
-    if(r.ok){await pertRefresh();}else{el.dataset.v=old;el.textContent=old||"—";toast(r.msg||t("pert.update_fail"));}
+    if(r.ok){await pertRefresh();}else{el.dataset.v=old;el.textContent=old||"—";toast(r.msg?lm(r.msg):t("pert.update_fail"));}
   };
   inp.addEventListener("blur",commit);
   inp.addEventListener("keydown",e=>{if(e.key==="Enter")inp.blur();
@@ -1423,7 +1431,7 @@ function renderPert(){
     const s=has?pertSig(it.optimistic,it.pessimistic):null;
     const triCell=field=>`<td class="num" data-v="${it[field]??''}" style="cursor:pointer" title="${it[field]==null?t('pert.cell.todo'):t('pert.cell.edit')}" onclick="pertEditCell(${it.id},'${field}',this)">${it[field]==null?'—':it[field]}</td>`;
     return `<tr>
-      <td><span class="cat" style="background:var(--brand-soft);color:var(--brand-ink)">${it.phase||'开发'}</span></td>
+      <td><span class="cat" style="background:var(--brand-soft);color:var(--brand-ink)">${pertPhaseLabel(it.phase||'开发')}</span></td>
       <td><div class="desc">${it.desc}${has?'':' <span style="color:var(--danger-ink);font-size:11px">'+t('pert.row.pending')+'</span>'}</div></td>
       ${triCell('optimistic')}${triCell('most_likely')}${triCell('pessimistic')}
       <td class="num">${has?e.toFixed(2):'—'}</td><td class="num">${has?s.toFixed(2):'—'}</td>
@@ -1446,7 +1454,7 @@ async function pertGen(){
   const box=$("#pertBox");box.className="cfg-test wait";dynText(box,()=>t("pert.gen.wait"));
   try{
     const r=await pertPost("/api/pert/generate",{project_id:pertPid,est_date:new Date().toISOString().slice(0,10)});
-    if(!r.ok){box.className="cfg-test bad";dynText(box,()=>r.msg);return;}
+    if(!r.ok){box.className="cfg-test bad";dynText(box,()=>lm(r.msg));return;}
     box.className="cfg-test ok";
     dynText(box,()=>tf("pert.gen.done",{sid:r.sid,d:r.summary.total_days,m:r.summary.actual_person_month}));
     await downloadPert(r.sid);
@@ -1518,7 +1526,7 @@ async function pertStart(){
     const resp=await fetch(API+"/api/pert/import",{method:"POST",headers:{"Content-Type":"application/json"},
       body:JSON.stringify(payload)});
     const res=await resp.json();
-    if(!res.ok)throw new Error(res.msg||t("pert.an_fail"));
+    if(!res.ok)throw new Error(res.msg?lm(res.msg):t("pert.an_fail"));
     pertCands=(res.candidates||[]).map((c,i)=>({...c,seq:i+1,checked:true}));
     pertImportSource=res.source||"local";
     dynText("#pertUpName",()=>((pertFile?pertFile.name:t("pert.text"))+" · "+tf("pert.edit.count",{n:pertCands.length})));
@@ -1538,7 +1546,7 @@ function pertRenderCands(){
   $("#pertCandTbody").innerHTML=pertCands.map(c=>`
     <tr>
       <td style="text-align:center"><input type="checkbox" data-cb="${c.seq}" ${c.checked?'checked':''} onchange="pertCandToggle(${c.seq},this.checked)"></td>
-      <td><select data-cand-phase="${c.seq}" style="padding:4px 2px;border:1px solid var(--line);border-radius:6px;font-size:12px;background:var(--card)">${PERT_PHASES.map(ph=>`<option ${ph===c.phase?'selected':''}>${ph}</option>`).join("")}</select></td>
+      <td><select data-cand-phase="${c.seq}" style="padding:4px 2px;border:1px solid var(--line);border-radius:6px;font-size:12px;background:var(--card)">${PERT_PHASES.map(ph=>`<option value="${ph}" ${ph===c.phase?'selected':''}>${pertPhaseLabel(ph)}</option>`).join("")}</select></td>
       <td><div class="desc">${c.desc}</div></td>
       <td>${inp(c,'optimistic')}</td><td>${inp(c,'most_likely')}</td><td>${inp(c,'pessimistic')}</td>
     </tr>`).join("");
@@ -1572,7 +1580,7 @@ async function pertCandConfirm(){
     return {desc:c.desc,phase,system:c.system,optimistic:num(g('optimistic')),most_likely:num(g('most_likely')),pessimistic:num(g('pessimistic'))};
   });
   const r=await pertPost("/api/pert/import/confirm",{project_id:pertPid,items,replace});
-  if(!r.ok){toast(r.msg||t("pert.import_fail"));return;}
+  if(!r.ok){toast(r.msg?lm(r.msg):t("pert.import_fail"));return;}
   toast(replace?tf("pert.import.replaced",{n:r.added}):tf("pert.import.added",{n:r.added}));
   pertCandClear();
   await pertRefresh();
@@ -1671,7 +1679,7 @@ const CFG_FIELD_HANDLERS={
   recalcMode(v){const el=$("#recalcMode");if(!el)return;
     const m=String(v||"async");if([...el.options].some(o=>o.value===m))el.value=m;},
   recalcTimeout(v){const el=$("#recalcTimeout");if(el)el.value=(v==null||v==="")?"":v;},
-  key(v){$("#llmKey").value=v||"";},
+  key(v){if(v)$("#llmKey").value=v;},   // T01574：未勾「记住」时草稿把 key 脱敏成空串，是占位而非用户清空意图；空值不得覆盖后端已存 Key，否则持久化的 Key 重开被抹掉（返显失败）
   api(v){$("#llmApi").value=v||"";},
   model(v){$("#llmModel").value=v||"";},
 };
@@ -1750,7 +1758,7 @@ async function saveCtxDir(){
   try{
     const r=await fetch(API+"/api/context/config",{method:"POST",headers:{'Content-Type':'application/json'},body:JSON.stringify({context_dir:dir})});
     const res=await r.json();
-    if(!res.ok)throw new Error(res.msg||t("common.save_fail"));
+    if(!res.ok)throw new Error(res.msg?lm(res.msg):t("common.save_fail"));
     toast(t("config.ctx.saved"));
     cfgWriteSnap("ctx");cfgRefreshDraft();   // 域快照更新：其余未提交域的草稿继续保留
     // 保存后立即尝试扫描，便于看到效果
@@ -1765,7 +1773,7 @@ async function analyzeCtx(){
   try{
     const r=await fetch(API+"/api/context/analyze",{method:"POST",headers:{'Content-Type':'application/json'},body:JSON.stringify({context_dir:dir})});
     const res=await r.json();
-    if(!res.ok)throw new Error(res.msg||t("config.ctx.scan_fail"));
+    if(!res.ok)throw new Error(res.msg?lm(res.msg):t("config.ctx.scan_fail"));
     box.className="cfg-test ok";box.style.whiteSpace="pre-wrap";box.textContent=res.rendered;
   }catch(e){box.className="cfg-test bad";box.style.whiteSpace="pre-wrap";box.textContent=e.message;}
 }
@@ -1776,20 +1784,67 @@ let verLatest=null;   // 最近一次检测结果 {latest,url,notes,hasUpdate}
 // 由 verPaint() 按当前语言从字典组合后重绘；切换语言时 setLang() 会再调 verPaint()。
 let __ver={kind:'unchecked'};  // unchecked|checking|failed|netfail|found|uptodate
 let __dl=null;                 // null|start|downloading|done|failed|error|lost|installer
-// 服务端中文 msg → i18n key（后端 i18n 未迁移前的前端已知消息映射，见 T01548）
+// 服务端中文 msg → i18n key（后端 i18n 未迁移前的前端已知消息映射，T01548 建、T01556 批次6 补全）
+// 精确匹配表覆盖 scripts/server.py / scripts/history.py 的全部固定 msg；带运行时参数的
+// 模板消息走 LM_SERVER_TPL 正则（捕获组→插值），未知原文回退（渐进迁移不误伤）。
 const LM_SERVER_MSGS={
   "未配置更新源":"help.upd.msg_unconfigured",
   "已在下载中":"help.upd.msg_downloading",
   "开始下载":"help.upd.msg_dl_started",
   "更新包不存在，请先下载":"help.upd.msg_no_pkg",
-  "安装器已启动，应用将关闭并开始更新":"help.upd.msg_installer"
+  "安装器已启动，应用将关闭并开始更新":"help.upd.msg_installer",
+  "更新源数据不完整（需 version 与 url 字段）":"help.upd.msg_src_incomplete",
+  "缺少更新包地址":"help.upd.msg_no_url",
+  "历史功能不可用（存储初始化失败）":"history.srv_unavail",
+  "历史记录不存在或已被清理":"history.srv_gone",
+  "基准版本不存在或已被清理":"history.srv_base_gone",
+  "对比版本不存在或已被清理":"history.srv_cmp_gone",
+  "需提供 a 与 b 两个版本 id（/api/history/diff?a=<id>&b=<id>）":"history.srv_need_ab",
+  "规则表不可用（已回退内置识别链）":"rules.srv_unavail",
+  "rules 必须为数组":"rules.srv_not_array",
+  "费率版本表不可用":"rates.srv_unavail",
+  "文件不存在":"srv.file_missing",
+  "静态资源不存在":"srv.static_missing",
+  "未找到前端页面":"srv.page_missing",
+  "需要 token/repo/stories":"eco.srv_need_fields",
+  "母版名称非法":"eco.srv_bad_tpl_name",
+  "目录未配置或不可用":"config.srv_dir_unavail",
+  "未选择目录":"config.srv_dir_cancel",
+  "请先填写 API 地址与 Key":"config.srv_need_api",
+  "项目名称不能为空":"pert.srv_name_empty",
+  "项目名已存在":"pert.srv_name_dup",
+  "项目不存在":"pert.srv_no_proj",
+  "估算值不能为负":"pert.srv_neg",
+  "需满足 乐观 ≤ 最可能 ≤ 悲观":"pert.srv_order",
+  "乐观/最可能/悲观必须为数字":"pert.srv_numeric",
+  "功能描述不能为空":"pert.srv_desc_empty",
+  "请先新建或选择项目":"pert.srv_need_proj",
+  "请提供需求文本或上传 Word/PDF":"pert.srv_need_input",
+  "无估算项，请先录入":"pert.srv_no_items",
+  "配置中心已启用大模型辅助识别，但 API 地址 / Key 未填全，无法进行 AI 拆分；docx 已回退本地识别。":"work.srv_llm_not_configured",
+  "未能拆分出候选功能点。若为自由文本/PDF，请先在配置中心启用大模型；docx 已回退本地识别。":"work.srv_llm_no_cands"
 };
-function lm(msg){return LM_SERVER_MSGS[msg]?t(LM_SERVER_MSGS[msg]):msg;}
+// 带运行时参数的服务端消息：正则捕获 → 字典插值参数
+const LM_SERVER_TPL=[
+  [/^diff 计算失败：(.*)$/,"history.diff_calc_fail",m=>({err:m[1]})],
+  [/^存在 (\d+) 项未填三值，请先补全：(.*)$/,"pert.unfilled_triplets",m=>({n:m[1],shown:m[2]})],
+  [/^确认功能点 (\d+) 条超出合理范围（>2000），请核对后再生成。$/,"gen.over_range",m=>({n:m[1]})],
+  [/^规则校验失败：(.*)$/,"rules.validate_fail",m=>({err:m[1]})],
+  [/^费率数据非法：(.*)$/,"rates.invalid_data",m=>({err:m[1]})],
+  [/^更新源访问失败：(.*)$/,"help.upd.fetch_fail",m=>({err:m[1]})],
+  [/^打开目录选择失败[:：](.*)$/,"config.open_dir_fail",m=>({err:m[1]})],
+  [/^阶段须为[:：]/,"pert.srv_phase_invalid"]
+];
+function lm(msg){if(msg==null)return msg;
+  const k=LM_SERVER_MSGS[msg];if(k)return t(k);
+  for(const [re,kk,pick] of LM_SERVER_TPL){const m=msg.match(re);
+    if(m)return (kk==="pert.srv_phase_invalid")?t(kk):tf(kk,pick(m));}
+  return msg;}
 function verStateText(){
   const v=__ver;
   if(v.kind==='checking')return t("help.upd.checking");
   if(v.kind==='failed')return v.manual?tf("help.upd.failed_detail",{msg:lm(v.msg)})
-    :(v.msg==="未配置更新源"?t("help.upd.unconfigured"):t("help.upd.auto_failed"));
+    :(LM_SERVER_MSGS[v.msg]==="help.upd.msg_unconfigured"?t("help.upd.unconfigured"):t("help.upd.auto_failed"));
   if(v.kind==='netfail')return tf("help.upd.failed_detail",{msg:v.msg});
   if(v.kind==='found')return tf("help.upd.found",{v:v.latest});
   if(v.kind==='uptodate')return t("help.upd.uptodate");
@@ -1872,7 +1927,7 @@ async function doUpdate(){
   try{
     const r=await fetch(API+"/api/update/download",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({url:verLatest.url})});
     const res=await r.json();
-    if(!res.ok)throw new Error(res.msg||t("help.upd.dl_start_fail"));
+    if(!res.ok)throw new Error(res.msg?lm(res.msg):t("help.upd.dl_start_fail"));
     pollUpdateProgress();
   }catch(e){
     __dl={kind:'failed',msg:e.message};verPaint();
@@ -1907,7 +1962,7 @@ async function installUpdate(){
   try{
     const r=await fetch(API+"/api/update/install",{method:"POST",headers:{"Content-Type":"application/json"},body:"{}"});
     const res=await r.json();
-    if(!res.ok)throw new Error(res.msg||t("help.upd.installer_fail"));
+    if(!res.ok)throw new Error(res.msg?lm(res.msg):t("help.upd.installer_fail"));
     __dl={kind:'installer'};verPaint();
   }catch(e){toast(tf("help.upd.install_failed",{msg:lm(e.message)}));}
 }
@@ -1916,7 +1971,7 @@ async function saveUpdateUrl(){
   try{
     const r=await fetch(API+"/api/update/config",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({update_url:url})});
     const res=await r.json();
-    if(!res.ok)throw new Error(res.msg||t("help.upd.save_fail"));
+    if(!res.ok)throw new Error(res.msg?lm(res.msg):t("help.upd.save_fail"));
     toast(url?t("help.upd.save_ok"):t("help.upd.save_off"));
     cfgWriteSnap("upd");cfgRefreshDraft();
   }catch(e){toast(tf("help.upd.save_failed_detail",{msg:lm(e.message)}));}
@@ -1932,7 +1987,7 @@ async function saveCfg(){
   try{
     const r=await fetch(API+"/api/config",{method:"POST",headers:{'Content-Type':'application/json'},body:JSON.stringify(cfg)});
     const res=await r.json();
-    if(!res.ok)throw new Error(res.msg||t("common.save_fail"));
+    if(!res.ok)throw new Error(res.msg?lm(res.msg):t("common.save_fail"));
     toast(t("config.saved"));
     cfgWriteSnap("llm");cfgRefreshDraft();
   }catch(e){toast(tf("common.save_failed",{msg:e.message}));}
@@ -1944,7 +1999,7 @@ async function saveRecalcCfg(){
   try{
     const r=await fetch(API+"/api/config",{method:"POST",headers:{'Content-Type':'application/json'},body:JSON.stringify({recalc:{mode,timeout:tv}})});
     const res=await r.json();
-    if(!res.ok)throw new Error(res.msg||t("common.save_fail"));
+    if(!res.ok)throw new Error(res.msg?lm(res.msg):t("common.save_fail"));
     toast(tf("config.recalc.saved",{mode:t(mode==="async"?"config.recalc.bg":mode==="sync"?"config.recalc.sync_short":"config.recalc.none_short")}));
     cfgWriteSnap("rc");cfgRefreshDraft();
   }catch(e){toast(tf("common.save_failed",{msg:e.message}));}
@@ -1961,7 +2016,7 @@ async function testCfg(){
       dynText(box,()=>tf("config.test.ok",{s:res.elapsed_s,m:res.model,r:res.reply||t("config.test.empty")}));
     }else{
       box.className="cfg-test bad";
-      dynText(box,()=>tf("config.test.failed",{msg:res.msg}));
+      dynText(box,()=>tf("config.test.failed",{msg:lm(res.msg)}));
     }
   }catch(e){
     box.className="cfg-test bad";
@@ -1976,7 +2031,7 @@ async function fetchModels(){
   try{
     const r=await fetch(API+"/api/config/models",{method:"GET"});
     const res=await r.json();
-    if(!res.ok)throw new Error(res.msg||t("config.models.fail"));
+    if(!res.ok)throw new Error(res.msg?lm(res.msg):t("config.models.fail"));
     renderModels(res.models);
     box.className="cfg-test ok";
     dynText(box,()=>tf("config.models.count",{n:res.models.length,p:llmCfg.provider}));
@@ -2044,7 +2099,7 @@ $("#startBtn").addEventListener("click",async ()=>{
     const resp=await fetch(API+"/api/recognize",{method:"POST",headers:{"Content-Type":"application/json"},
       body:JSON.stringify({name:curFile.name,b64:await toB64(curFile),params})});
     const res=await resp.json();
-    if(!res.ok)throw new Error(res.msg||t("work.recog_fail"));
+    if(!res.ok)throw new Error(res.msg?lm(res.msg):t("work.recog_fail"));
     items=res.items.map((it,i)=>({...it,seq:i+1,cx:it.cx||"中",ok:false,_ai:{type:it.type,reuse:it.reuse||"中",modify:it.modify||"修改"}}));
     dynText(mk,()=>tf("work.recog.done",{n:items.length})+(res.meta&&res.meta.llm_enabled_effective?t("work.recog.llm_on"):""));
     render();goStep("review");
@@ -2055,6 +2110,53 @@ $("#startBtn").addEventListener("click",async ()=>{
 
 /* ===== T00927：确认无误 → 生成进度条（后台真实阶段 + 轮询） ===== */
 let genPollTimer=null;
+/* T01556（批次6）：进度条/补算状态文案 key 化。
+   驻留 DOM 的文本走 dyn 注册表：只存「当前状态（key+参数）」，绘制函数每次求值现取 t()，
+   切语言 dynPaint 自动重绘；瞬时 toast 点击时求值、消失即弃，无需注册。 */
+let genStageCur={k:"gen.stage.generating",raw:"正在生成…"};   // 进度条当前阶段（genStageNorm 归一后的对象）
+function genStageText(){
+  const g=genStageCur;
+  let base=g.k==null?g.raw
+    :g.n!=null?tf(g.k,{n:g.n})
+    :g.s!=null?tf(g.k,{s:g.s})
+    :g.params!=null?tf(g.k,g.params)
+    :t(g.k);
+  return g.p==null?base:tf("gen.stage_elapsed",{stage:base,s:g.p});
+}
+/* T01556（批次6）：服务端中文阶段 → 字典 key 映射（与 01_core lm() 同思路的过渡层）。
+   未知阶段原样显示（渐进迁移不误伤）；带插值的两条用正则提取参数。 */
+const GEN_STAGE_KEYS={
+  "正在排布系统与明细行…":"gen.stage.layout",
+  "正在载入母版并扩容明细区…":"gen.stage.master",
+  "正在保存成品表…":"gen.stage.save",
+  "正在处理母版公式缓存（Excel 重算）…":"gen.stage.excel_prep",
+  "母版公式重算完成，正在收尾…":"gen.stage.recalc_done",
+  "已跳过 Excel 重算，正在收尾…":"gen.stage.recalc_skip",
+  "成品表已生成；母版公式缓存在后台补算，正在收尾…":"gen.stage.async_tail",
+  "正在启动 Excel 进程…":"gen.stage.excel_start",
+  "正在打开成品表…":"gen.stage.excel_open",
+  "正在重算母版公式…":"gen.stage.excel_recalc",
+  "正在写回计算结果并关闭 Excel…":"gen.stage.excel_writeback",
+  "正在校验并整理候选清单…":"gen.stage.validate",
+  "正在生成成品表（填充母版明细）…":"gen.stage.fill",
+  "正在汇总评估结果…":"gen.stage.summarize",
+  "正在生成…":"gen.stage.generating",
+  "正在提交生成请求…":"gen.stage.submit",
+  "生成完成":"gen.done",
+  "生成完成（公式缓存后台补算中）":"gen.done_async",
+  "生成完成，正在跳转结果…":"gen.finish",
+  "生成完成（公式缓存后台补算中），正在跳转结果…":"gen.finish_async",
+};
+/* 把服务端/本模块的中文阶段归一为 {k, p/n, raw}：k 命中字典 key；raw 为兜底原文 */
+function genStageNorm(s){
+  if(s&&typeof s==="object")return s;
+  const raw=String(s??"");
+  let m;
+  if((m=raw.match(/^正在写入 (\d+) 条功能点明细…$/)))return {k:"gen.stage.write",n:+m[1],raw};
+  if((m=raw.match(/^Excel 重算超时（>(\d+)s），已跳过；母版公式将由 Excel 打开时自动重算$/)))return {k:"gen.stage.excel_timeout",s:m[2],raw};
+  if(GEN_STAGE_KEYS[raw])return {k:GEN_STAGE_KEYS[raw],raw};
+  return {k:null,raw};
+}
 function genProgPaint(pct,stage,isErr){
   const box=$("#genProg");if(!box)return;
   const p=Math.max(0,Math.min(100,Math.round(pct)));
@@ -2062,7 +2164,8 @@ function genProgPaint(pct,stage,isErr){
   box.setAttribute("aria-valuenow",String(p));
   $("#genProgFill").style.width=p+"%";
   $("#genProgPct").textContent=p+"%";
-  if(stage)$("#genProgTxt").textContent=stage;
+  if(stage!=null)genStageCur=genStageNorm(stage);   // 传入结构化阶段（字符串自动归一）
+  dynText("#genProgTxt",genStageText);
 }
 function genProgHide(){const box=$("#genProg");if(box)box.classList.remove("on","err");}
 // 生成超时兜底（需求「异常兜底」项）：超过该时长仍未返回则中止等待并恢复按钮，
@@ -2084,13 +2187,15 @@ function progressPoller(t0){
       this.painted=false;
       if(!(j&&j.ok&&j.progress))return;
       this.got=true;
-      const p=+j.progress.pct||0, stage=j.progress.stage||"正在生成…";
+      const p=+j.progress.pct||0, stage=genStageNorm(j.progress.stage||"正在生成…");
+      const sigK=stage.k||stage.raw;
       if(p<this.last)return;                       // 乱序/回退进度：忽略本次
-      if(p!==this.last||stage!==this.lastStage){this.lastChange=Date.now();this.lastStage=stage;}
+      if(p!==this.last||sigK!==this.lastStage){this.lastChange=Date.now();this.lastStage=sigK;}
       this.last=p;
       const hold=Date.now()-this.lastChange;
-      const txt=(hold>2000)?(stage+"（本阶段已用时 "+(hold/1000).toFixed(1)+"s）"):stage;
-      if(txt!==this.shown){this.shown=txt;paint(p,txt);this.painted=true;}
+      if(hold>2000)stage.p=+(hold/1000).toFixed(1);   // 同阶段停留超 2s：追加真实已用时（不伪造百分比）
+      const sig=sigK+"|"+(stage.p==null?"":stage.p);
+      if(sig!==this.shown){this.shown=sig;paint(p,stage);this.painted=true;}
     },
   };
 }
@@ -2117,7 +2222,7 @@ function beginGenProgress(){
     // 服务端无进度记录（旧实例/接口不可用）：按耗时推进并停在 92%，不伪装真实阶段
     if(!P.got){
       const est=Math.min(92,Math.round((Date.now()-t0)/250));
-      if(est>P.last){P.last=est;genProgPaint(est,"正在生成成品表…已用时 "+((Date.now()-t0)/1000).toFixed(1)+"s");}
+      if(est>P.last){P.last=est;genProgPaint(est,{k:"gen.stage.fill",raw:"正在生成成品表…",p:+((Date.now()-t0)/1000).toFixed(1)});}
     }
   };
   genPollTimer=setInterval(tick,300);tick();
@@ -2133,25 +2238,23 @@ function beginGenProgress(){
     fail(msg){
       P.settled=true;
       if(genPollTimer){clearInterval(genPollTimer);genPollTimer=null;}
-      genProgPaint(100,"生成失败："+msg,true);
+      genProgPaint(100,{k:"gen.fail_detail",params:{msg},raw:"生成失败："+msg},true);
       setTimeout(genProgHide,2800);              // 失败文案保留片刻后收起，避免长期占位
     }
   };
 }
 // ===== T00963：结果页展示公式缓存补算状态（补算中 / 已写回 / 已跳过 / 失败） =====
 let recalcPollTimer=null;
-const RECALC_TXT={
-  written:"母版公式缓存：已写回 ✓ 当前文件在 WPS / 预览器中也能直接看到数值",
-  skipped:"母版公式缓存：已跳过（Excel 打开成品表时会自动重算，数值不受影响）",
-  failed:"母版公式缓存：后台补算失败（成品表数据不受影响，可稍后重试生成）"
-};
+/* T01556（批次6）：补算状态文案 key 化 + 驻留 DOM 走 dyn 注册表（切语言经 recalcStateK 重算重绘） */
+const RECALC_KEYS={written:"gen.recalc.written",skipped:"gen.recalc.skipped",failed:"gen.recalc.failed"};
+let recalcStateK="gen.recalc.running";
 function showRecalcState(mode,job){
   const el=$("#recalcState");
   if(recalcPollTimer){clearInterval(recalcPollTimer);recalcPollTimer=null;}
   if(!el)return;
-  if(mode==="sync"){el.style.display="block";el.textContent="母版公式缓存：生成时已同步写回";return;}
-  if(mode!=="async"){el.style.display="block";el.textContent="母版公式缓存：未重算（Excel 打开时会自动重算）";return;}
-  el.style.display="block";el.textContent="母版公式缓存：后台补算中…";
+  if(mode==="sync"){el.style.display="block";recalcStateK="gen.recalc.sync";dynText(el,()=>t(recalcStateK));return;}
+  if(mode!=="async"){el.style.display="block";recalcStateK="gen.recalc.none";dynText(el,()=>t(recalcStateK));return;}
+  el.style.display="block";recalcStateK="gen.recalc.running";dynText(el,()=>t(recalcStateK));
   const t0=Date.now();
   recalcPollTimer=setInterval(async ()=>{
     if(document.body.dataset.step!=="result"){        // 离开结果页即停止轮询
@@ -2162,11 +2265,11 @@ function showRecalcState(mode,job){
       const r=await fetch(API+"/api/generate/progress?job="+encodeURIComponent(job),{cache:"no-store"});
       const j=await r.json();
       const st=j&&j.ok&&j.progress&&j.progress.recalc;
-      if(st&&RECALC_TXT[st]){
-        el.textContent=RECALC_TXT[st];
+      if(st&&RECALC_KEYS[st]){
+        recalcStateK=RECALC_KEYS[st];dynPaint();
         if(recalcPollTimer){clearInterval(recalcPollTimer);recalcPollTimer=null;}
       }else if(Date.now()-t0>180000){                 // 长时间未到终态：停止轮询，保留进行中提示
-        el.textContent="母版公式缓存：后台补算仍在进行（完成后会自动替换文件）";
+        recalcStateK="gen.recalc.still";dynPaint();
         if(recalcPollTimer){clearInterval(recalcPollTimer);recalcPollTimer=null;}
       }
     }catch(e){/* 状态轮询失败不打断 */}
@@ -2190,12 +2293,12 @@ function buildGeneratePayload(job){
 }
 function genErrorMessage(err){
   if(err&&err.name==="AbortError")
-    return "生成超时（超过 "+Math.round(genTimeoutMs()/1000)+"s），请检查后台服务或 Excel 是否被弹窗阻塞";
+    return tf("gen.timeout",{s:Math.round(genTimeoutMs()/1000)});
   return err.message;
 }
 $("#goRes").addEventListener("click",async ()=>{
   const pending=items.filter(x=>!x.ok).length;
-  if(pending>0){toast(`尚有 ${pending} 项未确认，请逐项勾选后再生成`);return;}  // 未全确认给反馈，避免静默无反应
+  if(pending>0){toast(tf("gen.pending_confirm",{n:pending}));return;}  // 未全确认给反馈，避免静默无反应
   const btn=$("#goRes");btn.disabled=true;
   const prog=beginGenProgress();
   const ctl=new AbortController();
@@ -2204,7 +2307,8 @@ $("#goRes").addEventListener("click",async ()=>{
     const resp=await fetch(API+"/api/generate",{method:"POST",headers:{"Content-Type":"application/json"},signal:ctl.signal,
       body:JSON.stringify(buildGeneratePayload(prog.job))});
     const res=await resp.json();
-    if(!res.ok)throw new Error(res.msg||"生成失败");
+    // 服务端 msg 经 lm() 映射；缺 msg 时用字典兜底（不直写中文，防英文态漏中文）
+    if(!res.ok)throw new Error(res.msg?lm(res.msg):t("gen.fail"));
     gSummary=res.summary;gSid=res.sid;$("#dlName").textContent=gSid;
     if(res.history_id)localStorage.setItem("wl_last_history",res.history_id);   // FR-1.8 会话恢复锚点
     const asyncCalc=res.recalc==="async";   // T00931：公式缓存改为后台补算，结果已可下载
@@ -2218,14 +2322,17 @@ $("#goRes").addEventListener("click",async ()=>{
     clearTimeout(guard);btn.disabled=false;
   }
 });
+function sysListHTML(){  // T01556：分系统明细抽出为纯函数，注册进 dyn 后可随语言重绘
+  const sys={};const ok=items.filter(x=>x.ok).length?items.filter(x=>x.ok):items;
+  ok.forEach(x=>sys[x.system]=(sys[x.system]||0)+us(x));
+  return Object.entries(sys).map(([k,v])=>`<div class="sysli"><div class="bico"><i aria-hidden="true" data-lucide="building-2"></i></div><div><b>${k}</b><small>${tf("result.n_fp",{n:items.filter(x=>x.system===k).length})}</small></div><div class="v"><b>${v.toFixed(2)}</b><small>US</small></div></div>`).join("");
+}
 function buildResult(){
   const s=gSummary||{ufp:0,adjusted_fp:0,work:{mid:0},cost:{mid:0}};
   $("#rFp").textContent=s.ufp;$("#rScale").textContent=s.adjusted_fp;
   $("#rWork").textContent=Math.round(s.work.mid);$("#rWorkL").textContent=s.work.low;$("#rWorkM").textContent=s.work.mid;$("#rWorkH").textContent=s.work.high;
   $("#rCost").textContent=s.cost.mid;$("#rCostL").textContent=s.cost.low;$("#rCostM").textContent=s.cost.mid;$("#rCostH").textContent=s.cost.high;
-  const sys={};const ok=items.filter(x=>x.ok).length?items.filter(x=>x.ok):items;
-  ok.forEach(x=>sys[x.system]=(sys[x.system]||0)+us(x));
-  $("#sysList").innerHTML=Object.entries(sys).map(([k,v])=>`<div class="sysli"><div class="bico"><i aria-hidden="true" data-lucide="building-2"></i></div><div><b>${k}</b><small>${items.filter(x=>x.system===k).length} 个功能点</small></div><div class="v"><b>${v.toFixed(2)}</b><small>US</small></div></div>`).join("");
+  dynHtml("#sysList",sysListHTML);
   window.lucide&&lucide.createIcons();
   refreshCharts();   // M2/FR-1.2：图表与明细联动（dispose 旧实例后重建）
 }
@@ -2242,21 +2349,23 @@ function refreshCharts(){
   const sys={};ok.forEach(x=>sys[x.system]=(sys[x.system]||0)+us(x));
   let sysArr=Object.entries(sys).map(([k,v])=>({name:k,us:+v.toFixed(2)})).sort((a,b)=>b.us-a.us);
   if(sysArr.length>15){const rest=+sysArr.slice(14).reduce((s,x)=>s+x.us,0).toFixed(2);
-    sysArr=sysArr.slice(0,14);sysArr.push({name:"其他",us:rest});}
+    sysArr=sysArr.slice(0,14);sysArr.push({name:t("result.chart_other"),us:rest});}
   const th=chartTheme();
+  // T01556：图表随 setLang→refreshCharts 重建，绘制期文案一律现取 t()；
+  // tooltip 的 {b}/{c}/{d} 是 ECharts 占位符，字典值原样保留（t 不插值）。
   const opts={
-    c1:{tooltip:{trigger:"item",formatter:"{b}: {c} 条（{d}%）",backgroundColor:th.tipBg,borderColor:th.grid,textStyle:{color:th.tipInk}},legend:{bottom:0,textStyle:{color:th.tipInk}},
+    c1:{tooltip:{trigger:"item",formatter:t("result.chart_tip_item"),backgroundColor:th.tipBg,borderColor:th.grid,textStyle:{color:th.tipInk}},legend:{bottom:0,textStyle:{color:th.tipInk}},
         series:[{type:"pie",radius:["35%","65%"],data:Object.entries(byType).map(([k,v])=>({name:k,value:v})),
                  label:{formatter:"{b}\n{c}"}}]},
     c2:{tooltip:{backgroundColor:th.tipBg,borderColor:th.grid,textStyle:{color:th.tipInk}},grid:{left:44,right:16,top:20,bottom:24},
-        xAxis:{type:"category",data:Object.keys(byReuse)},yAxis:{type:"value",minInterval:1},
+        xAxis:{type:"category",data:Object.keys(byReuse).map(k=>t("common.lv."+LV[k]))},yAxis:{type:"value",minInterval:1},
         series:[{type:"bar",barWidth:"45%",data:Object.values(byReuse),itemStyle:{color:th.brand}}]},
     c3:{tooltip:{backgroundColor:th.tipBg,borderColor:th.grid,textStyle:{color:th.tipInk}},grid:{left:90,right:30,top:10,bottom:24},
         xAxis:{type:"value"},yAxis:{type:"category",inverse:true,data:sysArr.map(x=>x.name)},
         series:[{type:"bar",barWidth:"55%",data:sysArr.map(x=>x.us),itemStyle:{color:th.brand},
                  label:{show:true,position:"right",formatter:"{c} US"}}]},
     c4:{tooltip:{backgroundColor:th.tipBg,borderColor:th.grid,textStyle:{color:th.tipInk}},grid:{left:60,right:30,top:24,bottom:24},
-        xAxis:{type:"category",data:["下限","中值","上限"]},yAxis:{type:"value"},
+        xAxis:{type:"category",data:[t("result.kpi.low"),t("result.kpi.mid"),t("result.kpi.high")]},yAxis:{type:"value"},
         series:[{type:"bar",barWidth:"40%",data:[gSummary?gSummary.work.low:0,gSummary?gSummary.work.mid:0,gSummary?gSummary.work.high:0],
                  itemStyle:{color:th.brand},label:{show:true,position:"top"}}]}};
   ["c1","c2","c3","c4"].forEach(id=>{
@@ -2272,7 +2381,7 @@ function refreshCharts(){
 }
 function chartsFallback(){  // echarts 缺失（离线极端场景）：数字表格降级
   ["c1","c2","c3","c4"].forEach(id=>{const el=document.getElementById(id);if(!el)return;
-    el.innerHTML='<small style="color:var(--muted)">图表组件未加载，请查看导出的 CSV/摘要获取数据。</small>';});
+    el.innerHTML=`<small style="color:var(--muted)">${t("result.chart_fallback")}</small>`;});
 }
 window.addEventListener("resize",()=>Object.values(_charts).forEach(c=>c.resize()));
 function baseName(){return (gSid||"工作量评估").replace("-工作量评估.xlsx","").replace(/\.xlsx$/,"");}
@@ -2286,8 +2395,8 @@ function expCsvStr(){  // FR-1.3：全字段 CSV（BOM 由调用方加）
     .map(v=>`"${String(v??"").replaceAll('"','""')}"`).join(","));
   return head+"\n"+rows.join("\n");
 }
-function expCsv(){if(!items.length){toast("暂无明细可导出");return;}
-  _dl(baseName()+"-功能点明细.csv","\uFEFF"+expCsvStr(),"text/csv;charset=utf-8");toast("功能点明细 CSV 已导出");}
+function expCsv(){if(!items.length){toast(t("result.export.no_items"));return;}
+  _dl(baseName()+"-功能点明细.csv","\uFEFF"+expCsvStr(),"text/csv;charset=utf-8");toast(t("result.export.csv_done"));}
 function expMdStr(){  // FR-1.3：Markdown 摘要
   if(!gSummary)return "";
   const s=gSummary,now=new Date().toLocaleString("zh-CN");
@@ -2312,20 +2421,20 @@ function expMdStr(){  // FR-1.3：Markdown 摘要
 `;}
 return md;
 }
-function expMd(){if(!gSummary){toast("暂无汇总可导出");return;}
+function expMd(){if(!gSummary){toast(t("result.export.no_summary"));return;}
   const md=expMdStr();
   _dl(baseName()+"-摘要.md",md,"text/markdown;charset=utf-8");
-  if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(md).then(()=>toast("摘要已导出并复制到剪贴板")).catch(()=>toast("摘要已导出"));}
-  else toast("摘要已导出");}
+  if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(md).then(()=>toast(t("result.export.md_clip"))).catch(()=>toast(t("result.export.md_done")));}
+  else toast(t("result.export.md_done"));}
 function expPdf(){  // FR-1.3：打印管线（用户在系统对话框选“另存为 PDF”）；canvas 打印可能空白，先转 <img>
-  if(!items.length){toast("暂无明细");return;}
+  if(!items.length){toast(t("result.export.no_items"));return;}
   const snaps=[];
   Object.entries(_charts).forEach(([id,ch])=>{const el=document.getElementById(id);if(!el)return;
     snaps.push([el,el.innerHTML]);
     el.innerHTML=`<img src="${ch.getDataURL({pixelRatio:2})}" style="width:100%">`;});
   const done=()=>{snaps.forEach(([el,h])=>{el.innerHTML=h;});window.removeEventListener("afterprint",done);};
   window.addEventListener("afterprint",done);
-  toast("打印对话框已打开：目标选择“另存为 PDF”");
+  toast(t("result.export.print_tip"));
   setTimeout(()=>window.print(),300);
 }
 
@@ -2385,8 +2494,16 @@ document.addEventListener("DOMContentLoaded",()=>{foldApply();rAnchorWatch();});
 
 
 /* ===== M6/FR-2.1、2.2、2.3、2.7：NESMA 快算 + GB/T 36964 国标造价 ===== */
+/* T01556（批次6）：本模块动态文案全量 key 化。
+   - 数据域中文值（GB_CF 阶段键、swf/rdf 领域名、费率版本名、system 名）保持原值进属性/参数，
+     仅显示文本走 t()/tf()；未知数据值原样显示。
+   - 驻留 DOM（快算结果/造价因子/输出区）注册进 dyn 注册表，切语言 dynPaint 同步重绘
+     （绘制函数依赖 __rates 缓存，加载后恒可用）。 */
 const NESMA_PRE={ILF:35,EIF:15},NESMA_EST={ILF:7,EIF:5,EI:4,EO:5,EQ:4};
 const GB_CF={预算:1.7,立项:1.45,招标:1.25,需求:1.1,设计:1};
+// 阶段显示名 → 字典 key（值为数据，标签才翻译）
+const GB_STAGE_KEYS={预算:"gb.stage.budget",立项:"gb.stage.kickoff",招标:"gb.stage.tender",需求:"gb.stage.req",设计:"gb.stage.design"};
+const gbStageLabel=s=>GB_STAGE_KEYS[s]?t(GB_STAGE_KEYS[s]):s;
 let fastModeV="est",gbUfpSrc=null,gbState=null,__rates=null;
 async function ratesGet(force){  // FR-2.3：费率版本（缓存 + 强刷）
   if(!__rates||force) __rates=await(await fetch(API+"/api/rates",{cache:"no-store"})).json();
@@ -2400,37 +2517,50 @@ function fastRender(){
   const box=document.getElementById("fastCounts");
   const keys=fastModeV==="pre"?["ILF","EIF"]:["ILF","EIF","EI","EO","EQ"];
   const prev={};box.querySelectorAll("input").forEach(i=>prev[i.dataset.k]=i.value);
-  box.innerHTML=keys.map(k=>`<label style="font-size:12px;color:var(--muted)">${k} 计数<input data-k="${k}" type="number" min="0" value="${prev[k]||0}" style="width:100%;margin-top:4px"></label>`).join("");
+  box.innerHTML=keys.map(k=>`<label style="font-size:12px;color:var(--muted)">${tf("ne.count_label",{k})}<input data-k="${k}" type="number" min="0" value="${prev[k]||0}" style="width:100%;margin-top:4px"></label>`).join("");
   box.querySelectorAll("input").forEach(i=>i.addEventListener("input",fastCalc));
-  document.getElementById("fastFormula").textContent=fastModeV==="pre"
-    ?"预估法：UFP = 35×ILF + 15×EIF —— 出处：GB/T 42588-2023 / NESMA 2.1（适合立项/招投标无明细阶段）"
-    :"估算法：UFP = 7×ILF+5×EIF+4×EI+5×EO+4×EQ —— 出处：GB/T 42588-2023 / NESMA 2.1";
+  document.getElementById("fastFormula").textContent=fastModeV==="pre"?t("ne.formula.pre"):t("ne.formula.est");
   document.querySelectorAll("#fastMode .btn").forEach(b=>{const on=b.dataset.m===fastModeV;
     b.style.borderColor=on?"var(--brand)":"var(--line)";b.style.color=on?"var(--brand)":"var(--ink-2)";});
+  // 结果区驻留 DOM：注册 dyn 后切语言即按新语言重算重绘
+  dynHtml("#fastResult",fastResultHTML);
   fastCalc();}
-async function fastCalc(){
+function fastCurCounts(){
   const box=document.getElementById("fastCounts");const counts={};
+  if(!box)return counts;
   box.querySelectorAll("input").forEach(i=>{if(+i.value>0)counts[i.dataset.k]=+i.value;});
+  return counts;}
+function fastResultHTML(){  // 同步绘制：费率走 __rates 缓存（fastCalc 已先行加载）
+  if(!__rates)return t("ne.input_hint");
+  const counts=fastCurCounts();
   const table=fastModeV==="pre"?NESMA_PRE:NESMA_EST;
   const ufp=Object.entries(counts).reduce((acc,[k,v])=>acc+(table[k]||0)*v,0);
-  const r=await ratesGet();
+  const r=ratesCur();
   const S=ufp*GB_CF["需求"], ae=r.pdr*S, fee=Math.round(ae/174*r.rate+r.dnhc);
-  document.getElementById("fastResult").innerHTML=
-    `UFP = <b>${ufp}</b> FP（${fastModeV==="pre"?"预估法":"估算法"}）<br>`+
-    `S = UFP×GSC×CF = ${S}（GSC=1.0，阶段=需求 CF=${GB_CF["需求"]}）<br>`+
-    `AE = PDR×S×SWF×RDF = ${ae} 人时 ≈ ${(ae/174).toFixed(2)} 人月<br>`+
-    `费用 = AE/174×费率 + DNHC = <b>${fee}</b> 元（基准版本：${r.name}）<br>`+
-    `<small>出处：GB/T 36964-2018 · ${r.source}</small>`;
   window.__fastUfp=ufp;
+  const method=fastModeV==="pre"?t("ne.mode.pre"):t("ne.mode.est");
   const locPerFp= +(localStorage.getItem("wl_loc_fp")||46);   // FR-1.9：语言换算系数（可配）
   const cc=cocomo_ii(ufp*locPerFp/1000);
   const pertRef=Math.round(r.pdr*ufp*GB_CF["需求"]/174*30);   // FR-1.9：UFP→PERT 三点参考（中值，±20% 带宽）
-  document.getElementById("fastResult").innerHTML+=
-    `<br><small>COCOMO II 参考（KLOC=${(ufp*locPerFp/1000).toFixed(1)}，1FP≈${locPerFp}LOC 可配）：PM=${cc.pm} 人月 · TDEV=${cc.tdev} 月 —— 出处：COCOMO II 2000</small>`+
-    `<br><small>PERT 三点参考（FR-1.9 互导）：乐观 ${Math.round(pertRef*0.8)} / 最可能 ${pertRef} / 悲观 ${Math.round(pertRef*1.2)} 人天</small>`;}
+  return tf("ne.res_ufp",{ufp,method})+"<br>"+
+    tf("ne.res_s",{S,stage:gbStageLabel("需求"),cf:GB_CF["需求"]})+"<br>"+
+    tf("ne.res_ae",{ae,pm:(ae/174).toFixed(2)})+"<br>"+
+    tf("ne.res_fee",{fee,ver:r.name})+"<br>"+
+    `<small>${tf("ne.res_src",{src:r.source})}</small>`+
+    `<br><small>${tf("ne.res_cocomo",{kloc:(ufp*locPerFp/1000).toFixed(1),loc:locPerFp,pm:cc.pm,tdev:cc.tdev})}</small>`+
+    `<br><small>${tf("ne.res_pert",{o:Math.round(pertRef*0.8),m:pertRef,p:Math.round(pertRef*1.2)})}</small>`;}
+function ratesCur(){  // 同步版 ratesGet（依赖 __rates 缓存；dyn 绘制函数不可异步）
+  const name=__rates.selected||Object.keys(__rates.versions||{})[0];
+  const v=(__rates.versions||{})[name]||{};
+  return {name,v,pdr:+v.pdr||6.96,rate:+v.rate||28000,dnhc:+v.dnhc||0,source:v.source||"CSBMK 基准",swf:v.swf||{},rdf:v.rdf||{}};}
+async function fastCalc(){
+  if(!__rates)await ratesGet();
+  const el=document.getElementById("fastResult");
+  if(el){const v=fastResultHTML();if(v!=null)el.innerHTML=v;}   // 即时重算（dyn 注册负责后续语言切换）
+}
 function fastToGb(){  // FE01→FE02 串联：快算结果带入国标造价
   if(items.length){goStep("result");gbTab("gb");gbRender();}
-  else{gbUfpSrc={kind:"fast",v:window.__fastUfp||0};toast("快算 UFP 已记录；完成详细估算后将在结果页并排对照");}}
+  else{gbUfpSrc={kind:"fast",v:window.__fastUfp||0};toast(t("ne.togb_toast"));}}
 /* FR-2.2/2.7：国标造价页签 */
 function gbTab(which){
   const vr=document.querySelector("#v-result");
@@ -2439,44 +2569,47 @@ function gbTab(which){
   document.getElementById("tabSum").style.fontWeight=which==="sum"?"700":"500";
   document.getElementById("tabGb").style.fontWeight=which==="gb"?"700":"500";
   if(which==="gb")gbRender();}
-async function gbRender(){
-  const r=await ratesGet(true);
-  document.getElementById("gbRatesVer").innerHTML=`基准版本：<select id="gbVerSel" style="max-width:130px;font-size:12px" onchange="gbVerChange()">${Object.keys(__rates.versions||{}).map(n=>"<option"+(n===(__rates.selected||"")?" selected":"")+">"+n+"</option>").join("")}</select>`;
-  const oldSel=document.getElementById("gbVerSel");if(oldSel&&oldSel.value!==r.name){oldSel.value=r.name;}
-  document.getElementById("gbSource").textContent=r.source;
+function gbFactorsHTML(){  // 因子表单（同步绘制；dyn 注册后可随语言重绘）
+  const r=ratesCur();
   if(!gbState)gbState={stage:"招标",domain:"金融",app:"后台核心",lang:"Java",team:"一般",gsc:1,custom:{}};
   const domains=Object.keys(r.swf),langs=Object.keys(r.rdf);
   const apps=Object.keys(r.swf[gbState.domain]||{"后台核心":1});
   const teams=Object.keys(r.rdf[gbState.lang]||{"一般":1});
   const ufp=gSummary?gSummary.ufp:(gbUfpSrc?gbUfpSrc.v:0);
-  const ufTag=gSummary?"详细功能点法":(gbUfpSrc?"NESMA 快算":"手动输入");
-  const f=document.getElementById("gbFactors");
+  const ufTag=gSummary?t("gb.src_detail"):(gbUfpSrc?t("gb.src_fast"):t("gb.src_manual"));
   const opt=(o,val)=>"<option"+(o===val?" selected":"")+">"+o+"</option>";
+  const stageOpt=o=>"<option"+(o===gbState.stage?" selected":"")+">"+gbStageLabel(o)+"</option>";
   const sel=(id,opts,val)=>`<select id="${id}" onchange="gbChange()">${opts.map(o=>opt(o,val)).join("")}</select>`;
   const num=(id,val)=>`<input id="${id}" type="number" step="0.01" value="${val}" style="width:100%" onchange="gbChange()">`;
-  const ck=(k,label,base)=>`<input type="checkbox" id="gb${k[0].toUpperCase()+k.slice(1)}Ck" ${gbState.custom[k]!==undefined?"checked":""} onchange="gbToggle('${k}')">自定义（基准 ${base}）`;
-  f.innerHTML=`
-    <label style="font-size:12px;color:var(--muted)">UFP 来源（${ufTag}）<input id="gbUfpIn" type="number" value="${ufp}" style="width:100%;margin-top:4px" onchange="gbChange()"></label>
-    <label style="font-size:12px;color:var(--muted)">估算阶段（FR-2.7）${sel("gbStage",Object.keys(GB_CF),gbState.stage)}</label>
-    <label style="font-size:12px;color:var(--muted)">GSC 全局调整 ${gbState.custom.gsc!==undefined?num("gbGsc",gbState.custom.gsc):sel("gbGscSel",["1.0"],String(gbState.gsc))} ${ck("gsc","GSC","1.0")}</label>
-    <label style="font-size:12px;color:var(--muted)">业务领域 ${sel("gbDomain",domains,gbState.domain)}</label>
-    <label style="font-size:12px;color:var(--muted)">应用类型 ${sel("gbApp",apps,gbState.app)}</label>
-    <label style="font-size:12px;color:var(--muted)">SWF ${gbState.custom.swf!==undefined?num("gbSwf",gbState.custom.swf):""} ${ck("swf","SWF",(+gbEvalSwf(r)).toFixed(2))}</label>
-    <label style="font-size:12px;color:var(--muted)">开发语言 ${sel("gbLang",langs,gbState.lang)}</label>
-    <label style="font-size:12px;color:var(--muted)">团队背景 ${sel("gbTeam",teams,gbState.team)}</label>
-    <label style="font-size:12px;color:var(--muted)">RDF ${gbState.custom.rdf!==undefined?num("gbRdf",gbState.custom.rdf):""} ${ck("rdf","RDF",(+gbEvalRdf(r)).toFixed(2))}</label>
-    <label style="font-size:12px;color:var(--muted)">PDR（${r.name}）${gbState.custom.pdr!==undefined?num("gbPdr",gbState.custom.pdr):""} ${ck("pdr","PDR",r.pdr)}</label>
-    <label style="font-size:12px;color:var(--muted)">人月费率（${r.name}）${gbState.custom.rate!==undefined?num("gbRate",gbState.custom.rate):""} ${ck("rate","费率",r.rate)}</label>
-    <label style="font-size:12px;color:var(--muted)">DNHC 直接非人力成本（元）${num("gbDnhc",gbState.custom.dnhc!==undefined?gbState.custom.dnhc:0)}</label>`;
-  gbCalc(r);}
+  const ck=(k,base)=>`<input type="checkbox" id="gb${k[0].toUpperCase()+k.slice(1)}Ck" ${gbState.custom[k]!==undefined?"checked":""} onchange="gbToggle('${k}')">${t("gb.custom",{base})}`;
+  const lb=(key,inner)=>`<label style="font-size:12px;color:var(--muted)">${key}${inner}</label>`;
+  return lb(tf("gb.ufp_src",{tag:ufTag}),`<input id="gbUfpIn" type="number" value="${ufp}" style="width:100%;margin-top:4px" onchange="gbChange()">`)+
+    lb(t("gb.stage"),`<select id="gbStage" onchange="gbChange()">${Object.keys(GB_CF).map(stageOpt).join("")}</select>`)+
+    lb(t("gb.gsc"),(gbState.custom.gsc!==undefined?num("gbGsc",gbState.custom.gsc):sel("gbGscSel",["1.0"],String(gbState.gsc)))+ck("gsc","1.0"))+
+    lb(t("gb.domain"),sel("gbDomain",domains,gbState.domain))+
+    lb(t("gb.app"),sel("gbApp",apps,gbState.app))+
+    lb(tf("gb.swf",{swf:(+gbEvalSwf(r)).toFixed(2)}),(gbState.custom.swf!==undefined?num("gbSwf",gbState.custom.swf):"")+ck("swf",""+(+gbEvalSwf(r)).toFixed(2)))+
+    lb(t("gb.lang"),sel("gbLang",langs,gbState.lang))+
+    lb(t("gb.team"),sel("gbTeam",teams,gbState.team))+
+    lb(tf("gb.rdf",{rdf:(+gbEvalRdf(r)).toFixed(2)}),(gbState.custom.rdf!==undefined?num("gbRdf",gbState.custom.rdf):"")+ck("rdf",""+(+gbEvalRdf(r)).toFixed(2)))+
+    lb(tf("gb.pdr",{ver:r.name}),(gbState.custom.pdr!==undefined?num("gbPdr",gbState.custom.pdr):"")+ck("pdr",r.pdr))+
+    lb(tf("gb.rate",{ver:r.name}),(gbState.custom.rate!==undefined?num("gbRate",gbState.custom.rate):"")+ck("rate",r.rate))+
+    lb(t("gb.dnhc"),num("gbDnhc",gbState.custom.dnhc!==undefined?gbState.custom.dnhc:0));}
+async function gbRender(){
+  const r=await ratesGet(true);
+  dynHtml("#gbRatesVer",()=>t("gb.ver_label")+`<select id="gbVerSel" style="max-width:130px;font-size:12px" onchange="gbVerChange()">${Object.keys(__rates.versions||{}).map(n=>"<option"+(n===(__rates.selected||"")?" selected":"")+">"+n+"</option>").join("")}</select>`);
+  const oldSel=document.getElementById("gbVerSel");if(oldSel&&oldSel.value!==r.name){oldSel.value=r.name;}
+  dynHtml("#gbFactors",gbFactorsHTML);
+  dynHtml("#gbOut",gbOutHTML);
+  gbCalc(ratesCur());}
 function gbVerSelSet(name){const sel=document.getElementById("gbVerSel");
   if(!sel){const _r=gbRender;gbRender=async()=>{await _r();const s2=document.getElementById("gbVerSel");if(s2){s2.value=name;s2.dispatchEvent(new Event('change'));}gbRender=_r;};gbRender();return;}
   sel.value=name;sel.dispatchEvent(new Event('change'));}
 async function gbVerChange(){  // FR-2.3：结果页切换基准版本（服务端持久化 selected，估算记录在结果中）
   const doc=structuredClone(__rates);doc.selected=document.getElementById("gbVerSel").value;
   const r=await(await fetch(API+"/api/rates/save",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(doc)})).json();
-  if(!r.ok){toast("版本切换失败："+r.msg);return;}
-  __rates=null;gbState=null;gbRender();toast(`已选用 ${document.getElementById("gbVerSel").value} 基准版本（v${r.version.version}）`);}
+  if(!r.ok){toast(t("gb.ver_fail")+"："+lm(r.msg));return;}
+  __rates=null;gbState=null;gbRender();toast(tf("gb.ver_selected",{name:document.getElementById("gbVerSel").value,v:r.version.version}));}
 function gbEvalSwf(r){return ((r.swf[gbState.domain]||{})[gbState.app])||1;}
 function gbEvalRdf(r){return ((r.rdf[gbState.lang]||{})[gbState.team])||1;}
 function gbChange(){
@@ -2497,7 +2630,8 @@ function gbToggle(k){
               rdf:((ver.rdf||{})[gbState.lang]||{})[gbState.team],
               pdr:+ver.pdr,rate:+ver.rate,gsc:gbState.gsc,cf:GB_CF[gbState.stage]}[k];
   gbState.custom[k]=base;gbRender();}
-function gbCalc(r){  // 实时联动：S/AE/费用 + 出处 + 人工调整标注
+function gbVals(r){  // 生效值（自定义优先）——gbOutHTML/gbCalc 共用，口径一致
+  const g=id=>{const el=document.getElementById(id);return el?(+el.value||0):0;};
   const ufp= +(document.getElementById("gbUfpIn")?.value||0);
   const cf=GB_CF[gbState.stage]||1;
   const gsc=gbState.custom.gsc!==undefined?+gbState.custom.gsc:gbState.gsc;
@@ -2507,18 +2641,24 @@ function gbCalc(r){  // 实时联动：S/AE/费用 + 出处 + 人工调整标注
   const rate=gbState.custom.rate!==undefined?+gbState.custom.rate:r.rate;
   const dnhc= +(document.getElementById("gbDnhc")?.value||0);
   const S=ufp*gsc*cf, ae=pdr*S*swf*rdf, fee=Math.round(ae/174*rate+dnhc);
-  const tag=k=>gbState.custom[k]!==undefined?' <span class="mark" style="padding:1px 6px">人工调整</span>':"";
-  gbState.out={ufp,stage:gbState.stage,cf,gsc,swf,rdf,pdr,rate,dnhc,S,ae,fee};
-  document.getElementById("gbOut").innerHTML=
-    `S = UFP(${ufp}) × GSC(${gsc}${tag("gsc")}) × CF(${gbState.stage}=${cf}) = <b>${S}</b><br>`+
-    `AE = PDR(${pdr}${tag("pdr")}) × S × SWF(${swf}${tag("swf")}) × RDF(${rdf}${tag("rdf")}) = <b>${ae}</b> 人时 ≈ <b>${(ae/174).toFixed(2)}</b> 人月<br>`+
-    `费用 = AE/174 × 费率(${rate}${tag("rate")}) + DNHC(${dnhc}) = <b>${fee} 元</b>（≈ ${(fee/10000).toFixed(2)} 万元）<br>`+
-    `<small>本测算基于 ${gbState.stage} 阶段，CF=${cf} —— 出处：GB/T 36964-2018 · ${r.source}</small>`;}
+  return {ufp,cf,gsc,swf,rdf,pdr,rate,dnhc,S,ae,fee,g};}
+function gbOutHTML(){  // 同步输出区（dyn 注册用）
+  if(!__rates||!gbState)return "";
+  const r=ratesCur(),o=gbVals(r);
+  const tag=k=>gbState.custom[k]!==undefined?' <span class="mark" style="padding:1px 6px">'+t("result.gb.manual_adjust")+'</span>':"";
+  gbState.out={ufp:o.ufp,stage:gbState.stage,cf:o.cf,gsc:o.gsc,swf:o.swf,rdf:o.rdf,pdr:o.pdr,rate:o.rate,dnhc:o.dnhc,S:o.S,ae:o.ae,fee:o.fee};
+  return tf("gb.out_s",{ufp:o.ufp,gsc:o.gsc+tag("gsc"),stage:gbStageLabel(gbState.stage),cf:o.cf,S:o.S})+"<br>"+
+    tf("gb.out_ae",{pdr:o.pdr+tag("pdr"),swf:o.swf+tag("swf"),rdf:o.rdf+tag("rdf"),ae:o.ae,pm:(o.ae/174).toFixed(2)})+"<br>"+
+    tf("gb.out_fee",{rate:o.rate+tag("rate"),dnhc:o.dnhc,fee:o.fee,w:(o.fee/10000).toFixed(2)})+"<br>"+
+    `<small>${tf("gb.out_note",{stage:gbStageLabel(gbState.stage),cf:o.cf,src:r.source})}</small>`;}
+function gbCalc(r){  // 实时联动：S/AE/费用 + 出处 + 人工调整标注
+  const el=document.getElementById("gbOut");if(!el)return;
+  const v=gbOutHTML();if(v!=null)el.innerHTML=v;}
 /* FR-2.3：费率与基准卡片（多版本增删改查） */
 async function ratesLoad(){
   if(!document.getElementById("ratesSel"))return;
   const r=await ratesGet(true);
-  document.getElementById("ratesVer").textContent=`v${__rates.version} · ${Object.keys(__rates.versions).length} 套`;
+  document.getElementById("ratesVer").textContent=tf("rates.ver_count",{v:__rates.version,n:Object.keys(__rates.versions).length});
   const sel=document.getElementById("ratesSel");
   sel.innerHTML=Object.keys(__rates.versions).map(n=>`<option ${n===(__rates.selected||r.name)?"selected":""}>${n}</option>`).join("");
   ratesPaint(r.name,r.v);}
@@ -2537,25 +2677,25 @@ function ratesCollect(){const name=document.getElementById("ratesSel").value;
 async function ratesSave(){try{
   const r=await(await fetch(API+"/api/rates/save",{method:"POST",headers:{"Content-Type":"application/json"},
     body:JSON.stringify(ratesCollect())})).json();
-  if(!r.ok)throw new Error(r.msg||"保存失败");
-  __rates=null;await ratesLoad();toast(`费率版本已保存（v${r.version.version}），估算时选用即记录`);
-}catch(e){toast("保存失败："+e.message);}}
-async function ratesAdd(){const name=prompt("新版本名称（如 CSBMK-2025）：");if(!name||!name.trim())return;
+  if(!r.ok)throw new Error(r.msg?lm(r.msg):t("common.save_fail"));
+  __rates=null;await ratesLoad();toast(tf("rates.saved",{v:r.version.version}));
+}catch(e){toast(tf("common.save_failed",{msg:e.message}));}}
+async function ratesAdd(){const name=prompt(t("rates.prompt_add"));if(!name||!name.trim())return;
   const doc=ratesCollect();doc.versions[name.trim()]=structuredClone(doc.versions[doc.selected]||{pdr:6.96,rate:28000});
   doc.selected=name.trim();
   const r=await(await fetch(API+"/api/rates/save",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(doc)})).json();
-  if(!r.ok){toast("新增失败："+r.msg);return;}__rates=null;await ratesLoad();toast("已新增版本");}
+  if(!r.ok){toast(t("rates.add_fail")+"："+lm(r.msg));return;}__rates=null;await ratesLoad();toast(t("rates.added"));}
 async function ratesDel(){const name=document.getElementById("ratesSel").value;
-  if(Object.keys(__rates.versions).length<=1){toast("至少保留一个版本");return;}
-  if(!confirm(`确定删除版本 ${name}？`))return;
+  if(Object.keys(__rates.versions).length<=1){toast(t("rates.del_last"));return;}
+  if(!confirm(tf("rates.del_confirm",{name})))return;
   const doc=ratesCollect();delete doc.versions[name];doc.selected=Object.keys(doc.versions)[0];
   const r=await(await fetch(API+"/api/rates/save",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(doc)})).json();
-  if(!r.ok){toast("删除失败："+r.msg);return;}__rates=null;await ratesLoad();toast("已删除版本");}
-
-
+  if(!r.ok){toast(t("rates.del_fail")+"："+lm(r.msg));return;}__rates=null;await ratesLoad();toast(t("rates.deleted"));}
 
 /* ===== M5/FR-4.1、4.2、4.3：主题系统（四态开关 + 主色定制） ===== */
-const BRAND_PRESETS=[["#2563EB","品牌蓝"],["#0EA5E9","青碧"],["#059669","翠绿"],["#D97706","琥珀"],["#DB2777","玫红"],["#475569","石墨"]];
+/* T01556（批次6）：预置色名加第三元 i18n key（brandPaint 绘制期取 t(key)，
+   字典未就绪时回退第二元中文，启动引导序列会二次 brandPaint 刷新） */
+const BRAND_PRESETS=[["#2563EB","品牌蓝","theme.brand.blue"],["#0EA5E9","青碧","theme.brand.cyan"],["#059669","翠绿","theme.brand.green"],["#D97706","琥珀","theme.brand.amber"],["#DB2777","玫红","theme.brand.pink"],["#475569","石墨","theme.brand.slate"]];
 function hexHSL(hex){const n=Number.parseInt(hex.slice(1),16),r=(n>>16&255)/255,g=(n>>8&255)/255,b=(n&255)/255;
   const mx=Math.max(r,g,b),mn=Math.min(r,g,b);let h=0,s=0,l=(mx+mn)/2;
   if(mx!==mn){const d=mx-mn;s=l>.5?d/(2-mx-mn):d/(mx+mn);
@@ -2566,7 +2706,7 @@ function hslHex(h,s,l){s/=100;l/=100;const k=n=>(n+h/30)%12,a=s*Math.min(l,1-l);
   const to=x=>Math.round(255*x).toString(16).padStart(2,'0');
   return '#'+to(f(0))+to(f(8))+to(f(4));}
 function applyBrand(hex){  // FR-4.2：主色定制（ink/soft 由 HSL 派生），一处生效
-  if(!/^#[0-9a-fA-F]{6}$/.test(hex)){toast("非法色值（需 #RRGGBB），已忽略");return false;}
+  if(!/^#[0-9a-fA-F]{6}$/.test(hex)){toast(t("theme.brand_bad_color"));return false;}
   const [h,s,l]=hexHSL(hex);
   const rs=document.documentElement.style;
   rs.setProperty('--brand',hex);
@@ -2590,17 +2730,19 @@ applyTheme.brand=function(hex){if(applyBrand(hex)){localStorage.setItem('wl_bran
 
 
 /* ===== M3/FR-1.4、1.5、1.7、2.9：批量操作 / 粘贴导入 / 驳回流 / 规则维护 ===== */
+/* T01556（批次6）：本模块动态文案 key 化。表单可编辑区（规则表行内输入）为数据+编辑态，
+   绘制期现取 t()；纯展示驻留区（驳回徽标/规则元信息）注册 dyn 随语言重绘。 */
 function batchApply(){  // FR-1.4：对筛选出的可见行批量设置
   const ops=[["bReuse","reuse"],["bModify","modify"],["bCx","cx"]].filter(([id])=>$("#"+id).value);
-  if(!ops.length){toast("请先选择要批量设置的属性");return;}
+  if(!ops.length){toast(t("batch.need_attr"));return;}
   const arr=visibleItems();let n=0;
   arr.forEach(it=>{ops.forEach(([id,k])=>{const v=$("#"+id).value;recordRej(it,k,it[k],v);it[k]=v;});n++;});
-  render();saveFormState();toast(`已批量更新 ${n} 行`);}
-function batchConfirm(){const arr=visibleItems();arr.forEach(it=>it.ok=true);render();saveFormState();toast(`已确认 ${arr.length} 行`);}
+  render();saveFormState();toast(tf("batch.updated",{n}));}
+function batchConfirm(){const arr=visibleItems();arr.forEach(it=>it.ok=true);render();saveFormState();toast(tf("batch.confirmed",{n:arr.length}));}
 function batchDelete(){const arr=visibleItems();if(!arr.length)return;
-  if(!confirm(`确定删除筛选出的 ${arr.length} 行功能点？此操作不可恢复（其余行 seq 保持不变）。`))return;
+  if(!confirm(tf("batch.del_confirm",{n:arr.length})))return;
   const del=new Set(arr.map(x=>x.seq));items=items.filter(x=>!del.has(x.seq));
-  render();saveFormState();toast(`已删除 ${arr.length} 行`);}
+  render();saveFormState();toast(tf("batch.deleted",{n:arr.length}));}
 /* FR-1.5：AI 建议采纳/驳回（驳回偏离 _ai 才记录，供 FR-2.9 沉淀） */
 let rejQueue=[];
 function recordRej(it,field,from,to){if(!it||from===to)return;
@@ -2609,31 +2751,36 @@ function recordRej(it,field,from,to){if(!it||from===to)return;
   if(rejQueue.some(r=>r.seq===it.seq&&r.field===field))return;
   rejQueue.push({seq:it.seq,field,from:ai,to:String(to),reason:""});updateRejBadge();}
 function updateRejBadge(){const b=document.getElementById("rejBadge");
-  if(b)b.textContent=rejQueue.length?`驳回 ${rejQueue.length} 条`:"";}
+  if(b)dynText(b,()=>rejQueue.length?tf("batch.rej_badge",{n:rejQueue.length}):"");}
 function settleRules(){  // FR-2.9：驳回流沉淀为识别规则
-  if(!rejQueue.length){toast("暂无驳回记录");return;}
-  const kw=prompt("为驳回样本沉淀识别规则：输入触发关键词（正则片段，多个用 | 分隔）","");
+  if(!rejQueue.length){toast(t("batch.no_rej"));return;}
+  const kw=prompt(t("batch.rule_prompt"),"");
   if(!kw||!kw.trim())return;
   fetch(API+"/api/rules").then(r=>r.json()).then(j=>{
     const rules=j.rules||[];
-    rules.push({id:"R-FB-"+Date.now().toString(36),name:"驳回流沉淀",scope:"desc",
+    rules.push({id:"R-FB-"+Date.now().toString(36),name:t("batch.rule_name"),scope:"desc",
       patterns:[kw.trim()],exclude:[],type:rejQueue[0].to||"EI",
       priority:999,enabled:true,source:"feedback"});   // 用户修正优先于内置通用规则
     return fetch(API+"/api/rules/save",{method:"POST",headers:{"Content-Type":"application/json"},
       body:JSON.stringify({rules})});
   }).then(r=>r.json()).then(j=>{
-    if(!j.ok)throw new Error(j.msg||"保存失败");
-    toast(`规则已沉淀（v${j.version.rules_version}），下次识别生效`);
+    if(!j.ok)throw new Error(j.msg?lm(j.msg):t("common.save_fail"));
+    toast(tf("batch.rule_saved",{v:j.version.rules_version}));
     rejQueue=[];updateRejBadge();
-  }).catch(e=>toast("沉淀失败："+e.message));}
+  }).catch(e=>toast(tf("batch.rule_fail",{msg:e.message})));}
 /* FR-1.4：粘贴导入（Excel TSV / CSV） */
 let pasteRows=[];
+/* 预览文案驻留浮层直到点「追加」：注册 dyn，随语言切换重算（只存行数，绘制期现取 t()） */
+function pastePreviewHTML(){
+  return pasteRows.length?tf("batch.paste_preview",{n:pasteRows.length}):"";
+}
 function pasteOpen(){const m=$("#pasteModal");m.style.display="flex";
+  dynClear("#pastePreview");   // 注销上次预览注册，避免切语言时重绘出已清空的旧文案
   $("#pasteText").value="";$("#pastePreview").textContent="";$("#pasteApplyBtn").disabled=true;}
 function pasteClose(){$("#pasteModal").style.display="none";}
 function pasteParse(){
   const txt=$("#pasteText").value.trim();
-  if(!txt){toast("请先粘贴内容");return;}
+  if(!txt){toast(t("batch.paste_empty"));return;}
   const lines=txt.split(/\r?\n/).filter(l=>l.trim());
   const sep=lines[0].includes("\t")?"\t":",";
   let rows=lines.map(l=>l.split(sep).map(c=>c.replaceAll(/(^")|("$)/g,"").trim()));
@@ -2643,14 +2790,15 @@ function pasteParse(){
     type:["EI","EO","EQ","ILF","EIF"].includes(r[4])?r[4]:"EI",
     reuse:["高","中","低"].includes(r[5])?r[5]:"中",
     modify:["新增","修改","删除"].includes(r[6])?r[6]:"修改"}));
-  $("#pastePreview").textContent=`解析出 ${pasteRows.length} 行（类型/重用度/修改类型不符合枚举的已回退默认值），确认后追加到复核清单`;
+  dynText("#pastePreview",pastePreviewHTML);   // dynText 绑定时即绘制一次
   $("#pasteApplyBtn").disabled=!pasteRows.length;
-  toast(`解析出 ${pasteRows.length} 行`);}
+  toast(tf("batch.paste_parsed",{n:pasteRows.length}));}
 function pasteApply(){
   let seq=items.length?Math.max(...items.map(x=>x.seq)):0;
   pasteRows.forEach(r=>{seq+=1;items.push({...r,seq,cx:"中",ok:false,_ai:{type:r.type,reuse:r.reuse,modify:r.modify}});});
   const n=pasteRows.length;pasteClose();render();saveFormState();
-  toast(`已追加 ${n} 行到复核清单`);}
+  dynClear("#pastePreview");
+  toast(tf("batch.paste_applied",{n}));}
 /* FR-1.7：全局快捷键（应用内 keydown；输入控件聚焦时让位） */
 /* T01501（S3776）：全局键盘监听把「Esc 关浮层 / 输入框让行 / Ctrl+F 搜索 / 上下移动
    / Enter 勾选 / Space 展开依据」六类语义塞在一个处理器里，且每类都带前置守卫，
@@ -2710,10 +2858,13 @@ function themeSegPaint(){const m=localStorage.getItem('wl_theme_mode')||'light';
     b.style.borderColor=on?'var(--brand)':'var(--line)';b.style.color=on?'var(--brand)':'var(--ink-2)';
     b.style.fontWeight=on?'700':'500';});}
 function setBrand(v){applyTheme.brand(v);brandPaint();}
-function brandPaint(){const cur=localStorage.getItem('wl_brand')||'#2563EB';
-  const wrap=document.getElementById('brandPresets');if(!wrap)return;
-  wrap.innerHTML=BRAND_PRESETS.map(([hex,name])=>`<button title="${name}" onclick="setBrand('${hex}')"
-    style="width:24px;height:24px;border-radius:50%;border:2px solid ${hex===cur?'var(--ink)':'transparent'};background:${hex};cursor:pointer"></button>`).join('');
+function brandPresetsHTML(){const cur=localStorage.getItem('wl_brand')||'#2563EB';
+  return BRAND_PRESETS.map(([hex,name,key])=>{const lab=(key&&__I18N&&__I18N[key])?t(key):name;
+    return `<button title="${escAttr(lab)}" onclick="setBrand('${hex}')"
+    style="width:24px;height:24px;border-radius:50%;border:2px solid ${hex===cur?'var(--ink)':'transparent'};background:${hex};cursor:pointer"></button>`;}).join('');}
+function brandPaint(){  // dyn 注册：预置色名（title/aria）随 setLang 重绘，避免切语言后停留在旧语言
+  dynHtml('#brandPresets',brandPresetsHTML);
+  const cur=localStorage.getItem('wl_brand')||'#2563EB';
   const inp=document.getElementById('brandCustom');if(inp)inp.value=cur;
   const pick=document.getElementById('brandPick');if(pick)pick.value=cur;}
 window.addEventListener('DOMContentLoaded',()=>{themeSegPaint();brandPaint();langSegPaint();});
@@ -2730,27 +2881,29 @@ function langSegPaint(){
 /* M8/FR-5.4、5.6：诊断包与数据导出导入 */
 async function diagExport(){try{
   const r=await(await fetch(API+"/api/diag")).json();
-  if(!r.ok)throw new Error(r.msg||"导出失败");
-  toast("诊断包已生成："+r.file.split("/").pop()+"（数据目录 diag/ 下）");
-}catch(e){toast("诊断包导出失败："+e.message);}}
+  if(!r.ok)throw new Error(r.msg?lm(r.msg):t("common.export_fail"));
+  toast(tf("diag.done",{f:r.file.split("/").pop()}));
+}catch(e){toast(tf("diag.fail",{msg:e.message}));}}
 async function dataExport(){try{
   const r=await(await fetch(API+"/api/data/export")).json();
-  if(!r.ok)throw new Error(r.msg||"导出失败");
-  toast("全部数据已导出（"+(r.files||[]).length+" 个文件），位于数据目录 exports/ 下");
-}catch(e){toast("数据导出失败："+e.message);}}
+  if(!r.ok)throw new Error(r.msg?lm(r.msg):t("common.export_fail"));
+  toast(tf("data.export_done",{n:(r.files||[]).length}));
+}catch(e){toast(tf("data.export_fail",{msg:e.message}));}}
 async function dataImport(inp){const f=inp.files&&inp.files[0];if(!f)return;
   const buf=await f.arrayBuffer();
   const r=await(await fetch(API+"/api/data/import",{method:"POST",headers:{"Content-Type":"application/octet-stream"},body:buf})).json();
-  toast(r.ok?("导入完成（"+(r.files||[]).length+" 个文件），已自动备份旧数据"):("导入失败："+(r.msg||"")));
+  toast(r.ok?tf("data.import_done",{n:(r.files||[]).length}):tf("data.import_fail",{msg:r.msg?lm(r.msg):t("common.import_fail")}));
   inp.value="";}
 
-/* FR-2.9：配置中心「识别规则」维护页 */
+/* FR-2.9：配置中心「识别规则」维护页。
+   行内输入是编辑态（不注册 dyn，避免重绘摧毁未保存修改）；setLang 链在配置页会重调用
+   rulesLoad 整表重绘，故绘制期现取 t() 即可随语言更新。 */
 function rulesLoad(){
   // FR-UI04：取数前铺骨架屏（8 列表头较宽，缺骨架会出现明显空窗）
   $("#rulesRows").innerHTML=skeletonTable(8,4);
   fetch(API+"/api/rules",{cache:"no-store"}).then(r=>r.json()).then(j=>{
-  if(!j.ok){$("#rulesRows").innerHTML=`<tr><td colspan="8" style="color:var(--muted)">规则表不可用：${j.msg||""}（已回退内置链）</td></tr>`;return;}
-  $("#rulesMeta").textContent=`v${j.version} · ${j.rules.length} 条`;
+  if(!j.ok){$("#rulesRows").innerHTML=`<tr><td colspan="8" style="color:var(--muted)">${tf("rules.unavail",{msg:lm(j.msg||"")})}</td></tr>`;return;}
+  $("#rulesMeta").textContent=tf("rules.meta",{v:j.version,n:j.rules.length});
   $("#rulesRows").innerHTML=j.rules.map((r,i)=>`<tr>
     <td><input data-ri="${i}" data-rk="id" value="${histEsc(r.id)}" style="width:100px"></td>
     <td><input data-ri="${i}" data-rk="name" value="${histEsc(r.name||"")}" style="width:100%"></td>
@@ -2759,8 +2912,8 @@ function rulesLoad(){
     <td><select data-ri="${i}" data-rk="type">${["EI","EO","EQ","ILF","EIF"].map(t=>`<option ${r.type===t?"selected":""}>${t}</option>`).join("")}</select></td>
     <td><input data-ri="${i}" data-rk="priority" type="number" value="${r.priority||0}" style="width:52px"></td>
     <td><input data-ri="${i}" data-rk="enabled" type="checkbox" ${r.enabled!==false?"checked":""}></td>
-    <td><textarea data-ri="${i}" data-rk="patterns" style="width:100%;height:36px" title="每行一条正则（规则内多分支直接写在同一行用 | 分隔）">${histEsc((r.patterns||[]).join(String.fromCodePoint(10)))}</textarea></td>
-    <td><textarea data-ri="${i}" data-rk="exclude" style="width:110px;height:36px" title="每行一条排除正则">${histEsc((r.exclude||[]).join(String.fromCodePoint(10)))}</textarea></td></tr>`).join("");
+    <td><textarea data-ri="${i}" data-rk="patterns" style="width:100%;height:36px" title="${escAttr(t("rules.pat_title"))}">${histEsc((r.patterns||[]).join(String.fromCodePoint(10)))}</textarea></td>
+    <td><textarea data-ri="${i}" data-rk="exclude" style="width:110px;height:36px" title="${escAttr(t("rules.exc_title"))}">${histEsc((r.exclude||[]).join(String.fromCodePoint(10)))}</textarea></td></tr>`).join("");
   window.lucide&&lucide.createIcons();
 }).catch(e=>{$("#rulesRows").innerHTML=`<tr><td colspan="8">${errorBox(e.message,"rulesLoad()")}</td></tr>`;window.lucide&&lucide.createIcons();});}
 function rulesCollect(){
@@ -2778,25 +2931,25 @@ function rulesCollect(){
 function rulesSave(){const rules=rulesCollect();
   fetch(API+"/api/rules/save",{method:"POST",headers:{"Content-Type":"application/json"},
     body:JSON.stringify({rules})}).then(r=>r.json()).then(j=>{
-    if(!j.ok)throw new Error(j.msg||"保存失败");
-    toast(`识别规则已保存（v${j.version.rules_version}），下次识别生效`);rulesLoad();
-  }).catch(e=>toast("保存失败："+e.message));}
+    if(!j.ok)throw new Error(j.msg?lm(j.msg):t("common.save_fail"));
+    toast(tf("rules.saved",{v:j.version.rules_version}));rulesLoad();
+  }).catch(e=>toast(tf("rules.save_fail",{msg:e.message})));}
 function rulesAdd(){const rules=rulesCollect();
-  rules.push({id:"R-MAN-"+Date.now().toString(36),name:"新规则",scope:"desc",patterns:["关键词"],
+  rules.push({id:"R-MAN-"+Date.now().toString(36),name:t("rules.new_name"),scope:"desc",patterns:["关键词"],
     exclude:[],type:"EI",priority:50,enabled:true,source:"manual"});
   fetch(API+"/api/rules/save",{method:"POST",headers:{"Content-Type":"application/json"},
     body:JSON.stringify({rules})}).then(r=>r.json()).then(j=>{
-    if(!j.ok)throw new Error(j.msg||"保存失败");
-toast("已追加规则");rulesLoad();
-  }).catch(e=>toast("追加失败："+e.message));}
+    if(!j.ok)throw new Error(j.msg?lm(j.msg):t("common.save_fail"));
+toast(t("rules.added"));rulesLoad();
+  }).catch(e=>toast(tf("rules.add_fail",{msg:e.message})));}
 // 强制下载：动态 <a download> + ObjectURL，避免 window.location 导航偶发被吞。
 async function download(){
-  if(!gSid){toast("尚未生成结果");return;}
+  if(!gSid){toast(t("result.dl_none"));return;}
   const url = API + "/api/download?s=" + encodeURIComponent(gSid);
   try {
     // 先 fetch 拿到 blob（确保 Content-Type 合法 + 拿到原始大小），再 a[download] 触发
     const r = await fetch(url);
-    if(!r.ok) throw new Error("下载失败 HTTP " + r.status);
+    if(!r.ok) throw new Error(tf("result.dl_http_fail",{s:r.status}));
     const blob = await r.blob();
     const dispo = r.headers.get("Content-Disposition") || "";
     const m = /filename\*?=(?:UTF-8'')?["']?([^"';]+)/i.exec(dispo);
@@ -2807,13 +2960,13 @@ async function download(){
     document.body.appendChild(a);
     a.click();
     setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 800);
-    toast("已开始下载：" + name);
+    toast(tf("result.dl_started",{name}));
   } catch(err){
     // 退化：仍用 a[download] 走原 URL（让浏览器自己处理 Content-Disposition）
     const a = document.createElement("a");
     a.href = url; a.download = gSid; a.rel = "noopener";
     document.body.appendChild(a); a.click(); a.remove();
-    toast("下载已触发：" + gSid);
+    toast(tf("result.dl_fallback",{name:gSid}));
   }
 }
 let tt;function toast(t){const el=$("#toast");el.textContent=t;el.style.opacity=1;clearTimeout(tt);tt=setTimeout(()=>el.style.opacity=0,2200);}
@@ -2827,7 +2980,7 @@ setTimeout(async()=>{
     const res=await r.json();
     if(res.ok&&res.hasUpdate){
       verLatest=res;
-      toast(`发现新版本 ${res.latest}，请到「帮助文档」页面一键更新`);
+      toast(tf("help.upd.toast_found",{v:res.latest}));
     }
   }catch(e){/* 静默失败不打扰 */}
 },5000);
@@ -2877,7 +3030,7 @@ function renderPertState(s){
   const setv=(id,val)=>{const el=$(id);if(el&&val!=="")el.value=val;};
   setv('#pertO',s.pertO);setv('#pertM',s.pertM);setv('#pertP',s.pertP);
   setv('#pertD',s.pertD);setv('#pertEst',s.pertEst);
-  const cur=$("#pertCur");if(cur&&s.pertPid)cur.textContent='项目 #'+s.pertPid;
+  const cur=$("#pertCur");if(cur&&s.pertPid)cur.textContent=tf("pert.cur_proj",{id:s.pertPid});
   if(typeof renderPert==='function'&&pertItems.length)renderPert();
   if(typeof applyPertSummary==='function'&&pertSummary)applyPertSummary(pertSummary);
 }
@@ -2897,43 +3050,63 @@ function restoreFormState(){
   goPage(s.page||'work');
   if(hasIfpug)renderIfpugState(s);
   if(hasPert)renderPertState(s);
-  toast('已恢复上次未完成的录入');
+  toast(t("form.restored"));
   return true;
 }
 window.addEventListener('beforeunload',saveFormState);
 window.addEventListener('pagehide',saveFormState);
-try{
-  if(!restoreFormState()){saveFormState();}
-}catch(e){/* 恢复失败不阻塞正常启动 */}
-histRestorePrompt();   // M1/FR-1.8：会话恢复未覆盖时，基于历史库的二次兜底提示
+/* T01556（批次6）：启动恢复/兜底提示原为解析期直接调用——那时 20_m9 的 i18n 字典尚未加载，
+   t() 回退会把内部 key（如 form.restored）露在首屏 toast 与表格上。
+   改由 20_m9 的 DOMContentLoaded 引导序列在「字典就绪 → applyI18n」之后调用
+   bootRestoreChain()（本函数仍在解析期定义，只是推迟执行时机）。 */
+function bootRestoreChain(){
+  try{
+    if(!restoreFormState()){saveFormState();}
+  }catch(e){/* 恢复失败不阻塞正常启动 */}
+  histRestorePrompt();   // M1/FR-1.8：会话恢复未覆盖时，基于历史库的二次兜底提示
+}
 
 
 /* ===== M1/FR-1.1、1.8：估算历史（列表/重开/另存为/删除） ===== */
+/* T01556（批次6）：历史页动态文案全量 key 化。
+   驻留 DOM（列表/横幅/恢复条/diff 区/对比按钮）注册进 dyn 注册表，数据态存模块变量，
+   绘制函数每次求值现取 t()/tf()，切语言 dynPaint 按新语言重算重绘。
+   导出件（diff CSV/MD/JSON 正文与文件名）属交付物口径，维持中文基线（见 T01556 回传说明）。 */
 let reopenCtx=null;              // {group,title,version}：重开修订上下文（生成时随请求回传服务端）
 let diffSel=[], lastDiff=null;   // FR-FE05：版本对比选择（限 2）与最近一次 diff 结果
+let histRowsCur=null, histRowsErr=null;  // 列表数据态 / 错误态（builder 每次重绘现取文案）
 async function histOpen(){
   // FR-UI04：先铺骨架屏再取数，避免「加载中…」纯文字造成的空窗与布局跳动
+  histRowsCur=null;histRowsErr=null;
+  dynHtml("#histRows",histRowsHTML);
   $("#histRows").innerHTML=skeletonTable(6,4);
   goStep("history");
   try{
     const r=await fetch(API+"/api/history?limit=50",{cache:"no-store"});
     const j=await r.json();
-    if(!j.ok)throw new Error(j.msg||"历史功能不可用");
-    const rows=j.rows||[];
-    $("#histRows").innerHTML=rows.length?rows.map(h=>`<tr data-hid="${h.id}">
+    if(!j.ok)throw new Error(j.msg?lm(j.msg):t("history.unavail"));
+    histRowsCur=j.rows||[];histRowsErr=null;
+    dynPaint();
+  }catch(e){
+    // colspan 原为 5，与6 列表头不符（错误态会少铺一列宽），一并修正
+    histRowsErr={msg:e.message};histRowsCur=null;
+    dynPaint();window.lucide&&lucide.createIcons();toast(tf("history.load_fail",{msg:e.message}));}
+}
+function histRowsHTML(){
+  const box=document.getElementById("histRows");if(!box)return "";
+  if(histRowsErr)return `<tr><td colspan="6">${errorBox(histRowsErr.msg,"histOpen()")}</td></tr>`;
+  if(!histRowsCur)return skeletonTable(6,4);
+  const rows=histRowsCur;
+  return rows.length?rows.map(h=>`<tr data-hid="${h.id}">
       <td style="text-align:center"><input type="checkbox" class="hdif" ${diffSel.includes(h.id)?'checked':''} onchange="histDiffToggle('${h.id}')"></td>
       <td>${histEsc((h.created_at||"").replace("T"," ").slice(0,19))}</td>
       <td>${histEsc(h.title)}${h.version_no>1?` <b style="color:var(--brand)">v${h.version_no}</b>`:""}</td>
       <td>${h.count!=null?h.count:"—"}</td><td>${h.us_total!=null?h.us_total:"—"}</td>
       <td style="white-space:nowrap">
-        <button class="btn btn-ghost" onclick="histReopen('${h.id}')" title="载入该版本到审核功能点">重开</button>
-        <button class="btn btn-ghost" onclick="histSaveAs('${h.id}')" title="载入后换标题另存为新记录">另存为</button>
-        <button class="btn btn-ghost" onclick="histDel('${h.id}')" title="删除该记录（不影响已下载文件）">删除</button></td></tr>`).join("")
-      :'<tr><td colspan="6">'+emptyState("inbox","暂无历史估算","完成一次生成后自动记录在这里，可随时重开或对比版本","")+'</td></tr>';
-  }catch(e){
-    // colspan 原为 5，与6 列表头不符（错误态会少铺一列宽），一并修正
-    $("#histRows").innerHTML=`<tr><td colspan="6">${errorBox(e.message,"histOpen()")}</td></tr>`;
-    window.lucide&&lucide.createIcons();toast("历史加载失败："+e.message);}
+        <button class="btn btn-ghost" onclick="histReopen('${h.id}')" title="${escAttr(t("history.reopen.title"))}">${t("history.reopen")}</button>
+        <button class="btn btn-ghost" onclick="histSaveAs('${h.id}')" title="${escAttr(t("history.saveas.title"))}">${t("history.save_as")}</button>
+        <button class="btn btn-ghost" onclick="histDel('${h.id}')" title="${escAttr(t("history.del.title"))}">${t("history.del")}</button></td></tr>`).join("")
+      :`<tr><td colspan="6">${emptyState("inbox",t("history.empty"),t("history.empty_desc"),"")}</td></tr>`;
 }
 function histSearch(){histOpen();}
 function histClose(){goStep(items.length?"review":"upload");}
@@ -2941,10 +3114,17 @@ function histEsc(s){return String(s??"").replaceAll(/[&<>"]/g,c=>({"&":"&amp;","
 async function histDetail(id){const r=await fetch(API+"/api/history/"+id,{cache:"no-store"});return r.json();}
 async function histLoad(id){
   const j=await histDetail(id);
-  if(!j.ok)throw new Error(j.msg||"读取失败");
+  if(!j.ok)throw new Error(j.msg?lm(j.msg):t("history.read_fail"));
   const row=j.row;
   items=(row.items||[]).map((it,i)=>({...it,seq:i+1,cx:it.cx||"中",ok:false}));
   return row;
+}
+let histBannerCur=null;   // {kind:"revise",v,at} | {kind:"saveas",title}
+function histBannerHTML(){
+  if(!histBannerCur)return "";
+  if(histBannerCur.kind==="revise")
+    return `<b>${tf("history.revise_b",{v:histBannerCur.v})}</b>${tf("history.revise_tail",{at:histEsc(histBannerCur.at)})}`;
+  return `<b>${t("history.saveas_b")}</b>${tf("history.saveas_tail",{title:histEsc(histBannerCur.title)})}`;
 }
 async function histReopen(id){
   try{
@@ -2954,35 +3134,43 @@ async function histReopen(id){
     const sel=$("#methodSel");if(row.method&&[...sel.options].some(o=>o.value===row.method))sel.value=row.method;
     render();goStep("review");
     const b=$("#reopenBanner");b.style.display="block";
-    b.innerHTML=`<b>正在修订：第 ${row.version_no} 版</b>（基于 ${histEsc((row.created_at||"").replace("T"," ").slice(0,19))}）· 重新生成将自动记为下一版本`;
+    histBannerCur={kind:"revise",v:row.version_no,at:(row.created_at||"").replace("T"," ").slice(0,19)};
+    dynHtml(b,histBannerHTML);
     window.lucide&&lucide.createIcons();
-    toast("已载入第 "+row.version_no+" 版（"+items.length+" 条功能点），修改后可直接生成");
-  }catch(e){toast("重开失败："+e.message);}
+    toast(tf("history.reopened",{v:row.version_no,n:items.length}));
+  }catch(e){toast(tf("history.reopen_fail",{msg:e.message}));}
 }
 async function histSaveAs(id){
   try{
     const row=await histLoad(id);
-    const nt=prompt("另存为的新需求标题：",row.title);
+    const nt=prompt(t("history.saveas_prompt"),row.title);
     if(nt===null)return;
-    const t=String(nt).trim();
-    if(!t){toast("标题不能为空");return;}
-    reopenCtx=null;curFile={name:t+".docx"};
+    const t0=String(nt).trim();
+    if(!t0){toast(t("history.title_empty"));return;}
+    reopenCtx=null;curFile={name:t0+".docx"};
     render();goStep("review");
     const b=$("#reopenBanner");b.style.display="block";
-    b.innerHTML="<b>另存为新估算</b>：标题已改为「"+histEsc(t)+"」，重新生成将建立新的版本记录";
-    toast("已载入并改标题，生成后即为独立新记录");
-  }catch(e){toast("另存失败："+e.message);}
+    histBannerCur={kind:"saveas",title:t0};
+    dynHtml(b,histBannerHTML);
+    toast(t("history.saved_loaded"));
+  }catch(e){toast(tf("history.save_fail",{msg:e.message}));}
 }
 async function histDel(id){
-  if(!confirm("删除该条历史记录？（不影响已下载的成品表文件）"))return;
+  if(!confirm(t("history.del_confirm")))return;
   try{
     const r=await fetch(API+"/api/history/"+id,{method:"POST",headers:{"Content-Type":"application/json"}});
     const j=await r.json();
-    if(!j.ok)throw new Error("删除失败");
-    toast("已删除");histOpen();
-  }catch(e){toast("删除失败："+e.message);}
+    if(!j.ok)throw new Error(t("history.del_fail_word"));
+    toast(t("history.deleted"));histOpen();
+  }catch(e){toast(tf("history.del_fail",{msg:e.message}));}
 }
-function histClearCtx(){reopenCtx=null;const b=$("#reopenBanner");if(b)b.style.display="none";}
+function histClearCtx(){reopenCtx=null;histBannerCur=null;const b=$("#reopenBanner");if(b)b.style.display="none";}
+let histRestoreCur=null;   // {id,title,v,at}
+function histRestoreHTML(){
+  if(!histRestoreCur)return "";
+  const c=histRestoreCur;
+  return `${tf("history.detected",{title:histEsc(c.title),v:c.v,at:histEsc(c.at)})} <button class="btn btn-ghost" onclick="histReopen('${c.id}');this.parentElement.style.display='none'">${t("history.restore")}</button> <button class="btn btn-ghost" onclick="localStorage.removeItem('wl_last_history');this.parentElement.style.display='none'">${t("history.ignore")}</button>`;
+}
 async function histRestorePrompt(){
   /* FR-1.8 二次兜底：表单断点续录（saveFormState）已覆盖常规刷新；此处处理"清了浏览器存储/换机"场景 */
   try{
@@ -2991,91 +3179,102 @@ async function histRestorePrompt(){
     const j=await histDetail(last);
     if(!j.ok)return;
     const row=j.row,bar=$("#restoreBar");
+    histRestoreCur={id:last,title:row.title,v:row.version_no,at:(row.created_at||"").replace("T"," ").slice(0,19)};
     bar.style.display="block";
-    bar.innerHTML=`检测到上次估算「${histEsc(row.title)}」（v${row.version_no}，${histEsc((row.created_at||"").replace("T"," ").slice(0,19))}） <button class="btn btn-ghost" onclick="histReopen('${last}');this.parentElement.style.display='none'">恢复</button> <button class="btn btn-ghost" onclick="localStorage.removeItem('wl_last_history');this.parentElement.style.display='none'">忽略</button>`;
+    dynHtml(bar,histRestoreHTML);
   }catch(e){/* 恢复提示失败不打断 */}
 }
 
 /* ===== M1/FR-FE05：版本间 diff 对比（三色高亮 + 摘要导出） ===== */
-const DIFF_FIELDS=[["system","系统"],["type","类型"],["cx","复杂度"],["reuse","重用度"],["modify","修改类型"],["count_item","计数项"]];
+// [字段键, UI 标签字典 key]——导出件仍用中文标签（zh 字典与导出同源）
+const DIFF_FIELDS=[["system","history.f.system"],["type","history.f.type"],["cx","review.th.cx"],["reuse","history.f.reuse"],["modify","history.f.modify"],["count_item","history.f.count_item"]];
 const DIFF_KIND={added:"新增",removed:"删除",changed:"变更"};   // 导出与页面徽标口径一致（不直出 added/removed/changed）
-function histDiffFName(it){return histEsc((it&&it.desc)||"未命名功能点");}
+const DIFF_KIND_KEYS={added:"common.mod.new",removed:"common.mod.del",changed:"history.kind_changed"};
+function histDiffFName(it){return histEsc((it&&it.desc)||t("history.unnamed"));}
+function histDiffBtnHTML(){  // 对比按钮：dyn 注册后 n/2 计数与文案随语言/选择重绘
+  return `<i aria-hidden="true" data-lucide="git-compare" style="width:15px;height:15px"></i>${tf("history.diff_btn",{n:diffSel.length})}`;
+}
 function histDiffToggle(id){
   const i=diffSel.indexOf(id);
   if(i>=0)diffSel.splice(i,1);
   else{diffSel.push(id); if(diffSel.length>2)diffSel.shift();}        // 仅保留最近两个
   document.querySelectorAll(".hdif").forEach(cb=>{const hid=cb.closest("tr").dataset.hid; cb.checked=diffSel.includes(hid);});
-  const btn=$("#hdifBtn"); if(btn){btn.disabled=diffSel.length!==2; btn.innerHTML=`<i aria-hidden="true" data-lucide="git-compare" style="width:15px;height:15px"></i>对比所选（${diffSel.length}/2）`;}
+  const btn=$("#hdifBtn"); if(btn){btn.disabled=diffSel.length!==2; dynHtml(btn,histDiffBtnHTML);}
 }
 function histDiffAll(checked){
   diffSel=[];
   document.querySelectorAll(".hdif").forEach(cb=>cb.checked=false);
-  const btn=$("#hdifBtn"); if(btn){btn.disabled=true; btn.innerHTML=`<i aria-hidden="true" data-lucide="git-compare" style="width:15px;height:15px"></i>对比所选（0/2）`;}
+  const btn=$("#hdifBtn"); if(btn){btn.disabled=true; dynHtml(btn,histDiffBtnHTML);}
 }
 async function histDiff(){
-  if(diffSel.length!==2){toast("请先勾选两个版本进行对比");return;}
+  if(diffSel.length!==2){toast(t("history.pick2"));return;}
   try{
     const url=API+`/api/history/diff?a=${diffSel[0]}&b=${diffSel[1]}`;
     const r=await fetch(url,{cache:"no-store"}); const j=await r.json();
-    if(!j.ok)throw new Error(j.msg||"对比失败");
+    if(!j.ok)throw new Error(j.msg?lm(j.msg):t("history.diff_fail_word"));
     lastDiff=j; histDiffRender(j);
-  }catch(e){toast("对比失败："+e.message);}
+  }catch(e){toast(tf("history.diff_fail",{msg:e.message}));}
 }
-function histDiffRender(d){
-  const box=$("#histDiff"); box.style.display="block";
+function histDiffBody(){  // 同步产出 diff 区 html（dyn 注册；lastDiff 为空返回空串）
+  const d=lastDiff;if(!d)return "";
   const a=d.a,b=d.b;
   const usA=a.us_total!=null?a.us_total:"—", usB=b.us_total!=null?b.us_total:"—";
   const usDelta=(typeof a.us_total==="number"&&typeof b.us_total==="number")?(b.us_total-a.us_total):null;
   let rows="";
+  const fldLabel=f=>(DIFF_FIELDS.find(x=>x[0]===f.field)||[f.field,null])[1];
   for(const c of (d.changes||[])){
     if(c.kind==="added"){
       const it=c.item||{};
-      rows+=`<tr class="d-added"><td><span class="badge b-add">新增</span></td><td>${histDiffFName(it)}</td><td>${histEsc(it.system||"")}</td><td colspan="6">${DIFF_FIELDS.map(([k])=>histEsc(it[k]||"")).join(" / ")}</td></tr>`;
+      rows+=`<tr class="d-added"><td><span class="badge b-add">${t(DIFF_KIND_KEYS.added)}</span></td><td>${histDiffFName(it)}</td><td>${histEsc(it.system||"")}</td><td colspan="6">${DIFF_FIELDS.map(([k])=>histEsc(it[k]||"")).join(" / ")}</td></tr>`;
     }else if(c.kind==="removed"){
       const it=c.item||{};
-      rows+=`<tr class="d-removed"><td><span class="badge b-del">删除</span></td><td>${histDiffFName(it)}</td><td>${histEsc(it.system||"")}</td><td colspan="6">${DIFF_FIELDS.map(([k])=>histEsc(it[k]||"")).join(" / ")}</td></tr>`;
+      rows+=`<tr class="d-removed"><td><span class="badge b-del">${t(DIFF_KIND_KEYS.removed)}</span></td><td>${histDiffFName(it)}</td><td>${histEsc(it.system||"")}</td><td colspan="6">${DIFF_FIELDS.map(([k])=>histEsc(it[k]||"")).join(" / ")}</td></tr>`;
     }else{
-      const fld=c.fields.map(f=>{const lab=(DIFF_FIELDS.find(x=>x[0]===f.field)||[f.field])[1];return `${lab}：<b class="old">${histEsc(f.a??"")}</b> → <b class="new">${histEsc(f.b??"")}</b>`;}).join("；");
-      rows+=`<tr class="d-changed"><td><span class="badge b-chg">变更</span></td><td>${histDiffFName(c.b)}</td><td>${histEsc(c.system||"")}</td><td colspan="6">${fld}</td></tr>`;
+      const fld=c.fields.map(f=>{const lab=fldLabel(f)?t(fldLabel(f)):f.field;return `${lab}：<b class="old">${histEsc(f.a??"")}</b> → <b class="new">${histEsc(f.b??"")}</b>`;}).join("；");
+      rows+=`<tr class="d-changed"><td><span class="badge b-chg">${t(DIFF_KIND_KEYS.changed)}</span></td><td>${histDiffFName(c.b)}</td><td>${histEsc(c.system||"")}</td><td colspan="6">${fld}</td></tr>`;
     }
   }
-  if(!rows)rows=`<tr><td colspan="8" style="color:var(--muted)">两个版本功能点完全一致，无差异。</td></tr>`;
-  box.innerHTML=`
-    <div class="card-title"><i aria-hidden="true" data-lucide="git-compare"></i>版本对比
+  if(!rows)rows=`<tr><td colspan="8" style="color:var(--muted)">${t("history.none")}</td></tr>`;
+  return `
+    <div class="card-title"><i aria-hidden="true" data-lucide="git-compare"></i>${t("history.diff_title")}
       <span style="flex:1"></span>
       <button class="btn btn-ghost" onclick="histDiffExp('csv')"><i aria-hidden="true" data-lucide="file-spreadsheet" style="width:14px;height:14px"></i>CSV</button>
       <button class="btn btn-ghost" onclick="histDiffExp('json')"><i aria-hidden="true" data-lucide="file-json" style="width:14px;height:14px"></i>JSON</button>
       <button class="btn btn-ghost" onclick="histDiffExp('md')"><i aria-hidden="true" data-lucide="file-text" style="width:14px;height:14px"></i>Markdown</button>
-      <button class="btn btn-ghost" onclick="document.getElementById('histDiff').style.display='none'"><i aria-hidden="true" data-lucide="x" style="width:14px;height:14px"></i>收起</button></div>
-    <div class="diff-sum"><b>基准</b> v${a.version_no}「${histEsc(a.title)}」(${a.count??"—"} 项 · US ${usA}) &nbsp;→&nbsp; <b>对比</b> v${b.version_no}「${histEsc(b.title)}」(${b.count??"—"} 项 · US ${usB})${usDelta!=null?` &nbsp;·&nbsp; <b>ΔUS ${usDelta>=0?"+":""}${usDelta.toFixed(2)}</b>`:""}
-      &nbsp;·&nbsp; <span class="b-add">新增 ${d.summary.added}</span> / <span class="b-del">删除 ${d.summary.removed}</span> / <span class="b-chg">变更 ${d.summary.changed}</span></div>
-    <table><thead><tr><th>类型</th><th>功能点</th><th>系统</th><th colspan="6">详情</th></tr></thead><tbody>${rows}</tbody></table>`;
+      <button class="btn btn-ghost" onclick="document.getElementById('histDiff').style.display='none'"><i aria-hidden="true" data-lucide="x" style="width:14px;height:14px"></i>${t("history.collapse")}</button></div>
+    <div class="diff-sum"><b>${t("history.base")}</b> v${a.version_no}「${histEsc(a.title)}」(${tf("history.items_us",{n:a.count??"—",us:usA})}) &nbsp;→&nbsp; <b>${t("history.compare_to")}</b> v${b.version_no}「${histEsc(b.title)}」(${tf("history.items_us",{n:b.count??"—",us:usB})})${usDelta!=null?` &nbsp;·&nbsp; <b>ΔUS ${usDelta>=0?"+":""}${usDelta.toFixed(2)}</b>`:""}
+      &nbsp;·&nbsp; <span class="b-add">${tf("history.sum_add",{n:d.summary.added})}</span> / <span class="b-del">${tf("history.sum_del",{n:d.summary.removed})}</span> / <span class="b-chg">${tf("history.sum_chg",{n:d.summary.changed})}</span></div>
+    <table><thead><tr><th>${t("history.th_kind")}</th><th>${t("history.col.fp")}</th><th>${t("history.f.system")}</th><th colspan="6">${t("history.th_detail")}</th></tr></thead><tbody>${rows}</tbody></table>`;
+}
+function histDiffRender(d){
+  const box=$("#histDiff"); box.style.display="block";
+  dynHtml(box,histDiffBody);
   window.lucide&&lucide.createIcons();
   box.scrollIntoView({behavior:"smooth",block:"nearest"});
 }
 function histDiffExp(fmt){
-  if(!lastDiff){toast("无对比数据");return;}
+  if(!lastDiff){toast(t("history.no_diff"));return;}
   const d=lastDiff,a=d.a,b=d.b,tag=`v${a.version_no}-v${b.version_no}`;
-  if(fmt==="json"){_dl(`版本对比_${tag}.json`, JSON.stringify(d,null,2), "application/json"); toast("JSON 已导出"); return;}
+  if(fmt==="json"){_dl(`版本对比_${tag}.json`, JSON.stringify(d,null,2), "application/json"); toast(t("history.exp_json")); return;}
   if(fmt==="md"){
     let md=`# 版本对比：v${a.version_no}「${a.title}」 → v${b.version_no}「${b.title}」\n\n- 基准：${a.count??"?"} 项 · US ${a.us_total??"—"}\n- 对比：${b.count??"?"} 项 · US ${b.us_total??"—"}\n- 新增 ${d.summary.added} · 删除 ${d.summary.removed} · 变更 ${d.summary.changed}\n\n`;
-    const fldName=f=>(DIFF_FIELDS.find(x=>x[0]===f.field)||[f.field])[1];
+    const fldName=f=>{const e=DIFF_FIELDS.find(x=>x[0]===f.field);return e?t(e[1]):f.field;};
     const added=d.changes.filter(c=>c.kind==="added"),removed=d.changes.filter(c=>c.kind==="removed"),changed=d.changes.filter(c=>c.kind==="changed");
     if(added.length)md+="## 新增\n"+added.map(c=>`- ${c.item.desc}（${c.item.system||""}）`).join("\n")+"\n";
     if(removed.length)md+="## 删除\n"+removed.map(c=>`- ${c.item.desc}（${c.item.system||""}）`).join("\n")+"\n";
     if(changed.length)md+="## 变更\n"+changed.map(c=>`- ${c.b.desc}（${c.system||""}）：${c.fields.map(f=>`${fldName(f)}: ${f.a??""} → ${f.b??""}`).join("；")}`).join("\n")+"\n";
-    _dl(`版本对比_${tag}.md`, md, "text/markdown"); toast("Markdown 已导出"); return;
+    _dl(`版本对比_${tag}.md`, md, "text/markdown"); toast(t("history.exp_md")); return;
   }
   const esc=v=>`"${String(v??"").replaceAll('"','""')}"`;
-  const head="类型,功能点,系统,变化摘要,"+DIFF_FIELDS.map(f=>f[1]).join(",");
+  const head="类型,功能点,系统,变化摘要,"+DIFF_FIELDS.map(f=>t(f[1])===f[1]?f[1]:t(f[1])).join(",");
   const rows=d.changes.map(c=>{
     const it=c.kind==="changed"?c.b:(c.item||{});
-    const summary=c.kind==="changed"?c.fields.map(f=>{const m=DIFF_FIELDS.find(x=>x[0]===f.field);return `${m?m[1]:f.field}: ${f.a??""}→${f.b??""}`;}).join("；"):"";
+    const summary=c.kind==="changed"?c.fields.map(f=>{const m=DIFF_FIELDS.find(x=>x[0]===f.field);return `${m?t(m[1]):f.field}: ${f.a??""}→${f.b??""}`;}).join("；"):"";
     const vals=DIFF_FIELDS.map(([k])=>it[k]||"");
     return [DIFF_KIND[c.kind]||c.kind, it.desc||"", it.system||"", summary, ...vals].map(esc).join(",");
   });
   _dl(`版本对比_${tag}.csv`, "﻿"+head+"\n"+rows.join("\n")+"\n", "text/csv;charset=utf-8");
-  toast("CSV 已导出");
+  toast(t("history.exp_csv"));
 }
 
 /* ===== M9：FR-2.4 COCOMO II（前端同构）/ FR-2.6 故事生成与推送 / FR-2.8 母版多选 / FR-5.5 i18n ===== */
@@ -3086,12 +3285,15 @@ function cocomo_ii(kloc, eaf, sfSum){  // FR-2.4：与 gb_engine.cocomo_ii 同�
   return {e:+E.toFixed(4),pm:+pm.toFixed(2),tdev:+tdev.toFixed(2),staff:+(pm/tdev).toFixed(2)};
 }
 /* FR-2.6：用户故事生成（INVEST 模板化，非 LLM 依赖）+ 可编辑 + MD/CSV 导出 + GitHub 推送 */
+/* T01556（批次6）：故事「模板骨架」随界面语言生成（数据字段 system/desc 等保持原文）；
+   默认中文态产物与此前逐字一致，英文态由字典承接（产品决策落地）。 */
 function storyGen(){
   const src=items.filter(x=>x.ok);
-  if(!src.length){toast("请先确认功能点");return;}
+  if(!src.length){toast(t("eco.story_need_ok"));return;}
   const stories=src.map((it,i)=>({
-    title:`[${it.type}] 作为${it.system}用户，我需要${it.desc||it.count_item}`,
-    body:`## 用户故事\n作为${it.system}用户，我需要「${it.desc||it.count_item}」，以便完成${it.m1||"相关业务"}。\n\n## 验收标准\n- Given ${it.count_item} 功能已实现，When 用户发起操作，Then 结果正确\n- 规模：${it.type} · 重用${it.reuse} · ${it.modify}\n- 估算：${ufp({...it,cx:it.reuse}).toFixed(2)} FP\n\n## INVEST 自检\nIndependent ✓ Negotiable ✓ Valuable ✓ Estimable ✓ Small ✓ Testable ✓`,
+    title:tf("eco.story_title",{type:it.type,sys:it.system,need:it.desc||it.count_item}),
+    body:tf("eco.story_body",{sys:it.system,need:it.desc||it.count_item,m1:it.m1||t("eco.story_biz_default"),ci:it.count_item,type:it.type,
+      reuse:t("common.lv."+LV[it.reuse]),modify:t("common.mod."+LV[it.modify]),fp:ufp({...it,cx:it.reuse}).toFixed(2)}),
     fp:ufp({...it,cx:it.reuse}).toFixed(2)
   }));
   window.__stories=stories;
@@ -3105,7 +3307,7 @@ function storyDl(kind){
   const b=new Blob([txt],{type:"text/plain;charset=utf-8"});
   const a=document.createElement("a");a.href=URL.createObjectURL(b);
   a.download=baseName()+(kind==="csv"?"-stories.csv":"-stories.md");a.click();URL.revokeObjectURL(a.href);
-  toast("用户故事已导出（可编辑后再推送）");
+  toast(t("eco.story_exported"));
 }
 async function storyPush(){
   const token=document.querySelector("#ghToken").value.trim(), repo=document.querySelector("#ghRepo").value.trim();
@@ -3113,11 +3315,11 @@ async function storyPush(){
   try{
     const r=await(await fetch(API+"/api/story/push",{method:"POST",headers:{"Content-Type":"application/json"},
       body:JSON.stringify({token,repo,stories:window.__stories||[]})})).json();
-    if(!r.ok){btn.disabled=false;toast("推送失败："+r.msg+"（可修正后重试）");return;}
+    if(!r.ok){btn.disabled=false;toast(tf("eco.push_fail",{msg:lm(r.msg)}));return;}
     btn.disabled=false;
-    const failMsg=(r.errors&&r.errors.length)?("（"+r.errors.length+" 条失败可重试）"):"";
-    toast(`已推送 ${r.pushed} 条用户故事到 GitHub Issues${failMsg}`);
-  }catch(e){btn.disabled=false;toast("推送失败："+e.message+"（可重试）");}
+    const failMsg=(r.errors&&r.errors.length)?tf("eco.push_partial",{n:r.errors.length}):"";
+    toast(tf("eco.pushed",{n:r.pushed})+failMsg);
+  }catch(e){btn.disabled=false;toast(tf("eco.push_retry_fail",{msg:e.message}));}
 }
 /* FR-2.8：母版多选（结果页选择 + 配置中心上传） */
 async function tplLoad(){
@@ -3130,18 +3332,18 @@ async function tplLoad(){
 
   }catch(e){/* 母版列表加载失败不阻塞 */}
 }
-function tplPick(name){localStorage.setItem("wl_tpl",name);toast(`已选用母版：${name}（生成时生效）`);}
+function tplPick(name){localStorage.setItem("wl_tpl",name);toast(tf("eco.tpl_picked",{name}));}
 function tplSelected(){const n=localStorage.getItem("wl_tpl")||"默认母版";
   const t=(window.__tpls||[]).find(x=>x.name===n);return t&&t.file&&t.name!=="默认母版"?t.file:undefined;}
 async function tplUpload(inp){const f=inp.files&&inp.files[0];if(!f)return;
   const name=f.name.replace(/\.xlsx$/i,"");
-  const note=prompt("母版口径说明（如：天津银行口径，明细列 B 起）：","");
+  const note=prompt(t("eco.tpl_note_prompt"),"");
   const b64=await new Promise(res=>{const fr=new FileReader();
     fr.onload=()=>res(fr.result.split(",")[1]);fr.readAsDataURL(f);});
   const r=await(await fetch(API+"/api/templates/save",{method:"POST",headers:{"Content-Type":"application/json"},
     body:JSON.stringify({name,b64,note:note||"",mapping:{}})})).json();
-  if(!r.ok){toast("上传失败："+r.msg);return;}
-  tplPick(name);await tplLoad();toast(`母版「${name}」已接入（列映射请对照口径说明人工核对首件）`);
+  if(!r.ok){toast(tf("eco.upload_fail",{msg:lm(r.msg)}));return;}
+  tplPick(name);await tplLoad();toast(tf("eco.tpl_uploaded",{name}));
   inp.value="";}
 /* FR-5.5：界面多语言。字典经 /api/i18n?lang= 读取（不走 /static/ ——该路由
    白名单只放行 .js/.css 且禁子路径，放行 .json 会扩大目录穿越面）。
@@ -3160,6 +3362,9 @@ async function i18nLoad(lang){
   return __I18N;
 }
 function t(key){ return (__I18N && __I18N[key]) || key; }
+/** T01556（批次6）：带中文兜底的取值——供外置脚本（guide.js 等）在「字典未就绪/缺键」时
+ *  回退原文而不露 key。函数声明在拼接后的单一 <script> 顶层，天然挂到 window 供外部分享。 */
+function tl(key, fallback){ return (__I18N && __I18N[key]) || fallback; }
 /** 带插值的取文案：tf("review.count", {n: 5}) → "5 条候选" / "5 candidates"。
  *  用于「数值由 JS 运行时填充」的场景——这类文案不能靠 applyI18n 写 textContent
  * （会覆盖 JS 刚写入的数字），也不宜把变量塞进字典。
@@ -3177,6 +3382,8 @@ async function setLang(lang){
   applyI18n();
   document.documentElement.lang = lang;
   if(typeof langSegPaint === "function") langSegPaint();
+  // T01556：品牌色预置名（title 属性）随语言重绘
+  if(typeof brandPaint === "function") brandPaint();
   // 动态生成的文案（计数、空态、徽章、图表标题）不在 data-i18n 标注范围内——
   // applyI18n 只处理静态节点，这些由渲染函数产出。故切换语言后必须重渲染，
   // 否则会停留在旧语言：实测「2 条候选」在英文界面下仍显示中文。
@@ -3186,12 +3393,16 @@ async function setLang(lang){
   if(typeof rulesLoad === "function" && document.body.dataset.page === "config") rulesLoad();
   // PERT 页的计数/汇总同理，需重算才能反映新语言
   if(typeof pertSyncStart === "function" && document.body.dataset.page === "pert") pertSyncStart();
+  // T01556：PERT 阶段下拉的标签按新语言重建（数据值不变）
+  if(typeof pertFillPhase === "function" && document.body.dataset.page === "pert") pertFillPhase();
   // T01555（批次5）：PERT 估算明细行的 title/待填徽标按新语言重绘
   if(typeof renderPert === "function" && document.body.dataset.page === "pert" && Array.isArray(pertItems) && pertItems.length) renderPert();
   // T01555：驻留 DOM 的动态文案（进度条/状态框/文件提示…）按注册的状态函数重算重绘
   if(typeof dynPaint === "function") dynPaint();
   // 帮助页更新区的动态状态（检测中/发现新版本/下载进度…）按保存的状态重绘（T01548 批次4a）
   if(typeof verPaint === "function") verPaint();
+  // T01556：外置引导脚本若正在演示，按新语言重绘当前卡片
+  if(window.WLGuide && window.WLGuide.refresh) window.WLGuide.refresh();
   toast(t("common.lang_switched"));
 }
 /* data-i18n 机制：把文案与结构解耦，避免为每种语言复制一份 DOM。
@@ -3238,6 +3449,11 @@ window.addEventListener("DOMContentLoaded",async ()=>{
   await i18nLoad();          // 字典就绪后再刷文案，避免首屏闪中文
   applyI18n();
   tplLoad();
+  if(typeof brandPaint==="function") brandPaint();   // 预置色名按新字典重绘（首绘在字典前，见 07）
+  // T01556（批次6）：断点续录恢复必须在字典就绪后执行（见 07 bootRestoreChain 注释），
+  // 否则恢复出来的表格/toast 会把 i18n key 当文案露在首屏。
+  if(typeof bootRestoreChain==="function") bootRestoreChain();
+  else{try{saveFormState();}catch(e){}}
 });
 
 /* ===== M9/FR-3.3（UI03）：复核表格组件化——虚拟滚动窗口助手（IFPUG 复核已接入，PERT 可复用） ===== */

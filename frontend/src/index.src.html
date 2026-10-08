@@ -51,7 +51,7 @@
       </table>
       <div class="cfg-note" style="margin-top:12px">
         <i aria-hidden="true" data-lucide="info" style="width:14px;height:14px;vertical-align:-2px;color:var(--brand)"></i>
-        重开 = 载入该版本到「审核功能点」，修改后重新生成会自动记为下一版本；另存为 = 载入后换标题生成新记录。删除历史不影响已下载的成品表。勾选两个版本可对比差异（新增/删除/变更高亮）。
+        <span data-i18n="history.note">重开 = 载入该版本到「审核功能点」，修改后重新生成会自动记为下一版本；另存为 = 载入后换标题生成新记录。删除历史不影响已下载的成品表。勾选两个版本可对比差异（新增/删除/变更高亮）。</span>
       </div>
       <div id="histDiff" class="glass pad" style="margin-top:14px;display:none"></div>
     </div>
@@ -577,19 +577,19 @@
   <main class="page" id="pg-fast">
     <div class="cfg-grid">
       <div class="glass pad">
-        <div class="card-title"><i aria-hidden="true" data-lucide="zap"></i>NESMA 快速估算（FR-2.1）</div>
-        <div class="cfg-row"><span>算法</span>
+        <div class="card-title"><i aria-hidden="true" data-lucide="zap"></i><span data-i18n="ne.title">NESMA 快速估算（FR-2.1）</span></div>
+        <div class="cfg-row"><span data-i18n="ne.algorithm">算法</span>
           <span id="fastMode">
-            <button class="btn btn-ghost" data-m="est" onclick="fastMode('est')">估算法</button>
-            <button class="btn btn-ghost" data-m="pre" onclick="fastMode('pre')">预估法</button>
+            <button class="btn btn-ghost" data-m="est" onclick="fastMode('est')" data-i18n="ne.mode.est_btn">估算法</button>
+            <button class="btn btn-ghost" data-m="pre" onclick="fastMode('pre')" data-i18n="ne.mode.pre_btn">预估法</button>
           </span></div>
         <div id="fastCounts" style="display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin:12px 0"></div>
         <p class="cfg-note" id="fastFormula" style="margin-top:4px"></p>
-        <div style="margin-top:10px"><button class="btn btn-primary" onclick="fastToGb()" title="把 UFP 带入国标造价页签"><i aria-hidden="true" data-lucide="arrow-right-circle" style="width:15px;height:15px"></i>按此结果进国标造价</button></div>
+        <div style="margin-top:10px"><button class="btn btn-primary" onclick="fastToGb()" data-i18n="title=ne.togb_tip" title="把 UFP 带入国标造价页签"><i aria-hidden="true" data-lucide="arrow-right-circle" style="width:15px;height:15px"></i><span data-i18n="ne.togb_btn">按此结果进国标造价</span></button></div>
       </div>
       <div class="glass pad">
-        <div class="card-title"><i aria-hidden="true" data-lucide="landmark"></i>估算结果（国标造价口径）</div>
-        <div id="fastResult" style="font-size:13px;line-height:2">输入计数后即时计算。</div>
+        <div class="card-title"><i aria-hidden="true" data-lucide="landmark"></i><span data-i18n="ne.result_title">估算结果（国标造价口径）</span></div>
+        <div id="fastResult" style="font-size:13px;line-height:2" data-i18n="ne.input_hint">输入计数后即时计算。</div>
       </div>
     </div>
   </main>

@@ -1,15 +1,17 @@
 /* ===== M3/FR-1.4、1.5、1.7、2.9：批量操作 / 粘贴导入 / 驳回流 / 规则维护 ===== */
+/* T01556（批次6）：本模块动态文案 key 化。表单可编辑区（规则表行内输入）为数据+编辑态，
+   绘制期现取 t()；纯展示驻留区（驳回徽标/规则元信息）注册 dyn 随语言重绘。 */
 function batchApply(){  // FR-1.4：对筛选出的可见行批量设置
   const ops=[["bReuse","reuse"],["bModify","modify"],["bCx","cx"]].filter(([id])=>$("#"+id).value);
-  if(!ops.length){toast("请先选择要批量设置的属性");return;}
+  if(!ops.length){toast(t("batch.need_attr"));return;}
   const arr=visibleItems();let n=0;
   arr.forEach(it=>{ops.forEach(([id,k])=>{const v=$("#"+id).value;recordRej(it,k,it[k],v);it[k]=v;});n++;});
-  render();saveFormState();toast(`已批量更新 ${n} 行`);}
-function batchConfirm(){const arr=visibleItems();arr.forEach(it=>it.ok=true);render();saveFormState();toast(`已确认 ${arr.length} 行`);}
+  render();saveFormState();toast(tf("batch.updated",{n}));}
+function batchConfirm(){const arr=visibleItems();arr.forEach(it=>it.ok=true);render();saveFormState();toast(tf("batch.confirmed",{n:arr.length}));}
 function batchDelete(){const arr=visibleItems();if(!arr.length)return;
-  if(!confirm(`确定删除筛选出的 ${arr.length} 行功能点？此操作不可恢复（其余行 seq 保持不变）。`))return;
+  if(!confirm(tf("batch.del_confirm",{n:arr.length})))return;
   const del=new Set(arr.map(x=>x.seq));items=items.filter(x=>!del.has(x.seq));
-  render();saveFormState();toast(`已删除 ${arr.length} 行`);}
+  render();saveFormState();toast(tf("batch.deleted",{n:arr.length}));}
 /* FR-1.5：AI 建议采纳/驳回（驳回偏离 _ai 才记录，供 FR-2.9 沉淀） */
 let rejQueue=[];
 function recordRej(it,field,from,to){if(!it||from===to)return;
@@ -18,31 +20,36 @@ function recordRej(it,field,from,to){if(!it||from===to)return;
   if(rejQueue.some(r=>r.seq===it.seq&&r.field===field))return;
   rejQueue.push({seq:it.seq,field,from:ai,to:String(to),reason:""});updateRejBadge();}
 function updateRejBadge(){const b=document.getElementById("rejBadge");
-  if(b)b.textContent=rejQueue.length?`驳回 ${rejQueue.length} 条`:"";}
+  if(b)dynText(b,()=>rejQueue.length?tf("batch.rej_badge",{n:rejQueue.length}):"");}
 function settleRules(){  // FR-2.9：驳回流沉淀为识别规则
-  if(!rejQueue.length){toast("暂无驳回记录");return;}
-  const kw=prompt("为驳回样本沉淀识别规则：输入触发关键词（正则片段，多个用 | 分隔）","");
+  if(!rejQueue.length){toast(t("batch.no_rej"));return;}
+  const kw=prompt(t("batch.rule_prompt"),"");
   if(!kw||!kw.trim())return;
   fetch(API+"/api/rules").then(r=>r.json()).then(j=>{
     const rules=j.rules||[];
-    rules.push({id:"R-FB-"+Date.now().toString(36),name:"驳回流沉淀",scope:"desc",
+    rules.push({id:"R-FB-"+Date.now().toString(36),name:t("batch.rule_name"),scope:"desc",
       patterns:[kw.trim()],exclude:[],type:rejQueue[0].to||"EI",
       priority:999,enabled:true,source:"feedback"});   // 用户修正优先于内置通用规则
     return fetch(API+"/api/rules/save",{method:"POST",headers:{"Content-Type":"application/json"},
       body:JSON.stringify({rules})});
   }).then(r=>r.json()).then(j=>{
-    if(!j.ok)throw new Error(j.msg||"保存失败");
-    toast(`规则已沉淀（v${j.version.rules_version}），下次识别生效`);
+    if(!j.ok)throw new Error(j.msg?lm(j.msg):t("common.save_fail"));
+    toast(tf("batch.rule_saved",{v:j.version.rules_version}));
     rejQueue=[];updateRejBadge();
-  }).catch(e=>toast("沉淀失败："+e.message));}
+  }).catch(e=>toast(tf("batch.rule_fail",{msg:e.message})));}
 /* FR-1.4：粘贴导入（Excel TSV / CSV） */
 let pasteRows=[];
+/* 预览文案驻留浮层直到点「追加」：注册 dyn，随语言切换重算（只存行数，绘制期现取 t()） */
+function pastePreviewHTML(){
+  return pasteRows.length?tf("batch.paste_preview",{n:pasteRows.length}):"";
+}
 function pasteOpen(){const m=$("#pasteModal");m.style.display="flex";
+  dynClear("#pastePreview");   // 注销上次预览注册，避免切语言时重绘出已清空的旧文案
   $("#pasteText").value="";$("#pastePreview").textContent="";$("#pasteApplyBtn").disabled=true;}
 function pasteClose(){$("#pasteModal").style.display="none";}
 function pasteParse(){
   const txt=$("#pasteText").value.trim();
-  if(!txt){toast("请先粘贴内容");return;}
+  if(!txt){toast(t("batch.paste_empty"));return;}
   const lines=txt.split(/\r?\n/).filter(l=>l.trim());
   const sep=lines[0].includes("\t")?"\t":",";
   let rows=lines.map(l=>l.split(sep).map(c=>c.replaceAll(/(^")|("$)/g,"").trim()));
@@ -52,14 +59,15 @@ function pasteParse(){
     type:["EI","EO","EQ","ILF","EIF"].includes(r[4])?r[4]:"EI",
     reuse:["高","中","低"].includes(r[5])?r[5]:"中",
     modify:["新增","修改","删除"].includes(r[6])?r[6]:"修改"}));
-  $("#pastePreview").textContent=`解析出 ${pasteRows.length} 行（类型/重用度/修改类型不符合枚举的已回退默认值），确认后追加到复核清单`;
+  dynText("#pastePreview",pastePreviewHTML);   // dynText 绑定时即绘制一次
   $("#pasteApplyBtn").disabled=!pasteRows.length;
-  toast(`解析出 ${pasteRows.length} 行`);}
+  toast(tf("batch.paste_parsed",{n:pasteRows.length}));}
 function pasteApply(){
   let seq=items.length?Math.max(...items.map(x=>x.seq)):0;
   pasteRows.forEach(r=>{seq+=1;items.push({...r,seq,cx:"中",ok:false,_ai:{type:r.type,reuse:r.reuse,modify:r.modify}});});
   const n=pasteRows.length;pasteClose();render();saveFormState();
-  toast(`已追加 ${n} 行到复核清单`);}
+  dynClear("#pastePreview");
+  toast(tf("batch.paste_applied",{n}));}
 /* FR-1.7：全局快捷键（应用内 keydown；输入控件聚焦时让位） */
 /* T01501（S3776）：全局键盘监听把「Esc 关浮层 / 输入框让行 / Ctrl+F 搜索 / 上下移动
    / Enter 勾选 / Space 展开依据」六类语义塞在一个处理器里，且每类都带前置守卫，
@@ -119,10 +127,13 @@ function themeSegPaint(){const m=localStorage.getItem('wl_theme_mode')||'light';
     b.style.borderColor=on?'var(--brand)':'var(--line)';b.style.color=on?'var(--brand)':'var(--ink-2)';
     b.style.fontWeight=on?'700':'500';});}
 function setBrand(v){applyTheme.brand(v);brandPaint();}
-function brandPaint(){const cur=localStorage.getItem('wl_brand')||'#2563EB';
-  const wrap=document.getElementById('brandPresets');if(!wrap)return;
-  wrap.innerHTML=BRAND_PRESETS.map(([hex,name])=>`<button title="${name}" onclick="setBrand('${hex}')"
-    style="width:24px;height:24px;border-radius:50%;border:2px solid ${hex===cur?'var(--ink)':'transparent'};background:${hex};cursor:pointer"></button>`).join('');
+function brandPresetsHTML(){const cur=localStorage.getItem('wl_brand')||'#2563EB';
+  return BRAND_PRESETS.map(([hex,name,key])=>{const lab=(key&&__I18N&&__I18N[key])?t(key):name;
+    return `<button title="${escAttr(lab)}" onclick="setBrand('${hex}')"
+    style="width:24px;height:24px;border-radius:50%;border:2px solid ${hex===cur?'var(--ink)':'transparent'};background:${hex};cursor:pointer"></button>`;}).join('');}
+function brandPaint(){  // dyn 注册：预置色名（title/aria）随 setLang 重绘，避免切语言后停留在旧语言
+  dynHtml('#brandPresets',brandPresetsHTML);
+  const cur=localStorage.getItem('wl_brand')||'#2563EB';
   const inp=document.getElementById('brandCustom');if(inp)inp.value=cur;
   const pick=document.getElementById('brandPick');if(pick)pick.value=cur;}
 window.addEventListener('DOMContentLoaded',()=>{themeSegPaint();brandPaint();langSegPaint();});
@@ -139,27 +150,29 @@ function langSegPaint(){
 /* M8/FR-5.4、5.6：诊断包与数据导出导入 */
 async function diagExport(){try{
   const r=await(await fetch(API+"/api/diag")).json();
-  if(!r.ok)throw new Error(r.msg||"导出失败");
-  toast("诊断包已生成："+r.file.split("/").pop()+"（数据目录 diag/ 下）");
-}catch(e){toast("诊断包导出失败："+e.message);}}
+  if(!r.ok)throw new Error(r.msg?lm(r.msg):t("common.export_fail"));
+  toast(tf("diag.done",{f:r.file.split("/").pop()}));
+}catch(e){toast(tf("diag.fail",{msg:e.message}));}}
 async function dataExport(){try{
   const r=await(await fetch(API+"/api/data/export")).json();
-  if(!r.ok)throw new Error(r.msg||"导出失败");
-  toast("全部数据已导出（"+(r.files||[]).length+" 个文件），位于数据目录 exports/ 下");
-}catch(e){toast("数据导出失败："+e.message);}}
+  if(!r.ok)throw new Error(r.msg?lm(r.msg):t("common.export_fail"));
+  toast(tf("data.export_done",{n:(r.files||[]).length}));
+}catch(e){toast(tf("data.export_fail",{msg:e.message}));}}
 async function dataImport(inp){const f=inp.files&&inp.files[0];if(!f)return;
   const buf=await f.arrayBuffer();
   const r=await(await fetch(API+"/api/data/import",{method:"POST",headers:{"Content-Type":"application/octet-stream"},body:buf})).json();
-  toast(r.ok?("导入完成（"+(r.files||[]).length+" 个文件），已自动备份旧数据"):("导入失败："+(r.msg||"")));
+  toast(r.ok?tf("data.import_done",{n:(r.files||[]).length}):tf("data.import_fail",{msg:r.msg?lm(r.msg):t("common.import_fail")}));
   inp.value="";}
 
-/* FR-2.9：配置中心「识别规则」维护页 */
+/* FR-2.9：配置中心「识别规则」维护页。
+   行内输入是编辑态（不注册 dyn，避免重绘摧毁未保存修改）；setLang 链在配置页会重调用
+   rulesLoad 整表重绘，故绘制期现取 t() 即可随语言更新。 */
 function rulesLoad(){
   // FR-UI04：取数前铺骨架屏（8 列表头较宽，缺骨架会出现明显空窗）
   $("#rulesRows").innerHTML=skeletonTable(8,4);
   fetch(API+"/api/rules",{cache:"no-store"}).then(r=>r.json()).then(j=>{
-  if(!j.ok){$("#rulesRows").innerHTML=`<tr><td colspan="8" style="color:var(--muted)">规则表不可用：${j.msg||""}（已回退内置链）</td></tr>`;return;}
-  $("#rulesMeta").textContent=`v${j.version} · ${j.rules.length} 条`;
+  if(!j.ok){$("#rulesRows").innerHTML=`<tr><td colspan="8" style="color:var(--muted)">${tf("rules.unavail",{msg:lm(j.msg||"")})}</td></tr>`;return;}
+  $("#rulesMeta").textContent=tf("rules.meta",{v:j.version,n:j.rules.length});
   $("#rulesRows").innerHTML=j.rules.map((r,i)=>`<tr>
     <td><input data-ri="${i}" data-rk="id" value="${histEsc(r.id)}" style="width:100px"></td>
     <td><input data-ri="${i}" data-rk="name" value="${histEsc(r.name||"")}" style="width:100%"></td>
@@ -168,8 +181,8 @@ function rulesLoad(){
     <td><select data-ri="${i}" data-rk="type">${["EI","EO","EQ","ILF","EIF"].map(t=>`<option ${r.type===t?"selected":""}>${t}</option>`).join("")}</select></td>
     <td><input data-ri="${i}" data-rk="priority" type="number" value="${r.priority||0}" style="width:52px"></td>
     <td><input data-ri="${i}" data-rk="enabled" type="checkbox" ${r.enabled!==false?"checked":""}></td>
-    <td><textarea data-ri="${i}" data-rk="patterns" style="width:100%;height:36px" title="每行一条正则（规则内多分支直接写在同一行用 | 分隔）">${histEsc((r.patterns||[]).join(String.fromCodePoint(10)))}</textarea></td>
-    <td><textarea data-ri="${i}" data-rk="exclude" style="width:110px;height:36px" title="每行一条排除正则">${histEsc((r.exclude||[]).join(String.fromCodePoint(10)))}</textarea></td></tr>`).join("");
+    <td><textarea data-ri="${i}" data-rk="patterns" style="width:100%;height:36px" title="${escAttr(t("rules.pat_title"))}">${histEsc((r.patterns||[]).join(String.fromCodePoint(10)))}</textarea></td>
+    <td><textarea data-ri="${i}" data-rk="exclude" style="width:110px;height:36px" title="${escAttr(t("rules.exc_title"))}">${histEsc((r.exclude||[]).join(String.fromCodePoint(10)))}</textarea></td></tr>`).join("");
   window.lucide&&lucide.createIcons();
 }).catch(e=>{$("#rulesRows").innerHTML=`<tr><td colspan="8">${errorBox(e.message,"rulesLoad()")}</td></tr>`;window.lucide&&lucide.createIcons();});}
 function rulesCollect(){
@@ -187,25 +200,25 @@ function rulesCollect(){
 function rulesSave(){const rules=rulesCollect();
   fetch(API+"/api/rules/save",{method:"POST",headers:{"Content-Type":"application/json"},
     body:JSON.stringify({rules})}).then(r=>r.json()).then(j=>{
-    if(!j.ok)throw new Error(j.msg||"保存失败");
-    toast(`识别规则已保存（v${j.version.rules_version}），下次识别生效`);rulesLoad();
-  }).catch(e=>toast("保存失败："+e.message));}
+    if(!j.ok)throw new Error(j.msg?lm(j.msg):t("common.save_fail"));
+    toast(tf("rules.saved",{v:j.version.rules_version}));rulesLoad();
+  }).catch(e=>toast(tf("rules.save_fail",{msg:e.message})));}
 function rulesAdd(){const rules=rulesCollect();
-  rules.push({id:"R-MAN-"+Date.now().toString(36),name:"新规则",scope:"desc",patterns:["关键词"],
+  rules.push({id:"R-MAN-"+Date.now().toString(36),name:t("rules.new_name"),scope:"desc",patterns:["关键词"],
     exclude:[],type:"EI",priority:50,enabled:true,source:"manual"});
   fetch(API+"/api/rules/save",{method:"POST",headers:{"Content-Type":"application/json"},
     body:JSON.stringify({rules})}).then(r=>r.json()).then(j=>{
-    if(!j.ok)throw new Error(j.msg||"保存失败");
-toast("已追加规则");rulesLoad();
-  }).catch(e=>toast("追加失败："+e.message));}
+    if(!j.ok)throw new Error(j.msg?lm(j.msg):t("common.save_fail"));
+toast(t("rules.added"));rulesLoad();
+  }).catch(e=>toast(tf("rules.add_fail",{msg:e.message})));}
 // 强制下载：动态 <a download> + ObjectURL，避免 window.location 导航偶发被吞。
 async function download(){
-  if(!gSid){toast("尚未生成结果");return;}
+  if(!gSid){toast(t("result.dl_none"));return;}
   const url = API + "/api/download?s=" + encodeURIComponent(gSid);
   try {
     // 先 fetch 拿到 blob（确保 Content-Type 合法 + 拿到原始大小），再 a[download] 触发
     const r = await fetch(url);
-    if(!r.ok) throw new Error("下载失败 HTTP " + r.status);
+    if(!r.ok) throw new Error(tf("result.dl_http_fail",{s:r.status}));
     const blob = await r.blob();
     const dispo = r.headers.get("Content-Disposition") || "";
     const m = /filename\*?=(?:UTF-8'')?["']?([^"';]+)/i.exec(dispo);
@@ -216,13 +229,13 @@ async function download(){
     document.body.appendChild(a);
     a.click();
     setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 800);
-    toast("已开始下载：" + name);
+    toast(tf("result.dl_started",{name}));
   } catch(err){
     // 退化：仍用 a[download] 走原 URL（让浏览器自己处理 Content-Disposition）
     const a = document.createElement("a");
     a.href = url; a.download = gSid; a.rel = "noopener";
     document.body.appendChild(a); a.click(); a.remove();
-    toast("下载已触发：" + gSid);
+    toast(tf("result.dl_fallback",{name:gSid}));
   }
 }
 let tt;function toast(t){const el=$("#toast");el.textContent=t;el.style.opacity=1;clearTimeout(tt);tt=setTimeout(()=>el.style.opacity=0,2200);}
@@ -236,7 +249,7 @@ setTimeout(async()=>{
     const res=await r.json();
     if(res.ok&&res.hasUpdate){
       verLatest=res;
-      toast(`发现新版本 ${res.latest}，请到「帮助文档」页面一键更新`);
+      toast(tf("help.upd.toast_found",{v:res.latest}));
     }
   }catch(e){/* 静默失败不打扰 */}
 },5000);
@@ -286,7 +299,7 @@ function renderPertState(s){
   const setv=(id,val)=>{const el=$(id);if(el&&val!=="")el.value=val;};
   setv('#pertO',s.pertO);setv('#pertM',s.pertM);setv('#pertP',s.pertP);
   setv('#pertD',s.pertD);setv('#pertEst',s.pertEst);
-  const cur=$("#pertCur");if(cur&&s.pertPid)cur.textContent='项目 #'+s.pertPid;
+  const cur=$("#pertCur");if(cur&&s.pertPid)cur.textContent=tf("pert.cur_proj",{id:s.pertPid});
   if(typeof renderPert==='function'&&pertItems.length)renderPert();
   if(typeof applyPertSummary==='function'&&pertSummary)applyPertSummary(pertSummary);
 }
@@ -306,13 +319,19 @@ function restoreFormState(){
   goPage(s.page||'work');
   if(hasIfpug)renderIfpugState(s);
   if(hasPert)renderPertState(s);
-  toast('已恢复上次未完成的录入');
+  toast(t("form.restored"));
   return true;
 }
 window.addEventListener('beforeunload',saveFormState);
 window.addEventListener('pagehide',saveFormState);
-try{
-  if(!restoreFormState()){saveFormState();}
-}catch(e){/* 恢复失败不阻塞正常启动 */}
-histRestorePrompt();   // M1/FR-1.8：会话恢复未覆盖时，基于历史库的二次兜底提示
+/* T01556（批次6）：启动恢复/兜底提示原为解析期直接调用——那时 20_m9 的 i18n 字典尚未加载，
+   t() 回退会把内部 key（如 form.restored）露在首屏 toast 与表格上。
+   改由 20_m9 的 DOMContentLoaded 引导序列在「字典就绪 → applyI18n」之后调用
+   bootRestoreChain()（本函数仍在解析期定义，只是推迟执行时机）。 */
+function bootRestoreChain(){
+  try{
+    if(!restoreFormState()){saveFormState();}
+  }catch(e){/* 恢复失败不阻塞正常启动 */}
+  histRestorePrompt();   // M1/FR-1.8：会话恢复未覆盖时，基于历史库的二次兜底提示
+}
 
