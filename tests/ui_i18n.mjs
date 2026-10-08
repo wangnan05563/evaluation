@@ -217,51 +217,71 @@ const rvResidue = await ev(`(()=>{const bad=[];document.querySelectorAll('#v-rev
   if(el.children.length===0&&/[一-龥]/.test(el.textContent)) bad.push(el.getAttribute('data-i18n'));});return JSON.stringify(bad)})()`);
 check('复核表英文态无中文残留', rvResidue === '[]', rvResidue);
 
-// ---- 13b) 复核表动态文案（批次5 T01555）：badge/下拉/空态 key 化 + dynPaint 驻留重绘 ----
+// ---- 13b) 复核表动态文案（批次5 T01555）：badge/下拉/空态 key 化 + dyn 注册表重绘 ----
+// 注意：ev 传参是 JS 模板字面量，表达式里出现 \s 会被模板吃掉反斜杠（/s+/ 会误吞字母 s）——
+// 本块一律用无正则的 split/filter/join 做空白归一。
 await ev(`setLang('zh-CN');render();`); await sleep(500);
+const norm = s => s.split(" ").filter(Boolean).join(" ").split("\n").join(" ").replace(/\u00a0/g, " ");
 const rvZh2 = JSON.parse(await ev(`JSON.stringify({
   badges:[...document.querySelectorAll('#tbody .rowst .stat')].map(x=>x.textContent.trim()),
-  cxOpts:[...document.querySelectorAll('#tbody select[data-k="cx"]')][0].options,
+  cxOpts:[...[...document.querySelectorAll('#tbody select[data-k="cx"]')][0].options].map(o=>({t:o.text,v:o.value})),
   startBtn:document.getElementById('startBtn').textContent.trim(),
 })`));
 check('复核表中文态：badge/选项/按钮为中文原文（zh 字典生效）',
   rvZh2.badges[0] === '已确认' && rvZh2.badges[1] === '待复核'
-  && [...rvZh2.cxOpts].map(o=>o.text).join('|') === '低|中|高'
+  && rvZh2.cxOpts.map(o=>o.t).join('|') === '低|中|高'
   && rvZh2.startBtn === '上传文档开始识别',
   JSON.stringify({badges:rvZh2.badges, start:rvZh2.startBtn}));
-const dynReg = await ev(`__dyn.length`);
-check('dyn 注册表已建立（驻留 DOM 文案可随语言重绘）', dynReg >= 2, `__dyn=${dynReg}`);
 
 await ev(`setLang('en-US');`); await sleep(700);
 const rvEn2 = JSON.parse(await ev(`JSON.stringify({
   badges:[...document.querySelectorAll('#tbody .rowst .stat')].map(x=>x.textContent.trim()),
-  cxOpts:[...document.querySelectorAll('#tbody select[data-k="cx"]')][0].options,
+  cxOpts:[...[...document.querySelectorAll('#tbody select[data-k="cx"]')][0].options].map(o=>({t:o.text,v:o.value})),
   cxVal:document.querySelector('#tbody select[data-k="cx"]').value,
-  modOpts:[...document.querySelectorAll('#tbody select[data-k="modify"]')][0].options,
+  modOpts:[...[...document.querySelectorAll('#tbody select[data-k="modify"]')][0].options].map(o=>({t:o.text,v:o.value})),
   startBtn:document.getElementById('startBtn').textContent.trim(),
   treeAll:[...document.querySelectorAll('#tree .tnode')].map(x=>x.textContent).filter(s=>/function points/i.test(s))[0],
 })`));
 check('复核表英文态：badge 与选项 label 已切英文',
   rvEn2.badges[0] === 'Confirmed' && rvEn2.badges[1] === 'Pending review'
-  && [...rvEn2.cxOpts].map(o=>o.text).join('|') === 'Low|Medium|High'
-  && [...rvEn2.modOpts].map(o=>o.text).join('|') === 'New|Modify|Delete',
-  JSON.stringify({badges:rvEn2.badges, mods:[...rvEn2.modOpts].map(o=>o.text)}));
+  && rvEn2.cxOpts.map(o=>o.t).join('|') === 'Low|Medium|High'
+  && rvEn2.modOpts.map(o=>o.t).join('|') === 'New|Modify|Delete',
+  JSON.stringify({badges:rvEn2.badges, mods:rvEn2.modOpts.map(o=>o.t)}));
 check('数据域中文值保持不变（option value 与选中值仍是 低/中/高，后端与计算不受影响）',
-  [...rvEn2.cxOpts].map(o=>o.value).join('|') === '低|中|高' && rvEn2.cxVal === '中',
-  JSON.stringify({vals:[...rvEn2.cxOpts].map(o=>o.value), sel:rvEn2.cxVal}));
+  rvEn2.cxOpts.map(o=>o.v).join('|') === '低|中|高' && rvEn2.cxVal === '中',
+  JSON.stringify({vals:rvEn2.cxOpts.map(o=>o.v), sel:rvEn2.cxVal}));
 check('startBtn 内部 span 随 setLang 重绘（静态标注+动态重建同源 key）',
   rvEn2.startBtn === 'Upload and recognize', rvEn2.startBtn);
 check('功能树首节点英文态（review.tree.all + 计数 span 完好）',
   /All function points\s*2/.test((rvEn2.treeAll||'').trim()), rvEn2.treeAll);
-await ev(`items=[];render();`); await sleep(400);
+
+// dyn 注册表：复核区行内文案由 render() 重算（不驻留注册表），此处显式验证注册表机制本身——
+// 绑定临时节点 → 切语言触发 dynPaint → 译文更新 → dynClear 后不再重绘。
+const dynN0 = await ev(`(()=>{const d=document.createElement('div');d.id='__dynProbe';document.body.appendChild(d);
+  dynText(d,()=>t('review.dock.ok'));return __dyn.length})()`);
+await ev(`setLang('zh-CN')`); await sleep(500);
+const dynZh = await ev(`document.getElementById('__dynProbe').textContent`);
+await ev(`setLang('en-US')`); await sleep(600);
+const dynEn = await ev(`document.getElementById('__dynProbe').textContent`);
+const dynN1 = await ev(`(()=>{dynClear(document.getElementById('__dynProbe'));
+  document.getElementById('__dynProbe').remove();return __dyn.length})()`);
+check('dyn 注册表机制：绑定入表→切语言 dynPaint 重绘→注销出表',
+  dynN0 >= 1 && dynZh === '已确认' && dynEn === 'Confirmed' && dynN1 === dynN0 - 1,
+  JSON.stringify({n0: dynN0, zh: dynZh, en: dynEn, n1: dynN1}));
+
+// 筛选空态（items 非空但 q 过滤到 0 → 「没有匹配的功能项」+ 清除筛选按钮）
+await ev(`(()=>{const q=document.getElementById('q');q.value='zzz-no-match';render();})()`); await sleep(400);
 const rvEn3 = JSON.parse(await ev(`JSON.stringify({
-  empty:document.querySelector('#tbody').textContent.replace(/\s+/g,' ').trim(),
-  emptyBtn:document.querySelector('#tbody .btn')?document.querySelector('#tbody .btn').textContent.trim():null,
+  empty:document.querySelector('#tbody').textContent.split(String.fromCharCode(10)).join(' ').split('  ').filter(Boolean).join(' ').trim(),
+  emptyBtn:[...document.querySelectorAll('#tbody .empty-a button')].map(x=>x.textContent.trim())[0],
 })`));
-check('空态英文态：标题/正文/按钮已切英文且无中文残留',
-  /No candidate function points yet/.test(rvEn3.empty) && /Clear filters/.test(rvEn3.emptyBtn||'')
-  && !/[一-龥]/.test(rvEn3.empty), JSON.stringify(rvEn3));
-await ev(`setLang('zh-CN');`); await sleep(400);
+check('筛选空态英文态：标题/正文/按钮已切英文且无中文残留',
+  /No matching function points/.test(rvEn3.empty) && /Adjust the search term/.test(rvEn3.empty)
+  && rvEn3.emptyBtn === 'Clear filters' && !/[\u4e00-\u9fa5]/.test(rvEn3.empty),
+  JSON.stringify(rvEn3));
+await ev(`(()=>{document.getElementById('q').value='';render();})()`); await sleep(300);
+await ev(`setLang('zh-CN')`); await sleep(500);
+
 
 // 切回中文并复原数据
 await ev(`setLang('zh-CN');items=[];render();`); await sleep(500);
