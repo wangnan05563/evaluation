@@ -576,7 +576,7 @@ const CFG_FIELD_HANDLERS={
   recalcMode(v){const el=$("#recalcMode");if(!el)return;
     const m=String(v||"async");if([...el.options].some(o=>o.value===m))el.value=m;},
   recalcTimeout(v){const el=$("#recalcTimeout");if(el)el.value=(v==null||v==="")?"":v;},
-  key(v){$("#llmKey").value=v||"";},
+  key(v){if(v)$("#llmKey").value=v;},   // T01574：未勾「记住」时草稿把 key 脱敏成空串，是占位而非用户清空意图；空值不得覆盖后端已存 Key，否则持久化的 Key 重开被抹掉（返显失败）
   api(v){$("#llmApi").value=v||"";},
   model(v){$("#llmModel").value=v||"";},
 };
