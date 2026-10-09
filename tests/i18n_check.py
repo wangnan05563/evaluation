@@ -6,6 +6,12 @@
 
 为什么必须独立成校验脚本而非运行时兜底：t() 缺译文会回退显示 key（中文原文），
 界面「看起来正常」，漏译只会在切到英文时才暴露成key 裸露。构建期拦住比用户发现早得多。
+
+边界（T01669 产品裁决，详见 docs/设计-多语言边界-交付物恒为中文.md）：
+**交付物文案恒为中文，不参与 i18n**——IFPUG/PERT 成品表（generate_xlsx.py）、
+版本对比 CSV/MD（08_*.js）、结果摘要 MD（03_*.js）的模板不得加 data-i18n 标注
+或 t()/tf() 调用；数据域枚举值（低/中/高、新增/修改/删除等）是业务数据口径，
+同样不进字典。本脚本与 S12 扫描只覆盖界面文案，导出模板不在校验范围（设计使然）。
 """
 import json
 import re
@@ -123,6 +129,24 @@ if zh and en:
                 if not any(a in str(en.get(k, "")).lower() for a in alts):
                     drift.append(f"{k}「{term}」")
     check("术语表术语跨字典一致（en 固定译法无漂移）", not drift, ", ".join(drift[:6]))
+
+# 7) 服务端 msgKey 守卫（T01668，FR-ENG05）：扫描 scripts/server.py 的 _m("srv.*"/…)
+#    与 scripts/validators.py 的 key="srv.v.*" 字面量，要求两语字典均有译文。
+#    背景：服务端消息已 msgKey 化（前端 lm() 优先查字典渲染），后端新增消息若字典漏译，
+#    英文态会直接露出 key——这条守卫把「后端消息键 ↔ 字典」的对齐固化进构建期。
+if zh and en:
+    srv_keys = set()
+    srv_src = (ROOT / "scripts" / "server.py").read_text(encoding="utf-8")
+    srv_keys.update(re.findall(r'_m\(\s*"([^"]+)"', srv_src))
+    srv_keys.update(re.findall(r'"msgKey":\s*"([^"]+)"', srv_src))
+    val_src = (ROOT / "scripts" / "validators.py").read_text(encoding="utf-8")
+    srv_keys.update(re.findall(r'key="((?:srv|help|history|rules|rates|config|eco|work|pert|gen)\.[^"]+)"', val_src))
+    miss_zh = sorted(k for k in srv_keys if k not in zh)
+    miss_en = sorted(k for k in srv_keys if k not in en)
+    check("服务端 msgKey 在 zh-CN 字典全部有译文", not miss_zh,
+          f"共 {len(srv_keys)} 键，缺失: {', '.join(miss_zh[:6])}")
+    check("服务端 msgKey 在 en-US 字典全部有译文", not miss_en,
+          f"共 {len(srv_keys)} 键，缺失: {', '.join(miss_en[:6])}")
 
 print(f"==== i18n 校验汇总 ==== 失败 {len(fails)}")
 sys.exit(1 if fails else 0)

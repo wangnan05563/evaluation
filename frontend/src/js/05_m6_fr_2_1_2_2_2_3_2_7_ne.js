@@ -113,7 +113,7 @@ function gbVerSelSet(name){const sel=document.getElementById("gbVerSel");
 async function gbVerChange(){  // FR-2.3：结果页切换基准版本（服务端持久化 selected，估算记录在结果中）
   const doc=structuredClone(__rates);doc.selected=document.getElementById("gbVerSel").value;
   const r=await(await fetch(API+"/api/rates/save",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(doc)})).json();
-  if(!r.ok){toast(t("gb.ver_fail")+"："+lm(r.msg));return;}
+  if(!r.ok){toast(t("gb.ver_fail")+"："+lm(r));return;}
   __rates=null;gbState=null;gbRender();toast(tf("gb.ver_selected",{name:document.getElementById("gbVerSel").value,v:r.version.version}));}
 function gbEvalSwf(r){return ((r.swf[gbState.domain]||{})[gbState.app])||1;}
 function gbEvalRdf(r){return ((r.rdf[gbState.lang]||{})[gbState.team])||1;}
@@ -182,17 +182,17 @@ function ratesCollect(){const name=document.getElementById("ratesSel").value;
 async function ratesSave(){try{
   const r=await(await fetch(API+"/api/rates/save",{method:"POST",headers:{"Content-Type":"application/json"},
     body:JSON.stringify(ratesCollect())})).json();
-  if(!r.ok)throw new Error(r.msg?lm(r.msg):t("common.save_fail"));
+  if(!r.ok)throw new Error(r.msg?lm(r):t("common.save_fail"));
   __rates=null;await ratesLoad();toast(tf("rates.saved",{v:r.version.version}));
 }catch(e){toast(tf("common.save_failed",{msg:e.message}));}}
 async function ratesAdd(){const name=prompt(t("rates.prompt_add"));if(!name||!name.trim())return;
   const doc=ratesCollect();doc.versions[name.trim()]=structuredClone(doc.versions[doc.selected]||{pdr:6.96,rate:28000});
   doc.selected=name.trim();
   const r=await(await fetch(API+"/api/rates/save",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(doc)})).json();
-  if(!r.ok){toast(t("rates.add_fail")+"："+lm(r.msg));return;}__rates=null;await ratesLoad();toast(t("rates.added"));}
+  if(!r.ok){toast(t("rates.add_fail")+"："+lm(r));return;}__rates=null;await ratesLoad();toast(t("rates.added"));}
 async function ratesDel(){const name=document.getElementById("ratesSel").value;
   if(Object.keys(__rates.versions).length<=1){toast(t("rates.del_last"));return;}
   if(!confirm(tf("rates.del_confirm",{name})))return;
   const doc=ratesCollect();delete doc.versions[name];doc.selected=Object.keys(doc.versions)[0];
   const r=await(await fetch(API+"/api/rates/save",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(doc)})).json();
-  if(!r.ok){toast(t("rates.del_fail")+"："+lm(r.msg));return;}__rates=null;await ratesLoad();toast(t("rates.deleted"));}
+  if(!r.ok){toast(t("rates.del_fail")+"："+lm(r));return;}__rates=null;await ratesLoad();toast(t("rates.deleted"));}

@@ -36,7 +36,7 @@ async function storyPush(){
   try{
     const r=await(await fetch(API+"/api/story/push",{method:"POST",headers:{"Content-Type":"application/json"},
       body:JSON.stringify({token,repo,stories:window.__stories||[]})})).json();
-    if(!r.ok){btn.disabled=false;toast(tf("eco.push_fail",{msg:lm(r.msg)}));return;}
+    if(!r.ok){btn.disabled=false;toast(tf("eco.push_fail",{msg:lm(r)}));return;}
     btn.disabled=false;
     const failMsg=(r.errors&&r.errors.length)?tf("eco.push_partial",{n:r.errors.length}):"";
     toast(tf("eco.pushed",{n:r.pushed})+failMsg);
@@ -63,7 +63,7 @@ async function tplUpload(inp){const f=inp.files&&inp.files[0];if(!f)return;
     fr.onload=()=>res(fr.result.split(",")[1]);fr.readAsDataURL(f);});
   const r=await(await fetch(API+"/api/templates/save",{method:"POST",headers:{"Content-Type":"application/json"},
     body:JSON.stringify({name,b64,note:note||"",mapping:{}})})).json();
-  if(!r.ok){toast(tf("eco.upload_fail",{msg:lm(r.msg)}));return;}
+  if(!r.ok){toast(tf("eco.upload_fail",{msg:lm(r)}));return;}
   tplPick(name);await tplLoad();toast(tf("eco.tpl_uploaded",{name}));
   inp.value="";}
 /* FR-5.5：界面多语言。字典经 /api/i18n?lang= 读取（不走 /static/ ——该路由

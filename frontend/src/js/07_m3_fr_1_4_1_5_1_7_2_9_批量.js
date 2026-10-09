@@ -150,18 +150,18 @@ function langSegPaint(){
 /* M8/FR-5.4、5.6：诊断包与数据导出导入 */
 async function diagExport(){try{
   const r=await(await fetch(API+"/api/diag")).json();
-  if(!r.ok)throw new Error(r.msg?lm(r.msg):t("common.export_fail"));
+  if(!r.ok)throw new Error(r.msg?lm(r):t("common.export_fail"));
   toast(tf("diag.done",{f:r.file.split("/").pop()}));
 }catch(e){toast(tf("diag.fail",{msg:e.message}));}}
 async function dataExport(){try{
   const r=await(await fetch(API+"/api/data/export")).json();
-  if(!r.ok)throw new Error(r.msg?lm(r.msg):t("common.export_fail"));
+  if(!r.ok)throw new Error(r.msg?lm(r):t("common.export_fail"));
   toast(tf("data.export_done",{n:(r.files||[]).length}));
 }catch(e){toast(tf("data.export_fail",{msg:e.message}));}}
 async function dataImport(inp){const f=inp.files&&inp.files[0];if(!f)return;
   const buf=await f.arrayBuffer();
   const r=await(await fetch(API+"/api/data/import",{method:"POST",headers:{"Content-Type":"application/octet-stream"},body:buf})).json();
-  toast(r.ok?tf("data.import_done",{n:(r.files||[]).length}):tf("data.import_fail",{msg:r.msg?lm(r.msg):t("common.import_fail")}));
+  toast(r.ok?tf("data.import_done",{n:(r.files||[]).length}):tf("data.import_fail",{msg:r.msg?lm(r):t("common.import_fail")}));
   inp.value="";}
 
 /* FR-2.9：配置中心「识别规则」维护页。

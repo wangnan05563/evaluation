@@ -2,7 +2,11 @@
  *  由编排器起隔离实例（8032）+ 无头 Chrome（CDP 9334）后运行。
  *  覆盖：/api/i18n 路由可用、lang 白名单收敛（防目录穿越反射）、字典 key 对齐、
  *  data-i18n 文本/属性双向替换、缺译文不抠空界面、切换语言即时生效并记忆、
- *  未标注文案保持中文（分批迁移的渐进式现状，不误报为缺陷）。 */
+ *  未标注文案保持中文（分批迁移的渐进式现状，不误报为缺陷）。 *
+ * 边界（T01669 产品裁决）：本扫描只覆盖界面 DOM 文案。交付物（成品表/CSV/MD，
+ * 内容写入文件不进 DOM）恒为中文、不参与 i18n——这是设计使然而非扫描巧合；
+ * 若未来把导出预览渲染进 DOM，须把交付物模板节点显式登记为排除项。
+ */
 import path from 'node:path';
 const CDP = 'http://127.0.0.1:9334', APP = 'http://127.0.0.1:8032/';
 const sleep = ms => new Promise(r => setTimeout(r, ms));
@@ -620,14 +624,15 @@ for (const mid of ['work', 'pert', 'config', 'help']) {
 }
 check('引导各步骤英文态全页扫描均无中文残留', gdStepsBad.length === 0, gdStepsBad.slice(0, 3).join(' | '));
 
-// ---- 19) 间接映射表目标 key 双字典齐备（T01556 批次6）----
-// 迁移采用「中文原文/数据值 → 字典 key」的过渡层（服务端 msg、生成阶段、PERT 阶段、
+// ---- 19) 间接映射表目标 key 双字典齐备（T01556 批次6；T01668 调整）----
+// 迁移采用「中文原文/数据值 → 字典 key」的过渡层（生成阶段、PERT 阶段、
 // GB 阶段、diff 字段、主题色名、引导条目）。这类 key 不经 data-i18n 静态扫描，
 // i18n_check 也查不到，缺译时界面直接露出 key 原样——故在运行时逐表校验两语齐备。
+// T01668：服务端 msg 的过渡映射表（LM_SERVER_MSGS/LM_SERVER_TPL）已删除——
+// 服务端响应携带 msgKey 直查字典，其键齐备性改由 tests/i18n_check.py 的
+// 「服务端 msgKey」守卫在构建期校验，此处不再统计（阈值 90 → 46）。
 const mapKeys = JSON.parse(await ev(`(()=>{const ks=new Set();
   const add=v=>{if(typeof v==='string'&&/\\./.test(v))ks.add(v);};
-  try{Object.values(LM_SERVER_MSGS).forEach(add);}catch(e){}
-  try{LM_SERVER_TPL.forEach(x=>add(x[1]));}catch(e){}
   try{Object.values(PERT_PHASE_KEYS).forEach(add);}catch(e){}
   try{Object.values(GB_STAGE_KEYS).forEach(add);}catch(e){}
   try{DIFF_FIELDS.forEach(x=>add(x[1]));Object.values(DIFF_KIND_KEYS).forEach(add);}catch(e){}
@@ -639,7 +644,7 @@ const zhDict = await getJson('/api/i18n?lang=zh-CN');
 const enDict = await getJson('/api/i18n?lang=en-US');
 const missZh = mapKeys.filter(k => !(k in zhDict.strings));
 const missEn = mapKeys.filter(k => !(k in enDict.strings));
-check('过渡映射表引用的 key 数量符合预期（非空且成规模）', mapKeys.length >= 90, `keys=${mapKeys.length}`);
+check('过渡映射表引用的 key 数量符合预期（非空且成规模）', mapKeys.length >= 46, `keys=${mapKeys.length}`);
 check('过渡映射表 key 在 zh-CN 字典全部有译文', missZh.length === 0, missZh.slice(0, 6).join(', '));
 check('过渡映射表 key 在 en-US 字典全部有译文', missEn.length === 0, missEn.slice(0, 6).join(', '));
 

@@ -202,6 +202,23 @@ except Exception as e:
     RATES = None
     print(f"[rates] 初始化失败: {type(e).__name__}: {e}", flush=True)
 
+def _m(key, zh_tpl, **args):
+    """T01668（FR-ENG05）：带稳定键的响应消息构造器。
+
+    msg 保留中文原文（老前端/日志降级可读）；msgKey+msgArgs 供 i18n 前端
+    查字典渲染（英文态不再依赖前端「中文原文→key」过渡映射表）。
+    args 会先插值进中文原文，保证两端显示一致。"""
+    txt = zh_tpl
+    if args:
+        try:
+            txt = zh_tpl.format(**args)
+        except Exception:
+            pass
+    d = {"msg": txt, "msgKey": key}
+    if args:
+        d["msgArgs"] = args
+    return d
+
 # 界面文案字典（FR-5.5）：data/i18n/{lang}.json 外置，不发版可补翻译。
 # 为什么不走 /static/：该路由白名单只放行 .js/.css 且显式禁子路径（防目录穿越），
 # 放行 .json 会扩大攻击面，故单独走 /api/i18n 的 _json() 通道。
@@ -510,19 +527,19 @@ def check_update():
     """请求更新源 JSON({version,url,notes})，与当前版本比较。由后端代理规避浏览器 CORS。"""
     url = (load_config().get("update_url") or "").strip()
     if not url:
-        return {"ok": False, "msg": "未配置更新源", "current": APP_VERSION}
+        return {"ok": False, **_m("help.upd.msg_unconfigured", "未配置更新源"), "current": APP_VERSION}
     try:
         req = Request(url, method="GET", headers={"User-Agent": "WorkloadEval/" + APP_VERSION})
         with urlopen(req, timeout=10) as r:
             data = json.loads(r.read().decode("utf-8-sig"))
         latest, pkg = str(data.get("version") or ""), str(data.get("url") or "")
         if not latest or not pkg:
-            return {"ok": False, "msg": "更新源数据不完整（需 version 与 url 字段）", "current": APP_VERSION}
+            return {"ok": False, **_m("help.upd.msg_src_incomplete", "更新源数据不完整（需 version 与 url 字段）"), "current": APP_VERSION}
         return {"ok": True, "current": APP_VERSION, "latest": latest,
                 "hasUpdate": _ver_tuple(latest) > _ver_tuple(APP_VERSION),
                 "url": pkg, "notes": str(data.get("notes") or "")}
     except Exception as e:
-        return {"ok": False, "msg": f"更新源访问失败：{e}", "current": APP_VERSION}
+        return {"ok": False, **_m("help.upd.fetch_fail", "更新源访问失败：{err}", err=str(e)), "current": APP_VERSION}
 
 
 def _stream_update_to(tmp, req):
@@ -555,21 +572,21 @@ def _download_update(url):
 def start_update_download(url):
     url = str(url or "").strip()
     if not url:
-        return {"ok": False, "msg": "缺少更新包地址"}
+        return {"ok": False, **_m("help.upd.msg_no_url", "缺少更新包地址")}
     if _UPDATE_STATE["state"] == "downloading":
-        return {"ok": True, "msg": "已在下载中"}
+        return {"ok": True, **_m("help.upd.msg_downloading", "已在下载中")}
     threading.Thread(target=_download_update, args=(url,), daemon=True).start()
-    return {"ok": True, "msg": "开始下载"}
+    return {"ok": True, **_m("help.upd.msg_dl_started", "开始下载")}
 
 
 def install_update():
     if not UPDATE_FILE.exists():
-        return {"ok": False, "msg": "更新包不存在，请先下载"}
+        return {"ok": False, **_m("help.upd.msg_no_pkg", "更新包不存在，请先下载")}
     # NSIS 安装器 customInit 会先 taskkill 本应用（壳+sidecar）再覆盖安装，
     # 存量配置由 installer.nsh 抢救逻辑与 _migrate_legacy_data 保证不丢
     flags = getattr(subprocess, "DETACHED_PROCESS", 0) | getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0)
     subprocess.Popen([str(UPDATE_FILE)], cwd=str(UPDATE_FILE.parent), close_fds=True, creationflags=flags)
-    return {"ok": True, "msg": "安装器已启动，应用将关闭并开始更新"}
+    return {"ok": True, **_m("help.upd.msg_installer", "安装器已启动，应用将关闭并开始更新")}
 
 
 # ---------------- 文档解析 / 识别 ----------------
@@ -1331,7 +1348,7 @@ class Handler(BaseHTTPRequestHandler):
         if not p.exists():
             p = _APP_ROOT / "frontend" / "index.html"
         if not p.exists():
-            return self._json(404, {"ok": False, "msg": "未找到前端页面"})
+            return self._json(404, {"ok": False, **_m("srv.page_missing", "未找到前端页面")})
         data = p.read_bytes()
         self.send_response(200)
         self._cors()
@@ -1362,7 +1379,7 @@ class Handler(BaseHTTPRequestHandler):
         if u.path == "/api/rules":
             # M3/FR-2.9：识别规则表读取
             if RULES is None:
-                return self._json(503, {"ok": False, "msg": "规则表不可用（已回退内置识别链）"})
+                return self._json(503, {"ok": False, **_m("rules.srv_unavail", "规则表不可用（已回退内置识别链）")})
             return self._json(200, RULES.list_rules())
         if u.path == "/api/templates":
             # M9/FR-2.8：母版目录（xlsx + meta.json 口径说明）
@@ -1391,12 +1408,12 @@ class Handler(BaseHTTPRequestHandler):
         if u.path == "/api/rates":
             # M6/FR-2.3：费率与基准版本读取
             if RATES is None:
-                return self._json(503, {"ok": False, "msg": "费率版本表不可用"})
+                return self._json(503, {"ok": False, **_m("rates.srv_unavail", "费率版本表不可用")})
             return self._json(200, RATES.list())
         # ---------------- M1 估算历史（FR-1.1/1.8/2.5） ----------------
         if u.path == "/api/history":
             if HIST is None:
-                return self._json(200, {"ok": False, "msg": "历史功能不可用（存储初始化失败）", "total": 0, "rows": []})
+                return self._json(200, {"ok": False, **_m("history.srv_unavail", "历史功能不可用（存储初始化失败）"), "total": 0, "rows": []})
             q = parse_qs(u.query)
             return self._json(200, HIST.list(
                 query=(q.get("query") or [""])[0],
@@ -1405,31 +1422,32 @@ class Handler(BaseHTTPRequestHandler):
         m_hist = re.match(r"^/api/history/([0-9a-f]{32})$", u.path)
         if m_hist:
             if HIST is None:
-                return self._json(503, {"ok": False, "msg": "历史功能不可用（存储初始化失败）"})
+                return self._json(503, {"ok": False, **_m("history.srv_unavail", "历史功能不可用（存储初始化失败）")})
             hid = m_hist.group(1)
             row = HIST.get(hid)
             if not row:
-                return self._json(404, {"ok": False, "msg": "历史记录不存在或已被清理"})
+                return self._json(404, {"ok": False, **_m("history.srv_gone", "历史记录不存在或已被清理")})
             return self._json(200, {"ok": True, "row": row})
         m_grp = re.match(r"^/api/history/([0-9a-f]{32})/group$", u.path)
         if m_grp:
             if HIST is None:
-                return self._json(503, {"ok": False, "msg": "历史功能不可用（存储初始化失败）"})
+                return self._json(503, {"ok": False, **_m("history.srv_unavail", "历史功能不可用（存储初始化失败）")})
             return self._json(200, HIST.group(m_grp.group(1)))
         # ---------------- M1/FR-FE05：版本间 diff ----------------
         if u.path == "/api/history/diff":
             if HIST is None:
-                return self._json(503, {"ok": False, "msg": "历史功能不可用（存储初始化失败）"})
+                return self._json(503, {"ok": False, **_m("history.srv_unavail", "历史功能不可用（存储初始化失败）")})
             q = parse_qs(u.query)
             aid = (q.get("a") or [None])[0]
             bid = (q.get("b") or [None])[0]
             if not aid or not bid:
                 return self._json(400, {"ok": False,
-                    "msg": "需提供 a 与 b 两个版本 id（/api/history/diff?a=<id>&b=<id>）"})
+                    "msg": "需提供 a 与 b 两个版本 id（/api/history/diff?a=<id>&b=<id>）",
+                    "msgKey": "history.srv_need_ab"})
             try:
                 d = HIST.diff(aid, bid)
             except Exception as e:
-                return self._json(500, {"ok": False, "msg": "diff 计算失败：" + str(e)})
+                return self._json(500, {"ok": False, **_m("history.diff_calc_fail", "diff 计算失败：{err}", err=str(e))})
             if not d.get("ok"):
                 code = 404 if d.get("which") else 400
                 return self._json(code, d)
@@ -1481,18 +1499,18 @@ class Handler(BaseHTTPRequestHandler):
                 self.end_headers()
                 self.wfile.write(data)
             else:
-                self._json(404, {"ok": False, "msg": "文件不存在"})
+                self._json(404, {"ok": False, **_m("srv.file_missing", "文件不存在")})
         elif u.path.startswith("/static/"):
             # 前端静态资源（引导脚本等）：仅允许 frontend 根下的 .js/.css，防目录穿越
             name = u.path[len("/static/"):]
             fext = os.path.splitext(name)[1].lower()
             if fext not in (".js", ".css") or "/" in name or "\\" in name or ".." in name:
-                return self._json(404, {"ok": False, "msg": "静态资源不存在"})
+                return self._json(404, {"ok": False, **_m("srv.static_missing", "静态资源不存在")})
             p = _RES / "frontend" / name
             if not p.exists():
                 p = _APP_ROOT / "frontend" / name
             if not p.exists():
-                return self._json(404, {"ok": False, "msg": "静态资源不存在"})
+                return self._json(404, {"ok": False, **_m("srv.static_missing", "静态资源不存在")})
             data = p.read_bytes()
             self.send_response(200)
             self._cors()
@@ -1517,7 +1535,10 @@ class Handler(BaseHTTPRequestHandler):
                     V.check_recognize(payload)
                 except V.VErr as e:
                     SLOG.warn("api", "validate_fail", path=u.path, field=e.field)
-                    return self._json(400, {"ok": False, "msg": e.msg, "field": e.field})
+                    body = {"ok": False, "msg": e.msg, "field": e.field}
+                    if getattr(e, "key", None): body["msgKey"] = e.key
+                    if getattr(e, "vargs", None): body["msgArgs"] = e.vargs
+                    return self._json(400, body)
                 name = payload.get("name", UPLOAD_FALLBACK_NAME)
                 b64 = payload.get("b64", "")
                 src = _upload_path(name)
@@ -1551,7 +1572,7 @@ class Handler(BaseHTTPRequestHandler):
                 m_del = re.match(r"^/api/history/([0-9a-f]{32})$", u.path)
                 if m_del:
                     if HIST is None:
-                        return self._json(503, {"ok": False, "msg": "历史功能不可用（存储初始化失败）"})
+                        return self._json(503, {"ok": False, **_m("history.srv_unavail", "历史功能不可用（存储初始化失败）")})
                     return self._json(200, {"ok": HIST.delete(m_del.group(1))})
 
             if u.path == "/api/story/push":
@@ -1559,7 +1580,7 @@ class Handler(BaseHTTPRequestHandler):
                 pl = json.loads(raw.decode("utf-8"))
                 token, repo, stories = pl.get("token") or "", pl.get("repo") or "", pl.get("stories") or []
                 if not (token and repo and isinstance(stories, list) and stories):
-                    return self._json(400, {"ok": False, "msg": "需要 token/repo/stories", "field": "token|repo|stories"})
+                    return self._json(400, {"ok": False, **_m("eco.srv_need_fields", "需要 token/repo/stories"), "field": "token|repo|stories"})
                 ok_n, errs = 0, []
                 for st in stories[:50]:
                     try:
@@ -1576,7 +1597,7 @@ class Handler(BaseHTTPRequestHandler):
                         errs.append(f"{st.get('title','?')}: {e}")
                 if errs and ok_n == 0:
                     SLOG.warn("story", "push_fail", errs=errs[:3])
-                    return self._json(502, {"ok": False, "msg": "；".join(errs[:3]), "retry": True})
+                    return self._json(502, {"ok": False, **_m("eco.srv_push_fail", "推送失败：{detail}", detail="；".join(errs[:3])), "retry": True})
                 SLOG.info("story", "push", ok=ok_n, fail=len(errs))
                 return self._json(200, {"ok": True, "pushed": ok_n, "errors": errs})
             if u.path == "/api/templates/save":
@@ -1584,7 +1605,7 @@ class Handler(BaseHTTPRequestHandler):
                 pl = json.loads(raw.decode("utf-8"))
                 name, b64, note, mapping = pl.get("name"), pl.get("b64"), pl.get("note", ""), pl.get("mapping", {})
                 if not name or not re.fullmatch(r"[\w一-鿿-]{1,40}", name):
-                    return self._json(400, {"ok": False, "msg": "母版名称非法", "field": "name"})
+                    return self._json(400, {"ok": False, **_m("eco.srv_bad_tpl_name", "母版名称非法"), "field": "name"})
                 tdir = APP_DATA / DIR_TEMPLATES
                 os.makedirs(tdir, exist_ok=True)
                 (tdir / f"{name}.xlsx").write_bytes(base64.b64decode(b64))
@@ -1603,7 +1624,7 @@ class Handler(BaseHTTPRequestHandler):
                     names = _dk.import_zip(fp, APP_DATA)
                 except _dk.VImportErr as e:
                     SLOG.warn("datakeeper", "data_import_fail", err=str(e))
-                    return self._json(400, {"ok": False, "msg": str(e)})
+                    return self._json(400, {"ok": False, **_m("eco.srv_import_fail", "导入失败：{detail}", detail=str(e))})
                 try:
                     if RULES is not None:
                         RULES.reload()
@@ -1616,25 +1637,25 @@ class Handler(BaseHTTPRequestHandler):
             if u.path == "/api/rates/save":
                 # M6/FR-2.3：费率与基准整表保存（负数/超界 400）
                 if RATES is None:
-                    return self._json(503, {"ok": False, "msg": "费率版本表不可用"})
+                    return self._json(503, {"ok": False, **_m("rates.srv_unavail", "费率版本表不可用")})
                 doc = json.loads(raw.decode("utf-8"))
                 try:
                     v = RATES.save(doc)
                 except Exception as e:
-                    return self._json(400, {"ok": False, "msg": f"费率数据非法：{e}"})
+                    return self._json(400, {"ok": False, **_m("rates.invalid_data", "费率数据非法：{err}", err=str(e))})
                 return self._json(200, {"ok": True, "version": v})
             if u.path == "/api/rules/save":
                 # M3/FR-2.9：整表保存（配置中心编辑 / 驳回流沉淀），坏正则返回 400
                 if RULES is None:
-                    return self._json(503, {"ok": False, "msg": "规则表不可用（已回退内置识别链）"})
+                    return self._json(503, {"ok": False, **_m("rules.srv_unavail", "规则表不可用（已回退内置识别链）")})
                 payload = json.loads(raw.decode("utf-8"))
                 rules = payload.get("rules")
                 if not isinstance(rules, list):
-                    return self._json(400, {"ok": False, "msg": "rules 必须为数组"})
+                    return self._json(400, {"ok": False, **_m("rules.srv_not_array", "rules 必须为数组")})
                 try:
                     v = RULES.save(rules)
                 except Exception as e:
-                    return self._json(400, {"ok": False, "msg": f"规则校验失败：{e}"})
+                    return self._json(400, {"ok": False, **_m("rules.validate_fail", "规则校验失败：{err}", err=str(e))})
                 return self._json(200, {"ok": True, "version": v})
 
             if u.path == "/api/context/config":
@@ -1662,7 +1683,7 @@ class Handler(BaseHTTPRequestHandler):
                 target = (payload.get("context_dir") or "").strip() or None
                 text = _load_project_context(target, force=True)
                 if not text:
-                    return self._json(400, {"ok": False, "msg": "目录未配置或不可用"})
+                    return self._json(400, {"ok": False, **_m("config.srv_dir_unavail", "目录未配置或不可用")})
                 return self._json(200, {"ok": True, "rendered": text})
 
             if u.path == "/api/pickdir":
@@ -1692,10 +1713,10 @@ class Handler(BaseHTTPRequestHandler):
                         picked = filedialog.askdirectory(title="选择项目上下文目录") or ""
                         tk_root.destroy()
                 except Exception as e:
-                    return self._json(500, {"ok": False, "msg": f"打开目录选择失败: {type(e).__name__}: {e}"})
+                    return self._json(500, {"ok": False, **_m("config.open_dir_fail", "打开目录选择失败：{err}", err=f"{type(e).__name__}: {e}")})
                 picked = picked.strip()
                 if not picked:
-                    return self._json(200, {"ok": False, "canceled": True, "msg": "未选择目录"})
+                    return self._json(200, {"ok": False, "canceled": True, **_m("config.srv_dir_cancel", "未选择目录")})
                 return self._json(200, {"ok": True, "path": os.path.normpath(picked)})
 
             if u.path == "/api/config/test":
@@ -1707,7 +1728,7 @@ class Handler(BaseHTTPRequestHandler):
                 model = (llm_in.get("model") or saved.get("model") or "").strip()
                 key = (llm_in.get("key") or saved.get("key") or "").strip()
                 if not (api and key):
-                    return self._json(400, {"ok": False, "msg": "请先填写 API 地址与 Key"})
+                    return self._json(400, {"ok": False, **_m("config.srv_need_api", "请先填写 API 地址与 Key")})
                 url = chat_completions_url(api)
                 body = json.dumps({
                     "model": model or "gpt-4o-mini",
@@ -1726,9 +1747,9 @@ class Handler(BaseHTTPRequestHandler):
                     return self._json(200, {"ok": True, "elapsed_s": dt, "model": model,
                                             "reply": snippet.strip()[:100]})
                 except HTTPError as e:
-                    return self._json(502, {"ok": False, "msg": f"HTTP {e.code}: {e.read().decode('utf-8', errors='ignore')[:200]}"})
+                    return self._json(502, {"ok": False, **_m("config.srv_ai_http_error", "HTTP {code}：{detail}", code=e.code, detail=e.read().decode('utf-8', errors='ignore')[:200])})
                 except Exception as e:
-                    return self._json(502, {"ok": False, "msg": f"{type(e).__name__}: {e}"})
+                    return self._json(502, {"ok": False, **_m("config.srv_ai_net_error", "网络错误：{err}", err=f"{type(e).__name__}: {e}")})
 
             if u.path == "/api/generate":
                 payload = json.loads(raw.decode("utf-8"))
@@ -1739,8 +1760,8 @@ class Handler(BaseHTTPRequestHandler):
                 if len(its) > 2000:
                     _gen_progress_set(job, 100, "生成失败", done=True,
                                       error=f"确认功能点 {len(its)} 条超出合理范围（>2000）")
-                    return self._json(400, {"ok": False, "msg":
-                        f"确认功能点 {len(its)} 条超出合理范围（>2000），请核对后再生成。"})
+                    return self._json(400, {"ok": False, **_m("gen.over_range", "确认功能点 {n} 条超出合理范围（>2000），请核对后再生成。",
+                        n=len(its))})
                 items = []
                 for i, it in enumerate(its, 1):
                     r = dict(it); r["seq"] = i
@@ -1766,7 +1787,10 @@ class Handler(BaseHTTPRequestHandler):
                         V.check_generate(payload)
                     except V.VErr as e:
                         SLOG.warn("api", "validate_fail", path=u.path, field=e.field)
-                        return self._json(400, {"ok": False, "msg": e.msg, "field": e.field})
+                        body = {"ok": False, "msg": e.msg, "field": e.field}
+                        if getattr(e, "key", None): body["msgKey"] = e.key
+                        if getattr(e, "vargs", None): body["msgArgs"] = e.vargs
+                        return self._json(400, body)
                     _tpl = payload.get("template") or None
                     if _tpl:
                         _tp = Path(_tpl)
@@ -1825,13 +1849,13 @@ class Handler(BaseHTTPRequestHandler):
                 payload = json.loads(raw.decode("utf-8"))
                 name = (payload.get("name") or "").strip()
                 if not name:
-                    return self._json(400, {"ok": False, "msg": "项目名称不能为空"})
+                    return self._json(400, {"ok": False, **_m("pert.srv_name_empty", "项目名称不能为空")})
                 con = _pert_connect()
                 # 重名拦截：同名人天估算项目不应重复创建，避免前端选择歧义
                 dup = con.execute("SELECT id FROM projects WHERE name=? LIMIT 1", (name,)).fetchone()
                 if dup:
                     con.close()
-                    return self._json(409, {"ok": False, "msg": "项目名已存在", "project_id": dup[0]})
+                    return self._json(409, {"ok": False, **_m("pert.srv_name_dup", "项目名已存在"), "project_id": dup[0]})
                 cur = con.execute("INSERT INTO projects(name,estimator) VALUES(?,?)",
                                   (name, (payload.get("estimator") or "").strip()))
                 pid = cur.lastrowid
@@ -1854,7 +1878,7 @@ class Handler(BaseHTTPRequestHandler):
                 p = con.execute("SELECT id,name,estimator FROM projects WHERE id=?", (pid,)).fetchone()
                 if not p:
                     con.close()
-                    return self._json(404, {"ok": False, "msg": "项目不存在"})
+                    return self._json(404, {"ok": False, **_m("pert.srv_no_proj", "项目不存在")})
                 items = con.execute(
                     "SELECT id,phase,system,module,desc,optimistic,most_likely,pessimistic "
                     "FROM pert_items WHERE project_id=? ORDER BY id", (pid,)).fetchall()
@@ -1879,17 +1903,18 @@ class Handler(BaseHTTPRequestHandler):
                 o, m, p = _num(payload.get("optimistic")), _num(payload.get("most_likely")), _num(payload.get("pessimistic"))
                 try:
                     if (o is not None and o < 0) or (m is not None and m < 0) or (p is not None and p < 0):
-                        return self._json(400, {"ok": False, "msg": "估算值不能为负"})
+                        return self._json(400, {"ok": False, **_m("pert.srv_neg", "估算值不能为负")})
                     if o is not None and m is not None and p is not None and not (o <= m <= p):
-                        return self._json(400, {"ok": False, "msg": "需满足 乐观 ≤ 最可能 ≤ 悲观"})
+                        return self._json(400, {"ok": False, **_m("pert.srv_order", "需满足 乐观 ≤ 最可能 ≤ 悲观")})
                 except (TypeError, ValueError):
-                    return self._json(400, {"ok": False, "msg": "乐观/最可能/悲观必须为数字"})
+                    return self._json(400, {"ok": False, **_m("pert.srv_numeric", "乐观/最可能/悲观必须为数字")})
                 phase = payload.get("phase") or "开发"
                 if phase not in pert.PHASES:
-                    return self._json(400, {"ok": False, "msg": f"阶段须为: {','.join(pert.PHASES)}"})
+                    return self._json(400, {"ok": False, "msgKey": "pert.srv_phase_invalid", "msgArgs": {"phases": ','.join(pert.PHASES)},
+                            "msg": f"阶段须为: {','.join(pert.PHASES)}"})
                 desc = (payload.get("desc") or "").strip()
                 if not desc:
-                    return self._json(400, {"ok": False, "msg": "功能描述不能为空"})
+                    return self._json(400, {"ok": False, **_m("pert.srv_desc_empty", "功能描述不能为空")})
                 fields = (pid, phase, payload.get("system", ""),
                           payload.get("module", ""), desc, o, m, p)
                 con = _pert_connect()
@@ -1919,7 +1944,7 @@ class Handler(BaseHTTPRequestHandler):
                 payload = json.loads(raw.decode("utf-8"))
                 pid = payload.get("project_id")
                 if not pid:
-                    return self._json(400, {"ok": False, "msg": "请先新建或选择项目"})
+                    return self._json(400, {"ok": False, **_m("pert.srv_need_proj", "请先新建或选择项目")})
                 b64 = payload.get("b64")
                 text = (payload.get("text") or "").strip()
                 saved = load_config()["llm"]
@@ -1937,7 +1962,7 @@ class Handler(BaseHTTPRequestHandler):
                     src_path = _upload_path(fname)
                     src_path.write_bytes(base64.b64decode(b64))
                 else:
-                    return self._json(400, {"ok": False, "msg": "请提供需求文本或上传 Word/PDF"})
+                    return self._json(400, {"ok": False, **_m("pert.srv_need_input", "请提供需求文本或上传 Word/PDF")})
                 is_docx = bool(src_path) and os.path.splitext(str(src_path))[-1].lower() == ".docx"
                 source = "local"
                 candidates = []
@@ -1959,10 +1984,12 @@ class Handler(BaseHTTPRequestHandler):
                                   for it in items if (it.get("desc") or it.get("count_item") or "").strip()]
                 if not candidates:
                     if llm_on and not (saved.get("api") and saved.get("key")):
-                        msg = "配置中心已启用大模型辅助识别，但 API 地址 / Key 未填全，无法进行 AI 拆分；docx 已回退本地识别。"
+                        mkey, msg = ("work.srv_llm_not_configured",
+                         "配置中心已启用大模型辅助识别，但 API 地址 / Key 未填全，无法进行 AI 拆分；docx 已回退本地识别。")
                     else:
-                        msg = "未能拆分出候选功能点。若为自由文本/PDF，请先在配置中心启用大模型；docx 已回退本地识别。"
-                    return self._json(400, {"ok": False, "msg": msg})
+                        mkey, msg = ("work.srv_llm_no_cands",
+                                     "未能拆分出候选功能点。若为自由文本/PDF，请先在配置中心启用大模型；docx 已回退本地识别。")
+                    return self._json(400, {"ok": False, "msg": msg, "msgKey": mkey})
                 # T01573：由文档导入成功时，记住需求文档基名（去扩展名），供成品表命名
                 if src_path:
                     _c = _pert_connect()
@@ -1979,7 +2006,7 @@ class Handler(BaseHTTPRequestHandler):
                 con = _pert_connect()
                 if not con.execute("SELECT 1 FROM projects WHERE id=?", (pid,)).fetchone():
                     con.close()
-                    return self._json(404, {"ok": False, "msg": "项目不存在"})
+                    return self._json(404, {"ok": False, **_m("pert.srv_no_proj", "项目不存在")})
                 if payload.get("replace"):
                     con.execute("DELETE FROM pert_items WHERE project_id=?", (pid,))
                 added = 0; seen = set()
@@ -2014,7 +2041,7 @@ class Handler(BaseHTTPRequestHandler):
                 name, estimator, rows = pert.rows_for_generate(con, pid)
                 if not rows:
                     con.close()
-                    return self._json(400, {"ok": False, "msg": "无估算项，请先录入"})
+                    return self._json(400, {"ok": False, **_m("pert.srv_no_items", "无估算项，请先录入")})
                 # 生成前校验三值完整性：任一为空则 H 列公式会 #DIV/0!，先提示补全
                 missing = [r.get("desc") or "未命名项" for r in rows
                            if r.get("optimistic") is None or r.get("most_likely") is None or r.get("pessimistic") is None]
@@ -2022,6 +2049,8 @@ class Handler(BaseHTTPRequestHandler):
                     con.close()
                     shown = "、".join(missing[:3])
                     return self._json(400, {"ok": False,
+                                            "msgKey": "pert.unfilled_triplets",
+                                            "msgArgs": {"n": len(missing), "shown": shown},
                                             "msg": f"存在 {len(missing)} 项未填三值，请先补全：{shown}{'…' if len(missing) > 3 else ''}"})
                 # T01573：成品表文件名 = 需求文档基名（缺则项目名）+ "-PERT估算-V{自增版本}.xlsx"
                 _dn = con.execute("SELECT doc_name FROM projects WHERE id=?", (pid,)).fetchone()
@@ -2045,7 +2074,7 @@ class Handler(BaseHTTPRequestHandler):
                 con.close()
                 return self._json(200, {"ok": True, "cfg": pert.load_cfg(sqlite3.connect(_PERT_DB), payload.get("project_id"))})
         except Exception as e:
-            return self._json(500, {"ok": False, "msg": str(e)})
+            return self._json(500, {"ok": False, **_m("srv.internal_error", "服务器内部错误：{detail}", detail=str(e))})
         self._json(404, {"ok": False})
 
     def log_message(self, *a):
