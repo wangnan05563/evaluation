@@ -226,14 +226,19 @@ def _i18n_path(lang):
 
 
 def _i18n_seed():
-    """首启播种内置字典：data/i18n/ 不存在时从只读资源目录拷一份。
+    """首启播种/升级内置字典：data/i18n/ 不存在或缺少内置键时从只读资源目录同步。
 
     与识别规则表/费率版本表同一套播种惯例（见 RULES/RATES 初始化）。
 
     候选源依次尝试 _RES（打包内只读资源）与 _APP_ROOT（exe 同级）——
     spec 的 datas 历史上只收了 frontend/tpl，若只查_RES 则冻结态下会静默落空，
     表现为「开发模式正常、安装版翻译全失效」。多试一个来源即覆盖两种形态。
-    用户后续自行编辑的字典不会被覆盖（仅在目标文件缺失时拷贝）。
+
+    T01695：升级场景修复。此前「仅在目标文件缺失时拷贝」——老安装的 APP_DATA 里
+    留着旧版字典（新批次新增的键不存在），升级 exe 后新页面文案全部回退显示 key
+    （实测：快速估算页标签显示 "ne.algorithm" 等键名而非中文）。现改为：
+    目标已存在时对比键集，把内置字典中「目标缺失的键」合并进去（备份原文件）；
+    用户已改过译文的键不覆盖。文件整体缺失仍走整份拷贝。
     """
     dst_dir = APP_DATA / DIR_I18N
     try:
@@ -241,16 +246,48 @@ def _i18n_seed():
             dst_dir.mkdir(parents=True, exist_ok=True)
         for lang in I18N_SUPPORTED:
             dst = dst_dir / f"{lang}.json"
-            if dst.exists():
+            if not dst.exists():
+                for base in (_RES, _APP_ROOT):
+                    src = base / "data" / DIR_I18N / f"{lang}.json"
+                    if src.exists():
+                        import shutil
+                        shutil.copyfile(src, dst)
+                        break
+                else:
+                    print(f"[i18n] 内置字典缺失（{lang}），该语言将回退显示 key", flush=True)
                 continue
-            for base in (_RES, _APP_ROOT):
-                src = base / "data" / DIR_I18N / f"{lang}.json"
-                if src.exists():
-                    import shutil
-                    shutil.copyfile(src, dst)
-                    break
-            else:
-                print(f"[i18n] 内置字典缺失（{lang}），该语言将回退显示 key", flush=True)
+            # 已有字典：合并缺失键（T01695）。用户已有键不动，仅补新键。
+            try:
+                for base in (_RES, _APP_ROOT):
+                    src = base / "data" / DIR_I18N / f"{lang}.json"
+                    if src.exists():
+                        break
+                else:
+                    continue
+                with open(dst, "rb") as f:
+                    cur = json.loads(f.read().decode("utf-8-sig"))
+                with open(src, "rb") as f:
+                    bundled = json.loads(f.read().decode("utf-8-sig"))
+                cur_s = cur.get("strings") if isinstance(cur.get("strings"), dict) else {}
+                bun_s = bundled.get("strings") if isinstance(bundled.get("strings"), dict) else {}
+                missing = {k: v for k, v in bun_s.items() if k not in cur_s}
+                if not missing:
+                    continue
+                import shutil
+                backup = dst.with_name(dst.name + ".bak")
+                shutil.copyfile(dst, backup)
+                cur_s.update(missing)
+                cur["strings"] = cur_s
+                cur["version"] = int(cur.get("version", 1) or 1) + 1
+                tmp = dst.with_name(dst.name + ".tmp")
+                with open(tmp, "w", encoding="utf-8") as f:
+                    json.dump(cur, f, ensure_ascii=False, indent=1)
+                os.replace(tmp, dst)
+                print(f"[i18n] 字典升级（{lang}）：补齐缺失键 {len(missing)} 条"
+                      f"（原文件备份为 {backup.name}）", flush=True)
+            except Exception as e:
+                print(f"[i18n] 字典增量合并失败（{lang}，不影响启动）: "
+                      f"{type(e).__name__}: {e}", flush=True)
     except Exception as e:
         print(f"[i18n] 字典播种失败（不影响启动）: {type(e).__name__}: {e}", flush=True)
 
