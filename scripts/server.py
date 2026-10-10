@@ -122,6 +122,54 @@ def _gen_recalc_set(job, state):
         cur["recalc"] = state
         cur["ts"] = time.time()
 
+
+# T01835：在途识别计数——recognize 是同步长请求（LLM 启用时可达数十秒），
+# 没有进度表可查，用计数器让 /api/jobs/running 也能感知「AI 识别进行中」。
+_RECOGNIZE_ACTIVE = 0
+_RECOGNIZE_LOCK = threading.Lock()
+
+
+class _recognize_active:
+    """上下文管理器：进入 +1、退出 -1，供识别请求包裹。"""
+
+    def __enter__(self):
+        global _RECOGNIZE_ACTIVE
+        with _RECOGNIZE_LOCK:
+            _RECOGNIZE_ACTIVE += 1
+        return self
+
+    def __exit__(self, *exc):
+        global _RECOGNIZE_ACTIVE
+        with _RECOGNIZE_LOCK:
+            _RECOGNIZE_ACTIVE = max(0, _RECOGNIZE_ACTIVE - 1)
+        return False
+
+
+def running_jobs():
+    """T01835：汇总运行中的长任务，供桌面壳关闭前确认。
+    来源三处：① GEN_PROGRESS 中未 done 且无 error 的活跃生成/补算 job；
+    ② 更新包后台下载（_UPDATE_STATE.state == "downloading"）；③ 在途识别计数。"""
+    now = time.time()
+    jobs = []
+    with GEN_PROGRESS_LOCK:
+        for k in list(GEN_PROGRESS):
+            v = GEN_PROGRESS[k]
+            if now - v.get("ts", 0) > GEN_PROGRESS_TTL:
+                continue
+            if v.get("done") or v.get("error"):
+                continue
+            jobs.append({"kind": "generate", "job": k,
+                         "name": v.get("stage") or "生成成品表", "pct": v.get("pct", 0)})
+    if _UPDATE_STATE.get("state") == "downloading":
+        total = _UPDATE_STATE.get("total") or 0
+        recv = _UPDATE_STATE.get("received") or 0
+        jobs.append({"kind": "update", "name": "更新包下载",
+                     "pct": int(recv * 100 / total) if total else None})
+    with _RECOGNIZE_LOCK:
+        if _RECOGNIZE_ACTIVE > 0:
+            jobs.append({"kind": "recognize", "name": "AI 识别需求文档", "pct": None})
+    return {"ok": True, "jobs": jobs}
+
 # 解析母版：环境 WE_TPL > 打包内置(tpl/template.xlsx) > 开发默认
 def _resolve_template():
     env = os.environ.get("WE_TPL")
@@ -1476,6 +1524,9 @@ class Handler(BaseHTTPRequestHandler):
             return self._json(200, {"ok": True, "models": lst, "provider": cfg["provider"]})
         if u.path == "/api/app-info":
             return self._json(200, {"ok": True, "version": APP_VERSION})
+        if u.path == "/api/jobs/running":
+            # T01835：桌面壳关闭窗口前查询运行中长任务（生成/补算、更新包下载、AI 识别）
+            return self._json(200, running_jobs())
         if u.path == "/api/update/check":
             return self._json(200, check_update())
         if u.path == "/api/update/progress":
@@ -1530,6 +1581,9 @@ class Handler(BaseHTTPRequestHandler):
         raw = self.rfile.read(length) if length else b""
         try:
             if u.path == "/api/recognize":
+              # T01835：识别是同步长请求（LLM 启用时可达数十秒），用计数器让
+              # /api/jobs/running 能感知「AI 识别进行中」；with 保证异常/返回都递减。
+              with _recognize_active():
                 payload = json.loads(raw.decode("utf-8"))
                 try:
                     V.check_recognize(payload)

@@ -6,10 +6,11 @@
 //   3) 应用退出时统一回收子进程与端口
 // 生产打包由 electron-builder 复用同一 main.js，区别仅在于资源根路径（resourcesPath）。
 
-const { app, BrowserWindow, screen, shell } = require('electron')
+const { app, BrowserWindow, screen, shell, dialog } = require('electron')
 const path = require('node:path')
 const fs = require('node:fs')
 const net = require('node:net')
+const http = require('node:http')
 const { spawn, spawnSync } = require('node:child_process')
 
 // ---------- 配置 ----------
@@ -188,6 +189,25 @@ async function startBackend() {
 
 function urlSafe(s) { return String(s).replace(/\\/g, '/') }
 
+// T01835：关闭前运行任务检测——查询 sidecar /api/jobs/running，
+// 有进行中的生成/补算、更新包下载或 AI 识别时弹确认框，防误关中断长任务。
+function fetchRunningJobs(timeoutMs = 1500) {
+  return new Promise((resolve) => {
+    const req = http.get({ host: '127.0.0.1', port: PORT, path: '/api/jobs/running', timeout: timeoutMs }, (res) => {
+      let d = ''
+      res.on('data', (c) => { d += c })
+      res.on('end', () => {
+        try {
+          const j = JSON.parse(d)
+          resolve(Array.isArray(j.jobs) ? j.jobs : [])
+        } catch (_) { resolve([]) }
+      })
+    })
+    req.on('timeout', () => { req.destroy(); resolve([]) })
+    req.on('error', () => resolve([]))   // 后端不可达时不阻塞关闭（宁可少拦截不可关不掉）
+  })
+}
+
 // ---------- 窗口自适应 ----------
 function computeSize() {
   const area = screen.getPrimaryDisplay().workAreaSize
@@ -218,6 +238,32 @@ function createWindow(url) {
   })
 
   win.loadURL(url)
+
+  // T01835：close 事件拦截（区别于 window-all-closed）。后端不可达/查询失败一律放行，
+  // 保证「关不掉」永远不会发生；确认框列出任务名与进度，提供「取消关闭 / 强制关闭」。
+  win.on('close', async (e) => {
+    if (win.__forceClose || win.__closeChecking) return
+    win.__closeChecking = true
+    let jobs = []
+    try { jobs = await fetchRunningJobs() } finally { win.__closeChecking = false }
+    if (!jobs.length) return
+    e.preventDefault()
+    const names = jobs.map((j) => `· ${j.name}${typeof j.pct === 'number' ? `（${j.pct}%）` : ''}`).join('\n')
+    const { response } = await dialog.showMessageBox(win, {
+      type: 'warning',
+      title: '有正在进行的任务',
+      message: '以下任务仍在进行中，现在关闭将中断它们：',
+      detail: names,
+      buttons: ['取消关闭', '强制关闭'],
+      defaultId: 0,
+      cancelId: 0,
+      noLink: true
+    })
+    if (response === 1) {
+      win.__forceClose = true
+      win.close()
+    }
+  })
 
   win.once('ready-to-show', () => {
     if (!size.maximize) win.center()
