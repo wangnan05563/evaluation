@@ -1,6 +1,6 @@
 {
   "name": "workload-estimate-dev-shell",
-  "version": "0.1.20261008-001",
+  "version": "0.1.20261009-002",
   "private": true,
   "description": "工作量评估工具开发态 Electron 桌面壳：原生窗口加载本地引擎服务（scripts/server.py / PyInstaller exe），不依赖浏览器。生产打包复用 electron-builder。",
   "main": "main.js",
