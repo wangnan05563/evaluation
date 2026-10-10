@@ -108,7 +108,7 @@ function clearFilters(){$("#q").value="";["fSys","fType","fReuse"].forEach(id=>$
 function rowHTML(it){
   return `<tr class="rowr ${it.ok?'done':''}" data-seq="${it.seq}" data-sys="${escAttr(it.system)}">
       <td><input type="checkbox" class="ck" ${it.ok?'checked':''}></td>
-      <td><div class="desc" title="${escAttr(it.desc||it.count_item||'')}">${it.desc||it.count_item}</div><br><button class="toggle" onclick="toggleBasis(${it.seq})" title="${t("review.basis.title")}" aria-label="${t("review.basis.title")}"><i aria-hidden="true" data-lucide="chevron-down" style="width:13px;height:13px;vertical-align:-2px"></i></button><div class="basis">${it.basis||''}</div></td>
+      <td><div class="desc" role="button" tabindex="0" aria-expanded="false" title="${escAttr(it.desc||it.count_item||'')}">${it.desc||it.count_item}</div><br><button class="toggle" onclick="toggleBasis(${it.seq})" title="${t("review.basis.title")}" aria-label="${t("review.basis.title")}"><i aria-hidden="true" data-lucide="chevron-down" style="width:13px;height:13px;vertical-align:-2px"></i></button><div class="basis">${it.basis||''}</div></td>
       <td><div class="cat ${CATCOLOR[it.type]}">${it.type}</div><div style="font-size:11px;color:var(--muted);margin-top:4px">${it.count_item}</div></td>
       <td><div style="display:flex;gap:4px">${typeCell(it)}${cxCellHTML(it)}</div></td>
       <td class="num" data-u>${ufp(it)}</td><td>${reuseHTML(it)}</td><td>${modHTML(it)}</td><td class="num" data-s>${us(it)}</td>
@@ -148,10 +148,19 @@ const it=items.find(x=>x.seq===+s.dataset.seq);recordRej(it,s.dataset.k,it[s.dat
 $("#q").addEventListener("input",e=>{render();});   // M3：搜索纳入统一筛选（叠加 AND）
 // UI-UX：超长描述默认 3 行钳制（见 20_components.css .desc），点击在「全文展开 / 收起」间切换。
 // 事件委托挂 document：同时覆盖复核表(#tbody)与 PERT 两张表；短描述未溢出时点击不响应。
-document.addEventListener("click",e=>{
-  const d=e.target.closest(".desc");
-  if(!d)return;
-  if(d.classList.contains("exp")||(d.scrollHeight>d.clientHeight+2))d.classList.toggle("exp");
+// FR-UI05：desc 为可交互元素，补 role=button + tabindex + Enter/Space 键效 + aria-expanded
+// （与 .step/.tnode/.sortable 同一口径），键盘用户可展开全文。
+const descToggle=d=>{
+  if(d.classList.contains("exp")||d.scrollHeight>d.clientHeight+2){
+    d.classList.toggle("exp");
+    d.setAttribute("aria-expanded",d.classList.contains("exp")?"true":"false");
+  }
+};
+document.addEventListener("click",e=>{const d=e.target.closest(".desc");if(d)descToggle(d);});
+document.addEventListener("keydown",e=>{
+  if(e.key!=="Enter"&&e.key!==" ")return;
+  const d=e.target&&e.target.closest?e.target.closest(".desc"):null;
+  if(d){e.preventDefault();descToggle(d);}
 });
 function toggleBasis(seq){
   const tr=document.querySelector(`tr[data-seq="${seq}"]`);
@@ -344,7 +353,7 @@ function renderPert(){
     const triCell=field=>`<td class="num" data-v="${it[field]??''}" style="cursor:pointer" title="${it[field]==null?t('pert.cell.todo'):t('pert.cell.edit')}" onclick="pertEditCell(${it.id},'${field}',this)">${it[field]==null?'—':it[field]}</td>`;
     return `<tr>
       <td><span class="cat" style="background:var(--brand-soft);color:var(--brand-ink)">${pertPhaseLabel(it.phase||'开发')}</span></td>
-      <td><div class="desc" title="${escAttr(it.desc)}">${it.desc}${has?'':' <span style="color:var(--danger-ink);font-size:11px">'+t('pert.row.pending')+'</span>'}</div></td>
+      <td><div class="desc" role="button" tabindex="0" aria-expanded="false" title="${escAttr(it.desc)}">${it.desc}${has?'':' <span style="color:var(--danger-ink);font-size:11px">'+t('pert.row.pending')+'</span>'}</div></td>
       ${triCell('optimistic')}${triCell('most_likely')}${triCell('pessimistic')}
       <td class="num">${has?e.toFixed(2):'—'}</td><td class="num">${has?s.toFixed(2):'—'}</td>
       <td><button class="toggle" onclick="pertDel(${it.id})" title="${t('pert.del.title')}" aria-label="${t('pert.del.title')}"><i aria-hidden="true" data-lucide="trash-2" style="width:13px;height:13px;vertical-align:-2px"></i></button></td>
@@ -459,7 +468,7 @@ function pertRenderCands(){
     <tr>
       <td style="text-align:center"><input type="checkbox" data-cb="${c.seq}" ${c.checked?'checked':''} onchange="pertCandToggle(${c.seq},this.checked)"></td>
       <td><select data-cand-phase="${c.seq}" style="padding:4px 2px;border:1px solid var(--line);border-radius:6px;font-size:12px;background:var(--card)">${PERT_PHASES.map(ph=>`<option value="${ph}" ${ph===c.phase?'selected':''}>${pertPhaseLabel(ph)}</option>`).join("")}</select></td>
-      <td><div class="desc" title="${escAttr(c.desc)}">${c.desc}</div></td>
+      <td><div class="desc" role="button" tabindex="0" aria-expanded="false" title="${escAttr(c.desc)}">${c.desc}</div></td>
       <td>${inp(c,'optimistic')}</td><td>${inp(c,'most_likely')}</td><td>${inp(c,'pessimistic')}</td>
     </tr>`).join("");
   box.style.display="block";
