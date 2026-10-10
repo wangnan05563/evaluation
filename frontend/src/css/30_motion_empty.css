@@ -43,12 +43,12 @@
 
 /* ---------- 通用交互过渡（FR-UI04 过渡补齐）----------
  * 作用域限定在卡片/按钮/行，不做全局 * 过渡，避免影响表格与打印。 */
-.btn,.m-item,.card-title .lic,.rowr,.sysli{transition:background-color .15s ease,color .15s ease,border-color .15s ease,box-shadow .15s ease}
+.btn,.m-item,.card-title [data-lucide],.rowr,.sysli{transition:background-color .15s ease,color .15s ease,border-color .15s ease,box-shadow .15s ease}
 .rowr:hover{background:var(--surface-2)}
 @media (prefers-reduced-motion: no-preference){
   .rowr:hover{transform:translateX(2px)}
 }
 
-/* ---------- 打印样式隔离（20_print.css 之外的兜底）----------
+/* ---------- 打印样式隔离（20_components.css @media print 之外的兜底）----------
  * 骨架屏/插画属纯装饰，打印成品表时不应出现在纸面上。 */
 @media print{.skel-row,.empty-art{display:none!important}}

@@ -96,7 +96,11 @@ body{font-family:var(--ff);color:var(--ink);background:var(--bg);-webkit-font-sm
 .glass{background:var(--card);border:1px solid var(--line);border-radius:var(--r-lg);box-shadow:var(--shadow)}
 .pad{padding:24px}
 .card-title{display:flex;align-items:center;gap:8px;font-size:15px;font-weight:700;margin-bottom:18px}
-.card-title .lic{width:18px;height:18px;color:var(--brand)}
+/* 卡片标题图标：源 HTML 中 card-title 图标不带 .lic 类（.lic 仅存在于导航/品牌图标），
+   旧规则 .card-title .lic 是死规则，导致标题图标回落 --ink 深灰、品牌强调色未落地。
+   改用属性选择器 [data-lucide]：lucide.createIcons() 替换 <i>→<svg> 后属性原样保留，
+   替换前后均命中。 */
+.card-title [data-lucide]{width:18px;height:18px;color:var(--brand);flex:none}
 .view{display:none}
 body[data-step="upload"] #v-upload,body[data-step="review"] #v-review,body[data-step="result"] #v-result,body[data-step="history"] #v-history{display:block}
 /* M3/FR-1.4：排序表头 + 键盘焦点行 */
@@ -154,6 +158,8 @@ body[data-step="upload"] #v-upload,body[data-step="review"] #v-review,body[data-
   tr{page-break-inside:avoid}
   thead{display:table-header-group}
   :root,[data-theme="dark"],[data-theme="contrast"]{--bg:#FFFFFF;--card:#FFFFFF;--ink:#1F2937;--ink-2:#374151;--muted:#6B7280;--line:#E5E7EB;--surface-2:#FAFBFC}
+  /* 打印必须输出完整描述，不受屏幕态 3 行钳制影响 */
+  .desc{display:block!important;-webkit-line-clamp:none!important;max-height:none!important}
 }
 /* PERT 独立步骤视图（避免与 IFPUG 的 data-step 混淆） */
 body[data-pertstep="in"] #pv-in,body[data-pertstep="edit"] #pv-edit,body[data-pertstep="gen"] #pv-gen{display:block}
@@ -227,7 +233,14 @@ th{font-size:11px;color:var(--muted);text-align:left;font-weight:600;padding:8px
 td{padding:9px 10px;border-bottom:1px solid var(--line-2);vertical-align:top}
 tr.rowr:hover{background:var(--surface-2)}
 tr.rowr.done{opacity:.7}
-.desc{max-width:420px;line-height:1.55;font-weight:500}
+/* 真实票据需求描述可达数百字，仅 max-width 限宽仍会换行几十行把行高撑到 300px+，
+   表格不可用。改为默认钳制 3 行，点击描述全文展开/收起（JS 事件委托见 01_core.js）。 */
+.desc{max-width:420px;line-height:1.55;font-weight:500;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:3;overflow:hidden;cursor:zoom-in}
+.desc.exp{display:block;-webkit-line-clamp:none;cursor:zoom-out}
+.desc:not(.exp){overflow-wrap:anywhere}
+/* 复核表列宽再分配：自动布局下描述列（信息密度最高）仅分得 ~105px，
+   3 行钳制后可见内容过少。给描述列 30% 权重（≥240px），从次要窄列让出空间。 */
+#v-review thead th:nth-child(2){width:30%;min-width:240px}
 .cat{display:inline-block;font-weight:600;font-size:11px;padding:2px 8px;border-radius:6px}
 .c-ILF{background:var(--cat-ilf-bg);color:var(--cat-ilf-ink)}.c-EIF{background:var(--cat-eif-bg);color:var(--cat-eif-ink)}
 .c-EI{background:var(--cat-ei-bg);color:var(--cat-ei-ink)}.c-EO{background:var(--cat-eo-bg);color:var(--cat-eo-ink)}.c-EQ{background:var(--cat-eq-bg);color:var(--cat-eq-ink)}
@@ -384,13 +397,13 @@ tr.rowr.showb .basis{display:block}
 
 /* ---------- 通用交互过渡（FR-UI04 过渡补齐）----------
  * 作用域限定在卡片/按钮/行，不做全局 * 过渡，避免影响表格与打印。 */
-.btn,.m-item,.card-title .lic,.rowr,.sysli{transition:background-color .15s ease,color .15s ease,border-color .15s ease,box-shadow .15s ease}
+.btn,.m-item,.card-title [data-lucide],.rowr,.sysli{transition:background-color .15s ease,color .15s ease,border-color .15s ease,box-shadow .15s ease}
 .rowr:hover{background:var(--surface-2)}
 @media (prefers-reduced-motion: no-preference){
   .rowr:hover{transform:translateX(2px)}
 }
 
-/* ---------- 打印样式隔离（20_print.css 之外的兜底）----------
+/* ---------- 打印样式隔离（20_components.css @media print 之外的兜底）----------
  * 骨架屏/插画属纯装饰，打印成品表时不应出现在纸面上。 */
 @media print{.skel-row,.empty-art{display:none!important}}
 
@@ -1203,7 +1216,7 @@ function clearFilters(){$("#q").value="";["fSys","fType","fReuse"].forEach(id=>$
 function rowHTML(it){
   return `<tr class="rowr ${it.ok?'done':''}" data-seq="${it.seq}" data-sys="${escAttr(it.system)}">
       <td><input type="checkbox" class="ck" ${it.ok?'checked':''}></td>
-      <td><div class="desc">${it.desc||it.count_item}</div><br><button class="toggle" onclick="toggleBasis(${it.seq})" title="${t("review.basis.title")}" aria-label="${t("review.basis.title")}"><i aria-hidden="true" data-lucide="chevron-down" style="width:13px;height:13px;vertical-align:-2px"></i></button><div class="basis">${it.basis||''}</div></td>
+      <td><div class="desc" title="${escAttr(it.desc||it.count_item||'')}">${it.desc||it.count_item}</div><br><button class="toggle" onclick="toggleBasis(${it.seq})" title="${t("review.basis.title")}" aria-label="${t("review.basis.title")}"><i aria-hidden="true" data-lucide="chevron-down" style="width:13px;height:13px;vertical-align:-2px"></i></button><div class="basis">${it.basis||''}</div></td>
       <td><div class="cat ${CATCOLOR[it.type]}">${it.type}</div><div style="font-size:11px;color:var(--muted);margin-top:4px">${it.count_item}</div></td>
       <td><div style="display:flex;gap:4px">${typeCell(it)}${cxCellHTML(it)}</div></td>
       <td class="num" data-u>${ufp(it)}</td><td>${reuseHTML(it)}</td><td>${modHTML(it)}</td><td class="num" data-s>${us(it)}</td>
@@ -1241,6 +1254,13 @@ function render(opts){   // FR-3.3：light 模式跳过树重建/筛选同步（
 $("#tbody").addEventListener("change",e=>{const s=e.target;if(!s.dataset.k)return;
 const it=items.find(x=>x.seq===+s.dataset.seq);recordRej(it,s.dataset.k,it[s.dataset.k],s.value);it[s.dataset.k]=s.value;refreshRow(it);refreshTotals();saveFormState();updateRejBadge();});
 $("#q").addEventListener("input",e=>{render();});   // M3：搜索纳入统一筛选（叠加 AND）
+// UI-UX：超长描述默认 3 行钳制（见 20_components.css .desc），点击在「全文展开 / 收起」间切换。
+// 事件委托挂 document：同时覆盖复核表(#tbody)与 PERT 两张表；短描述未溢出时点击不响应。
+document.addEventListener("click",e=>{
+  const d=e.target.closest(".desc");
+  if(!d)return;
+  if(d.classList.contains("exp")||(d.scrollHeight>d.clientHeight+2))d.classList.toggle("exp");
+});
 function toggleBasis(seq){
   const tr=document.querySelector(`tr[data-seq="${seq}"]`);
   if(tr){tr.classList.toggle("showb");const on=tr.classList.contains("showb");on?window.__showb.add(seq):window.__showb.delete(seq);}
@@ -1432,7 +1452,7 @@ function renderPert(){
     const triCell=field=>`<td class="num" data-v="${it[field]??''}" style="cursor:pointer" title="${it[field]==null?t('pert.cell.todo'):t('pert.cell.edit')}" onclick="pertEditCell(${it.id},'${field}',this)">${it[field]==null?'—':it[field]}</td>`;
     return `<tr>
       <td><span class="cat" style="background:var(--brand-soft);color:var(--brand-ink)">${pertPhaseLabel(it.phase||'开发')}</span></td>
-      <td><div class="desc">${it.desc}${has?'':' <span style="color:var(--danger-ink);font-size:11px">'+t('pert.row.pending')+'</span>'}</div></td>
+      <td><div class="desc" title="${escAttr(it.desc)}">${it.desc}${has?'':' <span style="color:var(--danger-ink);font-size:11px">'+t('pert.row.pending')+'</span>'}</div></td>
       ${triCell('optimistic')}${triCell('most_likely')}${triCell('pessimistic')}
       <td class="num">${has?e.toFixed(2):'—'}</td><td class="num">${has?s.toFixed(2):'—'}</td>
       <td><button class="toggle" onclick="pertDel(${it.id})" title="${t('pert.del.title')}" aria-label="${t('pert.del.title')}"><i aria-hidden="true" data-lucide="trash-2" style="width:13px;height:13px;vertical-align:-2px"></i></button></td>
@@ -1547,7 +1567,7 @@ function pertRenderCands(){
     <tr>
       <td style="text-align:center"><input type="checkbox" data-cb="${c.seq}" ${c.checked?'checked':''} onchange="pertCandToggle(${c.seq},this.checked)"></td>
       <td><select data-cand-phase="${c.seq}" style="padding:4px 2px;border:1px solid var(--line);border-radius:6px;font-size:12px;background:var(--card)">${PERT_PHASES.map(ph=>`<option value="${ph}" ${ph===c.phase?'selected':''}>${pertPhaseLabel(ph)}</option>`).join("")}</select></td>
-      <td><div class="desc">${c.desc}</div></td>
+      <td><div class="desc" title="${escAttr(c.desc)}">${c.desc}</div></td>
       <td>${inp(c,'optimistic')}</td><td>${inp(c,'most_likely')}</td><td>${inp(c,'pessimistic')}</td>
     </tr>`).join("");
   box.style.display="block";

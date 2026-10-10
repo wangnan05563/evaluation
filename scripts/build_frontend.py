@@ -24,7 +24,7 @@ def build():
     vendor = read(os.path.join(SRC, 'js', '00_vendor_lucide.js'))
     tpl = tpl.replace('<!--BUILD:VENDOR_LUCIDE-->', '<script>\n' + vendor + '\n</script>', 1)
 
-    # CSS：文件名字典序拼接（10_main → 20_print，保持等价顺序）
+    # CSS：文件名字典序拼接（10_main → 20_components，保持等价顺序）
     css_dir = os.path.join(SRC, 'css')
     css = '\n'.join(read(os.path.join(css_dir, f)) for f in sorted(os.listdir(css_dir)) if f.endswith('.css'))
     tpl = tpl.replace('<!--BUILD:CSS-->', '<style>\n' + css + '\n</style>', 1)

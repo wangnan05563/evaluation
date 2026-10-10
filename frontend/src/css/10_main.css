@@ -68,7 +68,11 @@ body{font-family:var(--ff);color:var(--ink);background:var(--bg);-webkit-font-sm
 .glass{background:var(--card);border:1px solid var(--line);border-radius:var(--r-lg);box-shadow:var(--shadow)}
 .pad{padding:24px}
 .card-title{display:flex;align-items:center;gap:8px;font-size:15px;font-weight:700;margin-bottom:18px}
-.card-title .lic{width:18px;height:18px;color:var(--brand)}
+/* 卡片标题图标：源 HTML 中 card-title 图标不带 .lic 类（.lic 仅存在于导航/品牌图标），
+   旧规则 .card-title .lic 是死规则，导致标题图标回落 --ink 深灰、品牌强调色未落地。
+   改用属性选择器 [data-lucide]：lucide.createIcons() 替换 <i>→<svg> 后属性原样保留，
+   替换前后均命中。 */
+.card-title [data-lucide]{width:18px;height:18px;color:var(--brand);flex:none}
 .view{display:none}
 body[data-step="upload"] #v-upload,body[data-step="review"] #v-review,body[data-step="result"] #v-result,body[data-step="history"] #v-history{display:block}
 /* M3/FR-1.4：排序表头 + 键盘焦点行 */

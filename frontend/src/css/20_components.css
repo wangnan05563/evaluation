@@ -8,6 +8,8 @@
   tr{page-break-inside:avoid}
   thead{display:table-header-group}
   :root,[data-theme="dark"],[data-theme="contrast"]{--bg:#FFFFFF;--card:#FFFFFF;--ink:#1F2937;--ink-2:#374151;--muted:#6B7280;--line:#E5E7EB;--surface-2:#FAFBFC}
+  /* 打印必须输出完整描述，不受屏幕态 3 行钳制影响 */
+  .desc{display:block!important;-webkit-line-clamp:none!important;max-height:none!important}
 }
 /* PERT 独立步骤视图（避免与 IFPUG 的 data-step 混淆） */
 body[data-pertstep="in"] #pv-in,body[data-pertstep="edit"] #pv-edit,body[data-pertstep="gen"] #pv-gen{display:block}
@@ -81,7 +83,14 @@ th{font-size:11px;color:var(--muted);text-align:left;font-weight:600;padding:8px
 td{padding:9px 10px;border-bottom:1px solid var(--line-2);vertical-align:top}
 tr.rowr:hover{background:var(--surface-2)}
 tr.rowr.done{opacity:.7}
-.desc{max-width:420px;line-height:1.55;font-weight:500}
+/* 真实票据需求描述可达数百字，仅 max-width 限宽仍会换行几十行把行高撑到 300px+，
+   表格不可用。改为默认钳制 3 行，点击描述全文展开/收起（JS 事件委托见 01_core.js）。 */
+.desc{max-width:420px;line-height:1.55;font-weight:500;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:3;overflow:hidden;cursor:zoom-in}
+.desc.exp{display:block;-webkit-line-clamp:none;cursor:zoom-out}
+.desc:not(.exp){overflow-wrap:anywhere}
+/* 复核表列宽再分配：自动布局下描述列（信息密度最高）仅分得 ~105px，
+   3 行钳制后可见内容过少。给描述列 30% 权重（≥240px），从次要窄列让出空间。 */
+#v-review thead th:nth-child(2){width:30%;min-width:240px}
 .cat{display:inline-block;font-weight:600;font-size:11px;padding:2px 8px;border-radius:6px}
 .c-ILF{background:var(--cat-ilf-bg);color:var(--cat-ilf-ink)}.c-EIF{background:var(--cat-eif-bg);color:var(--cat-eif-ink)}
 .c-EI{background:var(--cat-ei-bg);color:var(--cat-ei-ink)}.c-EO{background:var(--cat-eo-bg);color:var(--cat-eo-ink)}.c-EQ{background:var(--cat-eq-bg);color:var(--cat-eq-ink)}
