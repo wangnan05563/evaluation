@@ -2,6 +2,10 @@
 
 > 需求文档 → IFPUG 功能点 → 成品造价表（引擎直连）
 
+![social preview](assets/github-social-preview.png)
+
+![platform](https://img.shields.io/badge/platform-Windows%2010%2B-2563EB) ![python](https://img.shields.io/badge/python-3.10%2B-3776AB) ![electron](https://img.shields.io/badge/electron-desktop-47848F) ![tests](https://img.shields.io/badge/npm%20test-12%2F12%20passing-16A34A) ![i18n](https://img.shields.io/badge/i18n-%E4%B8%AD%20%2F%20EN-8B5CF6)
+
 本地运行的软件项目工作量评估工具：上传需求说明书，自动识别 IFPUG 功能点并生成符合企业造价模板的成品评估表；同时提供 PERT 三点估算双模式，支持大模型（LLM）辅助识别与拆分。全部计算在本地完成，需求文档不出本机。
 
 ## 特性
@@ -9,6 +13,9 @@
 - **IFPUG 估算**：上传 `.docx` 需求文档 → 本地引擎解析候选功能点 → 逐条审核（类别/复杂度/重用/修改）→ 一键生成《规模估算》《费用估算》成品 xlsx（公式与样式保真，Excel 打开即重算）
 - **PERT 三点估算**：新建/选择项目 → 需求导入（AI 拆分或人工录入）→ 乐观/最可能/悲观三值 → 预期 = (O + 4M + P) ÷ 6、σ = (P − O) ÷ 6 → 生成 PERT 成品表
 - **大模型识别增强**：配置中心可接入任意 OpenAI 兼容接口（OpenAI / Claude / 通义 / 火山 / Agnes / 自定义），支持连接测试、模型列表自动拉取；启用后对候选做复核补全，并可注入项目上下文目录扫描出的技术栈/规模信息
+- **估算历史与版本对比**：估算历史持久化、重开复用，两次估算可逐项 diff（新增/删除/变更高亮）
+- **多语言与主题**：界面中/英双语切换；浅色 / 深色 / 高对比三套主题，品牌主色可自定义
+- **可访问性**：全链路键盘可完成主流程，语义化 role/aria，焦点环与对比度按 WCAG 口径校验
 - **项目库持久化**：PERT 项目与估算项落库 SQLite，支持多项目管理
 - **桌面应用**：Electron 壳 + PyInstaller sidecar，安装即用；前端图标库本地内联，离线/内网环境正常渲染
 - **本地目录选择**：配置中心浏览目录走系统原生对话框，返回绝对路径自动填入
@@ -91,6 +98,14 @@ electron-builder 的中间产物（`win-unpacked\resources\app.asar`）输出到
 ├── scripts\清理发布目录.bat  # 清空 release（可随时执行，产物可重建）
 └── release/                 # 构建产物（zip、sidecar exe、安装包），可随时清理
 ```
+
+## 测试
+
+```bash
+npm test
+```
+
+编排器（`tests/run.mjs`）跑 S1–S12 共 12 个套件：Python 单测（规则对拍/引擎口径/CLI）+ API 冒烟（隔离实例全链路）+ UI 冒烟（无头 Chrome CDP，覆盖上传→识别→审核→生成→导出、进度/失败/超时、主题、键盘可达、动效空态、多语言）。全绿为交付线。
 
 ## 主要接口
 
