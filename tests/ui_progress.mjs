@@ -13,7 +13,10 @@ const APP = 'http://127.0.0.1:8032/';
 // 默认（async）只断言进度条可见且阶段数 ≥1 —— 阶段文案的真实性由 sync 那一轮保证。
 const MODE = process.argv[2] || 'async';
 const MIN_STAGES = MODE === 'sync' ? 4 : 1;
-const DOCX = path.join('.', 'data', 'testdocs', 't00928_req.docx');   // 稳定夹具（temp 目录会被清理）
+// T01079 根因修复（收编时曾遗失，2026-10-10 补回）：夹具必须绝对路径——CDP DOM.setFileInputFiles
+// 的相对路径由 Chrome 进程按其自身 cwd 解析，得到无效 File 后渲染器整体冻结
+// （Runtime.evaluate 全超时、CPU 零增长），即 S6「偶发卡死」的唯一根因。
+const DOCX = path.resolve(path.join('.', 'data', 'testdocs', 't00928_req.docx'));   // 稳定夹具（temp 目录会被清理）
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 const results = [];
 const check = (n, ok, d = '') => { results.push({ n, ok: !!ok }); console.log(`${ok ? 'PASS' : 'FAIL'}  ${n}${d ? '  — ' + d : ''}`); };

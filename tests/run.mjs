@@ -77,7 +77,7 @@ const suites = [
   { id: 'S3', title: 'API 冒烟（隔离实例全链路）', kind: 'api', script: 'tests/api_smoke.py' },
   { id: 'S4', title: 'UI 冒烟（四图+导出管线）', kind: 'ui', script: 'tests/ui_smoke.mjs' },
   { id: 'S5', title: 'UI M3（表格增强+规则沉淀）', kind: 'ui', script: 'tests/ui_m3.mjs' },
-  { id: 'S6', title: 'UI 进度/失败/超时（flaky，T01079）', kind: 'ui', script: 'tests/ui_progress.mjs', flaky: true },
+  { id: 'S6', title: 'UI 进度/失败/超时（T01079 已闭环：夹具改绝对路径，2026-10-10 起 default-on）', kind: 'ui', script: 'tests/ui_progress.mjs' },
   { id: 'S7', title: 'UI 版本 diff 对比（FR-FE05）', kind: 'ui', script: 'tests/ui_diff.mjs' },
   { id: 'S8', title: 'UI 主题色定制（FR-TH02）', kind: 'ui', script: 'tests/ui_theme.mjs', env: { PYTHON: PY } },
   { id: 'S9', title: 'UI 键盘可完成主链路（FR-UI05）', kind: 'ui', script: 'tests/ui_a11y_keyboard.mjs' },
