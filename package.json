@@ -1,6 +1,6 @@
 {
   "name": "workload-estimate",
-  "version": "0.1.20261009-002",
+  "version": "0.1.20261012-001",
   "private": true,
   "description": "工作量评估工具桌面应用根（Electron 桌面壳 + PyInstaller 后端 sidecar）",
   "scripts": {
